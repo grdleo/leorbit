@@ -1,0 +1,16 @@
+*.pyc
+*.code-workspace
+__pycache__
+_old
+venv/
+venv2/
+self-notes.md
+*.egg-info/
+.coverage
+.editorconfig
+.pytest_cache/
+.vscode/
+.devcontainer/
+dist
+.pypirc
+html/*
