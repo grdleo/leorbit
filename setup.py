@@ -24,7 +24,8 @@ setuptools.setup(
     install_requires=[
         "pint",
         "requests",
-        "beautifulsoup4"
+        "beautifulsoup4",
+        "pdoc"
     ],
     python_requires=">=3.12"
 )
