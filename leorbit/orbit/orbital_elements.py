@@ -93,7 +93,7 @@ class OrbitalElements:
         semi_minor_axis = self.semi_major_axis * sqrt(1 - e**2)
         object.__setattr__(self, "semi_minor_axis", semi_minor_axis)
 
-        __els_ready2compute = _FastComputeDictOrbitalElements(
+        _els_ready2compute = _FastComputeDictOrbitalElements(
             n=self.mean_motion.m_as("rad/min"),
             i=self.inclination.m_as("rad"),
             e=self.eccentricity.m,
@@ -102,12 +102,8 @@ class OrbitalElements:
             M=self.mean_anomaly.m_as("rad"),
             bstar=self.bstar.m_as("1/earthRadii")
         )
-        object.__setattr__(self, "__els_ready2compute", __els_ready2compute)
-        self.__els_ready2compute: _FastComputeDictOrbitalElements
-    
-    @property
-    def _els_ready2compute(self) -> _FastComputeDictOrbitalElements:
-        return self.__els_ready2compute
+        object.__setattr__(self, "_els_ready2compute", _els_ready2compute)
+        self._els_ready2compute: _FastComputeDictOrbitalElements
     
     @property
     def period(self) -> Q_:
