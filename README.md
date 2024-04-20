@@ -3,13 +3,18 @@
 
 This package is aimed to track a satellite in low orbit around Earth. It has been created in order to help small space centers (from universities for example) to do calculations for their cubesats. But you can use it in any way you want!
 
-## Installing
+### Reference & documentation
+- Reference: https://grdleo.github.io/leorbit
+
+## Quick start
+
+### Installing
 
 LEOrbit will be available on `PyPi` very soon.
 
 The build is already available on [`test.pypi.org`](https://test.pypi.org/project/leorbit/)
 
-## Main depedencies
+### Main depedencies
 Uses `pint` to handle physical quantities with units. `requests` and `beautifulsoup4` to fetch data on Celestrak and others.
 
 No NumPy or any other heavy library, `leorbit` wants to be and remain pure Python.
@@ -72,10 +77,14 @@ HorizontalCoordinates(azimuth_deg=-120.7834, altitude_deg=-60.5245)
 ## Examples & documentation
 
 LEOrbit is available with a complete walkthrough the capabilities of the library.
-It also have many examples all available [here](bout:blank).
+It also have many examples all available [here](https://github.com/grdleo/leorbit/tree/master/examples).
 
 # What's next?
 - SDP4 implementation (see https://github.com/Bill-Gray/sat_code)
 - Joblib implementation for parallel computations https://joblib.readthedocs.io/en/latest/
 - Orientation tracking for satellites
 - Tools to generate a list of commands to send to satellite
+
+### Links
+- [Reference & documentation](https://grdleo.github.io/leorbit)
+- [Developer's page (Léo G.)](https://leog.dev)
