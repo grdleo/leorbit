@@ -1,5 +1,15 @@
 """Python library `leorbit` makes LEO satellites tracking easy: 
 GP data gathering, orbit propagation, coordinates conversions, events computation...
+
+## Reference
+This the reference of the library. A complete documentation is in progress.
+
+## Tutorial
+[Here](https://github.com/grdleo/leorbit/tree/master/examples) are a full Jupyter notebook walkthrough, as long as a few examples scripts.
+
+## Links
+- [Github repository](https://github.com/grdleo/leorbit)
+- [Developer's page (Léo G.)](https://leog.dev)
 """
 
 __pdoc__ = dict()
