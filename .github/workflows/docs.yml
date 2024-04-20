@@ -41,11 +41,11 @@ jobs:
 
       - run: pip install -e .
       - run: pip install pdoc3
-      - run: pdoc --html --force leorbit --template-dir docs/template -o docs/src
+      - run: pdoc --html --force leorbit --template-dir docs/template -o docs
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/src
+          path: docs/leorbit
 
   # Deploy the artifact to GitHub pages.
   # This is a separate job so that only actions/deploy-pages has the necessary permissions.
