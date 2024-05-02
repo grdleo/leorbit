@@ -49,36 +49,36 @@ class Time:
         return cls(datetime.fromisoformat(iso_date).timestamp())
 
     def __eq__(self: Self, other: Self) -> bool:
-        return self.unixepoch == other.unixepoch
+        return self._unixepoch == other._unixepoch
 
     def __ne__(self: Self, other: Self) -> bool:
-        return self.unixepoch != other.unixepoch
+        return self._unixepoch != other._unixepoch
 
     def __lt__(self: Self, other: Self) -> bool:
-        return self.unixepoch < other.unixepoch
+        return self._unixepoch < other._unixepoch
 
     def __le__(self: Self, other: Self) -> bool:
-        return self.unixepoch <= other.unixepoch
+        return self._unixepoch <= other._unixepoch
 
     def __gt__(self: Self, other: Self) -> bool:
-        return self.unixepoch > other.unixepoch
+        return self._unixepoch > other._unixepoch
 
     def __ge__(self: Self, other: Self) -> bool:
-        return self.unixepoch >= other.unixepoch
+        return self._unixepoch >= other._unixepoch
 
     def __repr__(self: Self) -> str:
-        return f"<Time unixepoch={self.unixepoch}>"
+        return f"<Time unixepoch={self._unixepoch}>"
 
     def __hash__(self: Self) -> int:
-        return hash(self.unixepoch)
+        return hash(self._unixepoch)
 
     def copy(self: Self) -> Self:
         """Returns a copy of this `Time` object."""
-        return type(self)(self.unixepoch)
+        return type(self)(self._unixepoch)
 
     def __add__(self: Self, other: Q_) -> Self:
         try:
-            return type(self)(self.unixepoch + other.m_as("s"))
+            return type(self)(self._unixepoch + other.m_as("s"))
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a time"
@@ -104,7 +104,7 @@ class Time:
 
     def __sub__(self: Self, other: Q_) -> Self:
         try:
-            return type(self)(self.unixepoch - other.m_as("s"))
+            return type(self)(self._unixepoch - other.m_as("s"))
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a duration"
@@ -116,7 +116,7 @@ class Time:
 
         If `other > self`, the returned duration will be negative. 
         """
-        return Q_(self.unixepoch - other.unixepoch, "s")
+        return Q_(self._unixepoch - other._unixepoch, "s")
     
     def __invert__(self: Self, other: Self) -> Q_: # ~
         """Operator for `delta` method"""
@@ -126,25 +126,25 @@ class Time:
     def isoformat(self: Self) -> str:
         """Representation of this `Time` object in 
         [ISO format.](https://en.wikipedia.org/wiki/ISO_8601)"""
-        return datetime.fromtimestamp(self.unixepoch, timezone.utc).isoformat()
+        return datetime.fromtimestamp(self._unixepoch, timezone.utc).isoformat()
     
     @property
     def human(self) -> str:
         """Representation of this `Time` object in human readable format."""
-        date = datetime.fromtimestamp(self.unixepoch, timezone.utc)
+        date = datetime.fromtimestamp(self._unixepoch, timezone.utc)
         return date.strftime("%Y-%m-%d at %H:%M:%S")
 
     @property
     def jd(self: Self) -> Q_:
         """Representation of this `Time` object as "Julian day (JD)", aka 
         the number of days since -4712/01/01."""
-        return Q_(self.unixepoch / 86400 + 2440587.5, "day")
+        return Q_(self._unixepoch / 86400 + 2440587.5, "day")
 
     @property
     def j2000(self: Self) -> Q_:
         """Representation of this `Time` object as "Julian year (J2000)", aka 
         the number of days since 2000/01/01T12:00:00."""
-        return Q_(self.unixepoch / 86400 - 10957.5, "day")
+        return Q_(self._unixepoch / 86400 - 10957.5, "day")
 
     @property
     def from_mil(self: Self) -> Q_:
