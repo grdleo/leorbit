@@ -74,7 +74,14 @@ class Time:
 
     def copy(self: Self) -> Self:
         """Returns a copy of this `Time` object."""
-        return type(self)(self._unixepoch)
+        cls = self.__class__
+        return cls(self._unixepoch)
+    
+    def __copy__(self) -> Self:
+        return self.copy()
+    
+    def __deepcopy__(self, *args, **kwargs) -> Self:
+        return self.copy()
 
     def __add__(self: Self, other: Q_) -> Self:
         try:
