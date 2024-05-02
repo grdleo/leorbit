@@ -1,7 +1,6 @@
 """Time handling"""
 
 from datetime import datetime, timezone
-from typing import Self
 
 from leorbit.math import TWELF_PI, TWOPI
 from leorbit.math import Q_
@@ -48,42 +47,42 @@ class Time:
             iso_date += "+00:00"
         return cls(datetime.fromisoformat(iso_date).timestamp())
 
-    def __eq__(self: Self, other: Self) -> bool:
+    def __eq__(self: "Time", other: "Time") -> bool:
         return self._unixepoch == other._unixepoch
 
-    def __ne__(self: Self, other: Self) -> bool:
+    def __ne__(self: "Time", other: "Time") -> bool:
         return self._unixepoch != other._unixepoch
 
-    def __lt__(self: Self, other: Self) -> bool:
+    def __lt__(self: "Time", other: "Time") -> bool:
         return self._unixepoch < other._unixepoch
 
-    def __le__(self: Self, other: Self) -> bool:
+    def __le__(self: "Time", other: "Time") -> bool:
         return self._unixepoch <= other._unixepoch
 
-    def __gt__(self: Self, other: Self) -> bool:
+    def __gt__(self: "Time", other: "Time") -> bool:
         return self._unixepoch > other._unixepoch
 
-    def __ge__(self: Self, other: Self) -> bool:
+    def __ge__(self: "Time", other: "Time") -> bool:
         return self._unixepoch >= other._unixepoch
 
-    def __repr__(self: Self) -> str:
+    def __repr__(self: "Time") -> str:
         return f"<Time unixepoch={self._unixepoch}>"
 
-    def __hash__(self: Self) -> int:
+    def __hash__(self: "Time") -> int:
         return hash(self._unixepoch)
 
-    def copy(self: Self) -> Self:
+    def copy(self: "Time") -> "Time":
         """Returns a copy of this `Time` object."""
         cls = self.__class__
         return cls(self._unixepoch)
     
-    def __copy__(self) -> Self:
+    def __copy__(self) -> "Time":
         return self.copy()
     
-    def __deepcopy__(self, *args, **kwargs) -> Self:
+    def __deepcopy__(self, *args, **kwargs) -> "Time":
         return self.copy()
 
-    def __add__(self: Self, other: Q_) -> Self:
+    def __add__(self: "Time", other: Q_) -> "Time":
         try:
             return type(self)(self._unixepoch + other.m_as("s"))
         except Exception as ex:
@@ -91,7 +90,7 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def __iadd__(self: Self, other: Q_) -> None:
+    def __iadd__(self: "Time", other: Q_) -> None:
         try:
             self._unixepoch += other.m_as("s")
             return self
@@ -100,7 +99,7 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def __isub__(self: Self, other: Q_) -> None:
+    def __isub__(self: "Time", other: Q_) -> None:
         try:
             self._unixepoch -= other.m_as("s")
             return self
@@ -109,7 +108,7 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def __sub__(self: Self, other: Q_) -> Self:
+    def __sub__(self: "Time", other: Q_) -> "Time":
         try:
             return type(self)(self._unixepoch - other.m_as("s"))
         except Exception as ex:
@@ -117,7 +116,7 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a duration"
             ) from ex
 
-    def delta(self: Self, other: Self) -> Q_:
+    def delta(self: "Time", other: "Time") -> Q_:
         """Return the duration between two given `Time` objects, as a `pint.Quantity`.
         The operator `~` overloads this function.
 
@@ -125,12 +124,12 @@ class Time:
         """
         return Q_(self._unixepoch - other._unixepoch, "s")
     
-    def __invert__(self: Self, other: Self) -> Q_: # ~
+    def __invert__(self: "Time", other: "Time") -> Q_: # ~
         """Operator for `delta` method"""
         return self.delta(other)
 
     @property
-    def isoformat(self: Self) -> str:
+    def isoformat(self: "Time") -> str:
         """Representation of this `Time` object in 
         [ISO format.](https://en.wikipedia.org/wiki/ISO_8601)"""
         return datetime.fromtimestamp(self._unixepoch, timezone.utc).isoformat()
@@ -142,26 +141,26 @@ class Time:
         return date.strftime("%Y-%m-%d at %H:%M:%S")
 
     @property
-    def jd(self: Self) -> Q_:
+    def jd(self: "Time") -> Q_:
         """Representation of this `Time` object as "Julian day (JD)", aka 
         the number of days since -4712/01/01."""
         return Q_(self._unixepoch / 86400 + 2440587.5, "day")
 
     @property
-    def j2000(self: Self) -> Q_:
+    def j2000(self: "Time") -> Q_:
         """Representation of this `Time` object as "Julian year (J2000)", aka 
         the number of days since 2000/01/01T12:00:00."""
         return Q_(self._unixepoch / 86400 - 10957.5, "day")
 
     @property
-    def from_mil(self: Self) -> Q_:
+    def from_mil(self: "Time") -> Q_:
         """Representation of this `Time` object as a fraction of days since 1 january 2000 00:00.
 
         Taken from: https://stjarnhimlen.se/comp/ppcomp.html#3"""
         return self.j2000 - Q_(0.5, "day")
 
     @property
-    def year_day(self: Self) -> str:
+    def year_day(self: "Time") -> str:
         """Representation of this `Time` object as a `yyddd.dddddddd` string  
         where `yy` is the last two digits of the year and 
         `ddd.dddddddd` is the fractionnal day of the year."""
@@ -173,7 +172,7 @@ class Time:
         return f"{full_y[2:4]}{days:012.8f}"
 
     @property
-    def stl0(self: Self) -> Q_: # FIXME: better algorithm on the Wiki page
+    def stl0(self: "Time") -> Q_: # FIXME: better algorithm on the Wiki page
         """The 
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Time`.
