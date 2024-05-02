@@ -7,6 +7,7 @@ from collections import namedtuple
 from functools import cache
 from typing import Any, TypeVar, Iterator
 from types import UnionType
+from copy import copy, deepcopy
 
 import pint
 from pint import DimensionalityError
@@ -161,9 +162,19 @@ class Vec3:
         for i in (self._x, self._y, self._z):
             yield i
 
-    def copy(self: "Vec3") -> "Vec3":
-        """Creates and returns a copy of this vector."""
-        return Vec3(self._x, self._y, self._z)
+    def __copy__(self: "Vec3") -> "Vec3":
+        return Vec3(
+            copy(self._x), 
+            copy(self._y), 
+            copy(self._z)
+        )
+    
+    def __deepcopy__(self: "Vec3", *args, **kwargs) -> "Vec3":
+        return Vec3(
+            deepcopy(self._x), 
+            deepcopy(self._y), 
+            deepcopy(self._z)
+        )
 
     def __eq__(self: "Vec3", other: "Vec3") -> bool:
         _raise_if_wrong_operand(other, Vec3)
