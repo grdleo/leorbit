@@ -68,7 +68,8 @@ class Vec3:
 
         self._theta: Q_ = None # atan2(y, x)
         self._delta: Q_ = None # atan2(z, [x²+y²])
-        self._rho: Q_ = None # sqrt(x²+y²+z²)
+        self._rho2: Q_ = None # x²+y²+z²
+        self._rho: Q_ = None # sqrt(rho)
         
         self._unit: Unit = self._x.units
     
@@ -144,13 +145,21 @@ class Vec3:
     def rho(self) -> Q_:
         """The magnitude of this vector."""
         if self._rho is None:
-            sqr = self._x**2 + self._y**2 + self._z**2
-            self._rho = sqr**.5
+            self._rho2 = self._x**2 + self._y**2 + self._z**2
+            self._rho = self._rho2**.5
         return self._rho
+    
+    @property
+    def rho2(self) -> Q_:
+        """The magnitude of this vector, *squared.*"""
+        if self._rho2 is None:
+            self._rho2 = self._x**2 + self._y**2 + self._z**2
+            self._rho = self._rho2**.5
+        return self._rho2
     
     def sqr(self) -> Q_:
         """Returns the squared magnitude of this vector."""
-        return self.rho**2
+        return self.rho2
         
     def __abs__(self) -> Q_:
         """Returns the magnitude of the vector."""
