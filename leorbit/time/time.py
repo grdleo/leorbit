@@ -155,18 +155,15 @@ class Time:
 
     @property
     def year_day(self: Self) -> str:
-        """Representation of this `Time` object as a `yyddd.ddddddd` string  
+        """Representation of this `Time` object as a `yyddd.dddddddd` string  
         where `yy` is the last two digits of the year and 
-        `ddd.ddddddd` is the fractionnal day of the year."""
+        `ddd.dddddddd` is the fractionnal day of the year."""
         iso = self.isoformat
-        y = iso[0:4]
-        newyear = Time.fromisoformat(f"{y}-01-01T00:00:00")
+        full_y = iso[0:4]
+        newyear = Time.fromisoformat(f"{full_y}-01-01T00:00:00")
         from_newyear = self.delta(newyear)
-        d_full = round(from_newyear.to("day").m, 8)
-        d_int = int(d_full)
-        d_dec = str(d_full - d_int)[2:]
-        d = f"{str(d_int).rjust(3, '0')}.{d_dec.ljust(8, '0')}"
-        return f"{y[2:4]}{d}"
+        days: float = from_newyear.m_as("day")
+        return f"{full_y[2:4]}{days:012.8f}"
 
     @property
     def stl0(self: Self) -> Q_: # FIXME: better algorithm on the Wiki page
