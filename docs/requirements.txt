@@ -1,1 +1,4 @@
 jupyterlab
+pint
+requests
+beautifulsoup4
