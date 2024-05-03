@@ -1,9 +1,7 @@
 *.pyc
 *.code-workspace
 __pycache__
-_old
 venv/
-venv2/
 self-notes.md
 *.egg-info/
 .coverage
@@ -13,4 +11,4 @@ self-notes.md
 .devcontainer/
 dist
 .pypirc
-html/*
+docs/build/
