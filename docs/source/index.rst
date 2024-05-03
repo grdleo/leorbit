@@ -1,14 +1,16 @@
-Welcome to leorbit's documentation!
+`leorbit` documentation
 ===================================
 
+This documentation is in work in progress. Please come back later.
+
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 1
    :caption: Contents:
 
+   installation
    quickstart
-   reference
-
-
+   reference/index
+   examples/index
 
 Indices and tables
 ==================

@@ -36,7 +36,7 @@ class AstroEvent:
         -----------
         - `over: Timeline` The timeline to compute over
         - `minimal_duration: Q_` Intervals that validates the event's predicate have to be at least this long. 
-        If not, the interval will not be considered.
+            If not, the interval will not be considered.
         - `print_progress: bool` If `True`, prints progress to the console.
         """
         start = None

@@ -7,8 +7,8 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = 'leorbit'
-copyright = '2024, Léo G.'
-author = 'Léo G.'
+copyright = '2024, Léo G'
+author = 'Léo G'
 release = '0.0.0'
 
 # Add your project directory to the Python path
