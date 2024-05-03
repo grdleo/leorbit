@@ -1,5 +1,5 @@
 `leorbit` documentation
-===================================
+=======================
 
 This documentation is in work in progress. Please come back later.
 
@@ -11,6 +11,12 @@ This documentation is in work in progress. Please come back later.
    quickstart
    reference/index
    examples/index
+
+Links
+-----
+
+- `Github repository <https://github.com/grdleo/leorbit>`_
+- `Developer's page <https://leog.dev>`_
 
 Indices and tables
 ==================
