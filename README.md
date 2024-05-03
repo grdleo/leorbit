@@ -3,8 +3,8 @@
 
 This package is aimed to track a satellite in low orbit around Earth. It has been created in order to help small space centers (from universities for example) to do calculations for their cubesats. But you can use it in any way you want!
 
-### Reference & documentation
-- Reference: https://grdleo.github.io/leorbit
+### Quick links
+- Documentation & reference: https://leorbit.readthedocs.org
 
 ## Quick start
 
@@ -77,7 +77,7 @@ HorizontalCoordinates(azimuth_deg=-120.7834, altitude_deg=-60.5245)
 ## Examples & documentation
 
 LEOrbit is available with a complete walkthrough the capabilities of the library.
-It also have many examples all available [here](https://github.com/grdleo/leorbit/tree/master/examples).
+Check the documentation with the available examples.
 
 # What's next?
 - SDP4 implementation (see https://github.com/Bill-Gray/sat_code)
@@ -86,5 +86,5 @@ It also have many examples all available [here](https://github.com/grdleo/leorbi
 - Tools to generate a list of commands to send to satellite
 
 ### Links
-- [Reference & documentation](https://grdleo.github.io/leorbit)
+- [Documentation & reference](https://leorbit.readthedocs.org)
 - [Developer's page (Léo G.)](https://leog.dev)
