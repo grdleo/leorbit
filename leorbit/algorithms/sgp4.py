@@ -2,6 +2,10 @@
 
 from math import sin, cos, sqrt, fabs, cbrt, atan2
 
+from coordinates.coordinates import Coordinates
+from coordinates.representations.elements import OrbitalElementsComputeTuple
+from physics.time import Time
+
 PI = 3.141592653589793
 TWOPI = 6.283185307179586
 HALFPI = 1.5707963267948966
@@ -18,20 +22,35 @@ QO = 1 + 120 / XKMPER
 XKE = sqrt(3600 * GE / XKMPER**3)
 QOMS2T = (QO - S)**4
 
-from typing import TYPE_CHECKING, TypeVar
-if TYPE_CHECKING:
-    from leorbit.math.coordinate import PosVelGCRF
-else:
-    PosVelGCRF = TypeVar("PosVelGCRF")
+from typing import NamedTuple
+
+class PosVelGCRF(NamedTuple):
+    x: float # [m]
+    y: float # [m]
+    z: float # [m]
+    vx: float # [m/s]
+    vy: float # [m/s]
+    vz: float # [m/s]
+    
+    @property
+    def array_values(self) -> bool:
+        return not isinstance(self.x, float | int)
+    
+    def get_values_at(self, i: int) -> "PosVelGCRF":
+        """If current tuple is made from NumPy arrays instead of floats,
+        retrieve the values at given index and returns a float `PosVelGCRF`"""
+        if not self.array_values:
+            raise RuntimeError()
+        
+        PosVelGCRF(el[i] for el in self)
+        
+    def to_coordinates(self, epoch: Time) -> Coordinates:
+        if self.array_values:
+            raise ValueError()
+        raise NotImplementedError()
 
 def sgp4(
-    sat0_n: float, # [rad/min]
-    sat0_i: float, # [rad]
-    sat0_e: float, # [1]
-    sat0_omega: float, # [rad]
-    sat0_node: float, # [rad]
-    sat0_M: float, # [rad]
-    bstar: float, # [1/earthRadii]
+    elements_sat0: OrbitalElementsComputeTuple,
     tsince: float # [min]
 ) -> PosVelGCRF:
     """Pure-Python implementation of SGP4 algorithm.
@@ -47,6 +66,7 @@ def sgp4(
     - `bstar` Satellite's BSTAR coefficient in given GP data. Units `1/earthRadii`
     - `tsince` Time since GP data epoch. Units: `min`
     """
+    sat0_n, sat0_i, sat0_e, sat0_omega, sat0_node, sat0_M, bstar = elements_sat0
     temp2 = XKE / sat0_n
     a1 = cbrt(temp2)**2
     cosio = cos(sat0_i)

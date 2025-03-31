@@ -1,9 +1,11 @@
 """Time handling"""
 
 from datetime import datetime, timezone
+from math import pi
+from mathematics.custom import TWELF_PI, TWOPI
+from pint import Quantity as Q_
 
-from leorbit.math import TWELF_PI, TWOPI
-from leorbit.math import Q_
+from mathematics.vec3 import UREG
 
 class Time:
     """Class representing a time instant."""
@@ -49,6 +51,9 @@ class Time:
 
     def __eq__(self: "Time", other: "Time") -> bool:
         return self._unixepoch == other._unixepoch
+    
+    def __contains__(self: "Time", other: "Time") -> bool:
+        return self.__eq__(other)
 
     def __ne__(self: "Time", other: "Time") -> bool:
         return self._unixepoch != other._unixepoch
@@ -84,7 +89,7 @@ class Time:
 
     def __add__(self: "Time", other: Q_) -> "Time":
         try:
-            return type(self)(self._unixepoch + other.m_as("s"))
+            return type(self)(self._unixepoch + other.m_as(UREG.seconds))
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a time"
@@ -92,7 +97,7 @@ class Time:
 
     def __iadd__(self: "Time", other: Q_) -> None:
         try:
-            self._unixepoch += other.m_as("s")
+            self._unixepoch += other.m_as(UREG.seconds)
             return self
         except Exception as ex:
             raise ValueError(
@@ -101,7 +106,7 @@ class Time:
 
     def __isub__(self: "Time", other: Q_) -> None:
         try:
-            self._unixepoch -= other.m_as("s")
+            self._unixepoch -= other.m_as(UREG.seconds)
             return self
         except Exception as ex:
             raise ValueError(
@@ -110,7 +115,7 @@ class Time:
 
     def __sub__(self: "Time", other: Q_) -> "Time":
         try:
-            return type(self)(self._unixepoch - other.m_as("s"))
+            return type(self)(self._unixepoch - other.m_as(UREG.seconds))
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a duration"
@@ -144,20 +149,20 @@ class Time:
     def jd(self: "Time") -> Q_:
         """Representation of this `Time` object as "Julian day (JD)", aka 
         the number of days since -4712/01/01."""
-        return Q_(self._unixepoch / 86400 + 2440587.5, "day")
+        return (self._unixepoch / 86400 + 2440587.5) * UREG.day
 
     @property
     def j2000(self: "Time") -> Q_:
         """Representation of this `Time` object as "Julian year (J2000)", aka 
         the number of days since 2000/01/01T12:00:00."""
-        return Q_(self._unixepoch / 86400 - 10957.5, "day")
+        return (self._unixepoch / 86400 - 10957.5) * UREG.day
 
     @property
     def from_mil(self: "Time") -> Q_:
         """Representation of this `Time` object as a fraction of days since 1 january 2000 00:00.
 
         Taken from: https://stjarnhimlen.se/comp/ppcomp.html#3"""
-        return self.j2000 - Q_(0.5, "day")
+        return self.j2000 - 0.5 * UREG.day
 
     @property
     def year_day(self: "Time") -> str:
@@ -177,9 +182,9 @@ class Time:
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Time`.
         """
-        return Q_(
-            ((18.697374558 + 24.06570982441908 * self.j2000.m) * TWELF_PI) % TWOPI, "rad"
-        )
+        return (
+            ((18.697374558 + 24.06570982441908 * self.j2000.m) * TWELF_PI) % TWOPI
+        ) * UREG.rad
     
 if Time.now() >= Time.fromisoformat("2100-01-01T00:00:00"):
     raise RuntimeError(f"Nobody will ever see this but considering you "

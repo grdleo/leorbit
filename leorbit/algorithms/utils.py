@@ -1,21 +1,27 @@
 """Special functions with special purposes. Should not be useful for the average user.
 """
 
-from leorbit.math.vector import Vec3
 from math import log10, sin, cos
-from leorbit.math import HALF_REV, Q_
+from mathematics.custom import HALF_REV
 
-RADIIE_AA = Q_(6_378_137, "m")**2
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from mathematics.vec3 import Vec3
+
+from pint import Quantity
+from mathematics.units import UREG
+
+RADIIE_AA = (6_378_137 * UREG.meter)**2
 RADIIE_A4 = RADIIE_AA**2
-RADIIE_BB = Q_(6_356_752, "m")**2
+RADIIE_BB = (6_356_752 * UREG.meter)**2
 RADIIE_B4 = RADIIE_BB**2
 
-def geocentric_radius_earth(latitude: Q_ | float) -> Q_:
+def geocentric_radius_earth(latitude: Quantity | float) -> Quantity:
     """Returns the mean radius of Earth at given latitude.
     Earth is considered as a spheroid. 
     
     Algorithm from: https://en.wikipedia.org/wiki/Earth_radius#Geocentric_radius"""
-    if isinstance(latitude, Q_):
+    if isinstance(latitude, Quantity):
         assert latitude.check("rad")
     cc = cos(latitude)
     ss = sin(latitude)
@@ -31,21 +37,21 @@ def apparent_magnitude(sun: Vec3, sat: Vec3, observer: Vec3, std_mag: float) -> 
     Algorithm from: https://astronomy.stackexchange.com/questions/28744/calculating-the-apparent-magnitude-of-a-satellite"""
     dir_obs = observer - sat
     dir_sun = sun - sat
-    dist_sat: Q_ = abs(dir_obs)
+    dist_sat: Quantity = abs(dir_obs)
     phase = dir_sun.angle(dir_obs)
 
     phi_term = sin(phase) + (HALF_REV - phase).m_as("rad") * cos(phase)
 
     return std_mag + 5 * log10(dist_sat.m_as("megameter")) - 2.5 * log10(phi_term)
 
-def humanize_duration(t: Q_) -> str:
+def humanize_duration(t: Quantity) -> str:
     """Make a `pint.Quantity` duration human-readable.
     
     Example:
     --------
     
     ```python
-    humanize_duration(Q_("723459.23min"))
+    humanize_duration(Quantity("723459.23min"))
     >>> '1 year 4 month 15 day 9 hour 39 min 13 s'
     ```
     """
@@ -58,7 +64,7 @@ def humanize_duration(t: Q_) -> str:
     components = {s: 0 for s in stages}
 
     for s in stages:
-        stage_d = Q_(f"1{s}")
+        stage_d = Quantity(f"1{s}")
         if t < stage_d:
             continue
         c = int(t.m_as(s))
@@ -68,5 +74,14 @@ def humanize_duration(t: Q_) -> str:
     
     return " ".join(f"{v} {k}" for k, v in components.items() if v > 0)
     
+def angle2dms(angle: Quantity) -> str:
+    """Representation of the angle in DSM notation (degrees, minutes, seconds)
 
-
+    Example: `39° 17′ N, 76° 36′ O`"""
+    
+    angle2convert = abs(angle.m_as(UREG.degrees))
+    deg, deg_dec = divmod(angle2convert, 1)
+    min, min_dec = divmod(deg_dec * 60, 1)
+    sec, _ = divmod(min_dec * 60, 1)
+    
+    return f"{deg}° {min}′ {sec}″"

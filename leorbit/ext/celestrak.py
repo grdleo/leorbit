@@ -5,12 +5,12 @@ from tempfile import gettempdir
 from json import loads, dumps
 from json.decoder import JSONDecodeError
 from pathlib import Path
-from leorbit.math import Q_
-from leorbit.time import Time
+from mathematics.units import UREG
+from time import Time
 from os.path import getmtime
 
 TEMPFILE_CELESTRAK_PREFIX = "python_earthorbit_celestrak_gpdata_"
-MINIMAL_DURATION_UPDATE = Q_("1h")
+MINIMAL_DURATION_UPDATE = UREG("1h")
 
 def get_celestrak_gpdata_json(catnr: int, log: bool = False) -> dict[str, str | float | int]:
     """
@@ -28,7 +28,7 @@ def get_celestrak_gpdata_json(catnr: int, log: bool = False) -> dict[str, str | 
     dict[str, str | float | int]
         GP data as a dictionary
     """
-    if not (0 < catnr < int(1e10)):
+    if not (0 < catnr <= 9_999_999_999):
         raise ValueError("NORAD Catalog ID must be a 1 to 9 digit number!")
     
     store_path = Path(gettempdir()) / f"{TEMPFILE_CELESTRAK_PREFIX}{catnr}.json"

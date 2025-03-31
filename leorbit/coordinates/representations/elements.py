@@ -1,19 +1,28 @@
 """Implementation of "orbital elements" of an object orbiting Earth."""
 
+from collections import namedtuple
 import json
 from math import atan, cos, sin, sqrt, tan, atan2, tau
 from typing import Optional, Self
 from dataclasses import dataclass, field
-from typing import TypedDict
+from typing import TypedDict, NamedTuple
 
-from leorbit.math.coordinate import Coordinates, AbsoluteFrame
-from leorbit.math.vector import Vec3
-from leorbit.ext.celestrak import get_celestrak_gpdata_json
-from leorbit.orbit.constants import MU_EARTH, SQRT_MU_EARTH, Q_
-from leorbit.time import Time
+from pint import Quantity
 
-class _FastComputeDictOrbitalElements(TypedDict):
-    """Storing orbital with proper units, ready to be computed with SGP algo"""
+from coordinates.representations import CoordinatesRepresentation
+
+from coordinates.coordinates import Coordinates
+from frames.absolute_frame import AbsoluteFrame
+from mathematics.vec3 import Vec3
+from mathematics.units import UREG
+from ext.celestrak import get_celestrak_gpdata_json
+from physics.constants import MU_EARTH, SQRT_MU_EARTH
+from physics.time import Time
+
+def angle_between(angle: Quantity, mini_deg: float, maxi_deg: float) -> bool:
+    return (mini_deg * UREG.degree) <= angle <= (maxi_deg * UREG.degree)
+
+class OrbitalElementsComputeTuple(NamedTuple):
     n: float # [rad/min]
     i: float # [rad]
     e: float # [1]
@@ -23,27 +32,27 @@ class _FastComputeDictOrbitalElements(TypedDict):
     bstar: float # [1/earthRadii]
 
 @dataclass(frozen=True)
-class OrbitalElements:
+class OrbitalElements(CoordinatesRepresentation):
     """Dataclass holding orbital elements, at a given epoch, gathered from Celestrak.org 
     (also known as GP data)"""
     epoch: Time
-    eccentricity: Q_ # [1]
-    inclination: Q_ # [rad]
-    ra_of_asc_node: Q_ # [rad]
-    arg_of_pericenter: Q_ # [rad]
-    mean_motion: Q_ # [rad]
-    mean_anomaly: Q_ # [rad]
-    mean_motion_dot: Q_ = field(init=True, default_factory=lambda: Q_("0 rad/s**2")) # [rad/s²]
-    mean_motion_ddot: Q_ = field(init=True, default_factory=lambda: Q_("0 rad/s**3")) # [rad/s3]
-    bstar: Q_ = field(init=True, default_factory=lambda: Q_("0 1/m"))
+    eccentricity: Quantity # [1]
+    inclination: Quantity # [rad]
+    ra_of_asc_node: Quantity # [rad]
+    arg_of_pericenter: Quantity # [rad]
+    mean_motion: Quantity # [rad]
+    mean_anomaly: Quantity # [rad]
+    mean_motion_dot: Quantity = field(init=True, default_factory=lambda: UREG("0 rad/s**2")) # [rad/s²]
+    mean_motion_ddot: Quantity = field(init=True, default_factory=lambda: UREG("0 rad/s**3")) # [rad/s3]
+    bstar: Quantity = field(init=True, default_factory=lambda: UREG("0 1/m"))
 
     name: str = "No name"
     norad_cat_id: Optional[int] = None
 
-    eccentric_anomaly: Q_ = field(init=False) # [rad]
-    true_anomaly: Q_ = field(init=False) # [rad]
-    semi_major_axis: Q_ = field(init=False) # [m]
-    semi_minor_axis: Q_ = field(init=False) # [m]
+    eccentric_anomaly: Quantity = field(init=False) # [rad]
+    true_anomaly: Quantity = field(init=False) # [rad]
+    semi_major_axis: Quantity = field(init=False) # [m]
+    semi_minor_axis: Quantity = field(init=False) # [m]
     time_at_periaster: Time = field(init=False)
 
     def __post_init__(self):
@@ -52,21 +61,21 @@ class OrbitalElements:
             raise ValueError()
 
         assert self.inclination.check("°")
-        if not Q_(0, "°") <= self.inclination <= Q_(180, "°"):
+        if not angle_between(self.inclination, 0, 180):
             raise ValueError()
 
         assert self.ra_of_asc_node.check("°")
-        if not Q_(0, "°") <= self.ra_of_asc_node <= Q_(360, "°"):
+        if not angle_between(self.ra_of_asc_node, 0, 360):
             raise ValueError()
 
         assert self.arg_of_pericenter.check("°")
-        if not Q_(0, "°") <= self.arg_of_pericenter <= Q_(360, "°"):
+        if not angle_between(self.arg_of_pericenter, 0, 360):
             raise ValueError()
 
         assert self.mean_motion.check("rad/s")
 
         self.mean_anomaly.check("°")
-        if not Q_(0, "°") <= self.mean_anomaly <= Q_(360, "°"):
+        if not angle_between(self.mean_anomaly, 0, 360):
             raise ValueError()
         
         assert self.mean_motion_dot.check("rad/s**2")
@@ -93,7 +102,7 @@ class OrbitalElements:
         semi_minor_axis = self.semi_major_axis * sqrt(1 - e**2)
         object.__setattr__(self, "semi_minor_axis", semi_minor_axis)
 
-        _els_ready2compute = _FastComputeDictOrbitalElements(
+        _els_as_float_tuple = OrbitalElementsComputeTuple(
             n=self.mean_motion.m_as("rad/min"),
             i=self.inclination.m_as("rad"),
             e=self.eccentricity.m,
@@ -102,13 +111,13 @@ class OrbitalElements:
             M=self.mean_anomaly.m_as("rad"),
             bstar=self.bstar.m_as("1/earthRadii")
         )
-        object.__setattr__(self, "_els_ready2compute", _els_ready2compute)
-        self._els_ready2compute: _FastComputeDictOrbitalElements
+        object.__setattr__(self, "_els_as_float_tuple", _els_as_float_tuple)
+        self._els_as_float_tuple: OrbitalElementsComputeTuple
     
     @property
-    def period(self) -> Q_:
+    def period(self) -> Quantity:
         """The period of a full revolution."""
-        return Q_(tau, "rad") / self.mean_motion
+        return (tau * UREG("rad")) / self.mean_motion
     
     def to_coordinates(self) -> Coordinates:
         """Returns current orbital elements, at given epoch, 
@@ -134,7 +143,7 @@ class OrbitalElements:
         υpω = υ + ω
         c_theta, s_theta = cos(υpω), sin(υpω)
 
-        def unitvec_gcrf(x: Q_, y: Q_) -> Vec3:
+        def unitvec_gcrf(x: Quantity, y: Quantity) -> Vec3:
             return Vec3(
                 c_raan * x - s_raan * c_i * y,
                 s_raan * x + c_raan * c_i * y,
@@ -181,11 +190,11 @@ class OrbitalElements:
 
         xe_asc = xaxis_asc.dot(ecc_vec).m
         ye_asc = yaxis_asc.dot(ecc_vec).m
-        argp = Q_(atan2(ye_asc, xe_asc), "rad")
+        argp = atan2(ye_asc, xe_asc) * UREG("rad")
 
         xp_asc = xaxis_asc.dot(pos).m_as("m")
         yp_asc = yaxis_asc.dot(pos).m_as("m")
-        nu = (Q_(atan2(yp_asc, xp_asc), "rad") - argp) % tau
+        nu = (atan2(yp_asc, xp_asc) * UREG("rad") - argp) % tau
 
         e = abs(ecc_vec) # [1]
         ee = e * e
@@ -193,16 +202,16 @@ class OrbitalElements:
         eeee = eee * e
         i = north.angle(kinetic) # [rad]
         raan = atan2(asc.y, asc.x) % tau # [rad]
-        raan = Q_(raan, "rad") # convert to Quantity
+        raan = raan * UREG("rad") # convert to Quantity
         a = kinetic_sq / (MU_EARTH * (1 - ee)) # [m]
         aaa = a**3
         n = ((MU_EARTH / aaa)**0.5).to("rad/s")  # [rad/s]
         M = (
             nu
             - 2 * e * sin(nu)
-            + (3 / 4 * ee + 1 / 8 * eeee) * sin(2 * nu)
-            - 1 / 3 * eee * sin(3 * nu)
-            + 5 / 32 * eeee * sin(4 * nu)
+            + (ee * .75 + eeee * .125) * sin(2 * nu)
+            - eee * sin(3 * nu) / 3
+            + eeee * sin(4 * nu) * .15625
         )
 
         return OrbitalElements(
@@ -230,15 +239,15 @@ class OrbitalElements:
         try:
             return OrbitalElements(
                 epoch=Time.fromisoformat(query["EPOCH"]),
-                eccentricity=Q_(query["ECCENTRICITY"], "dimensionless"),
-                inclination=Q_(query["INCLINATION"], "°"),
-                ra_of_asc_node=Q_(query["RA_OF_ASC_NODE"], "°"),
-                arg_of_pericenter=Q_(query["ARG_OF_PERICENTER"], "°"),
-                mean_motion=Q_(query["MEAN_MOTION"], "turn/day"),
-                mean_anomaly=Q_(query["MEAN_ANOMALY"], "°"),
-                mean_motion_dot=Q_(query["MEAN_MOTION_DOT"], "turn/day^2") * 2, # NOTE: factor is cancelled when loading directly from Celestrack
-                mean_motion_ddot=Q_(query["MEAN_MOTION_DDOT"], "turn/day^3") * 6, # NOTE: factor is cancelled when loading directly from Celestrack
-                bstar=Q_(query["BSTAR"], "1/earthRadii"),
+                eccentricity=query["ECCENTRICITY"] * UREG("dimensionless"),
+                inclination=query["INCLINATION"] * UREG("°"),
+                ra_of_asc_node=query["RA_OF_ASC_NODE"] * UREG("°"),
+                arg_of_pericenter=query["ARG_OF_PERICENTER"] * UREG("°"),
+                mean_motion=query["MEAN_MOTION"] * UREG("turn/day"),
+                mean_anomaly=query["MEAN_ANOMALY"] * UREG("°"),
+                mean_motion_dot=query["MEAN_MOTION_DOT"] * UREG("turn/day^2") * 2, # NOTE: factor is cancelled when loading directly from Celestrack
+                mean_motion_ddot=query["MEAN_MOTION_DDOT"] * UREG("turn/day^3") * 6, # NOTE: factor is cancelled when loading directly from Celestrack
+                bstar=query["BSTAR"] * UREG("1/earthRadii"),
                 name=query["OBJECT_NAME"],
                 norad_cat_id=int(query["NORAD_CAT_ID"])
             )
@@ -342,21 +351,21 @@ class OrbitalElements:
         y = int(first[18:20])
         dec_day = float(first[20:32])
 
-        epoch = Time.fromisoformat(f"20{y}-01-01T00:00:00") + Q_(dec_day - 1, "day")
+        epoch = Time.fromisoformat(f"20{y}-01-01T00:00:00") + Quantity(dec_day - 1, "day")
 
-        inclination = Q_(float(second[8:15]), "°")
-        raan = Q_(float(second[17:24]), "°")
-        eccentricity = Q_(float(f"0.{second[26:33]}"), "dimensionless")
-        argp = Q_(float(second[34:42]), "°")
-        mean_anomaly = Q_(float(second[43:51]), "°")
-        mean_motion = Q_(float(second[52:65]), "turn/day")
-        mean_motion_dot = Q_(2 * float(first[33:42]), "turn/day^2") # NOTE: factor is cancelled when loading directly from Celestrack
+        inclination = Quantity(float(second[8:15]), "°")
+        raan = Quantity(float(second[17:24]), "°")
+        eccentricity = Quantity(float(f"0.{second[26:33]}"), "dimensionless")
+        argp = Quantity(float(second[34:42]), "°")
+        mean_anomaly = Quantity(float(second[43:51]), "°")
+        mean_motion = Quantity(float(second[52:65]), "turn/day")
+        mean_motion_dot = Quantity(2 * float(first[33:42]), "turn/day^2") # NOTE: factor is cancelled when loading directly from Celestrack
         mmtay = first[45:52]
         str_mean_motion_taylor = f"{mmtay[:5]}e{mmtay[5:]}"
-        mean_motion_ddot = Q_(6 * float(str_mean_motion_taylor), "turn/day^3") # NOTE: factor is cancelled when loading directly from Celestrack
+        mean_motion_ddot = Quantity(6 * float(str_mean_motion_taylor), "turn/day^3") # NOTE: factor is cancelled when loading directly from Celestrack
         bstar_tle = first[54:61]
         bstar_str = f"{bstar_tle[:6]}e{bstar_tle[6:]}"
-        bstar = Q_(float(bstar_str), "1/earthRadii")
+        bstar = Quantity(float(bstar_str), "1/earthRadii")
 
         return OrbitalElements(
             epoch,
