@@ -1,6 +1,9 @@
 """Pure-Python implementation of SGP4 algorithm."""
 
-from math import sin, cos, sqrt, fabs, cbrt, atan2
+from numpy import sin, cos, sqrt, fabs, cbrt, atan2
+
+from numpy.typing import NDArray
+import numpy as np
 
 from coordinates.coordinates import Coordinates
 from coordinates.representations.elements import OrbitalElementsComputeTuple
@@ -25,16 +28,16 @@ QOMS2T = (QO - S)**4
 from typing import NamedTuple
 
 class PosVelGCRF(NamedTuple):
-    x: float # [m]
-    y: float # [m]
-    z: float # [m]
-    vx: float # [m/s]
-    vy: float # [m/s]
-    vz: float # [m/s]
+    x: np.float64 | NDArray # [m]
+    y: np.float64 | NDArray # [m]
+    z: np.float64 | NDArray # [m]
+    vx: np.float64 | NDArray # [m/s]
+    vy: np.float64 | NDArray # [m/s]
+    vz: np.float64 | NDArray # [m/s]
     
     @property
     def array_values(self) -> bool:
-        return not isinstance(self.x, float | int)
+        return isinstance(self.x, np.ndarray)
     
     def get_values_at(self, i: int) -> "PosVelGCRF":
         """If current tuple is made from NumPy arrays instead of floats,
@@ -65,8 +68,16 @@ def sgp4(
     - `sat0_M` Satellite's mean anomaly in given GP data. Units `rad`
     - `bstar` Satellite's BSTAR coefficient in given GP data. Units `1/earthRadii`
     - `tsince` Time since GP data epoch. Units: `min`
+
     """
-    sat0_n, sat0_i, sat0_e, sat0_omega, sat0_node, sat0_M, bstar = elements_sat0
+    sat0_n = elements_sat0.n
+    sat0_i = elements_sat0.i
+    sat0_e = elements_sat0.e
+    sat0_omega = elements_sat0.argp
+    sat0_node = elements_sat0.raan
+    sat0_M = elements_sat0.M
+    bstar = elements_sat0.bstar
+
     temp2 = XKE / sat0_n
     a1 = cbrt(temp2)**2
     cosio = cos(sat0_i)
@@ -262,4 +273,4 @@ def sgp4(
     gcrf_vel_y = (rdotk * u_y + rfdotk * v_y) * AE_MIN2M_S
     gcrf_vel_z = (rdotk * u_z + rfdotk * v_z) * AE_MIN2M_S
 
-    return gcrf_x, gcrf_y, gcrf_z, gcrf_vel_x, gcrf_vel_y, gcrf_vel_z
+    return PosVelGCRF(gcrf_x, gcrf_y, gcrf_z, gcrf_vel_x, gcrf_vel_y, gcrf_vel_z)

@@ -1,7 +1,10 @@
 """Special functions with special purposes. Should not be useful for the average user.
 """
 
-from math import log10, sin, cos
+from math import log10, sin, cos, tan, atan2
+
+import numpy as np
+from numpy.typing import NDArray
 from mathematics.custom import HALF_REV
 
 from typing import TYPE_CHECKING
@@ -85,3 +88,60 @@ def angle2dms(angle: Quantity) -> str:
     sec, _ = divmod(min_dec * 60, 1)
     
     return f"{deg}° {min}′ {sec}″"
+
+def eccentric2true_anomaly(e: float, E: Quantity) -> Quantity:
+    """Returns the true anomaly from the eccentric anomaly and the excentricity.
+    
+    Parameters
+    ----------
+    e : float
+        Excentricity of the orbit
+    E : float
+        Eccentric anomaly in radians
+    
+    Returns
+    -------
+    float
+        True anomaly in radians"""
+
+    υ = atan2(
+        (1 - e*e)**.5 * sin(E), 
+        cos(E) - e
+    )
+    return υ * UREG.radians
+
+def true2eccentric_anomaly(e: float, υ: Quantity) -> Quantity:
+    """Returns the eccentric anomaly from the true anomaly and the excentricity.
+    Parameters
+    ----------
+    e : float
+        Excentricity of the orbit
+    υ : float
+        True anomaly in radians
+    Returns
+    
+    -------
+    float"""
+    E = atan2(
+        (1 - e*e)**.5 * sin(υ),
+        e + cos(υ)
+    )
+    return E * UREG.radians
+
+def true2eccentric_anomaly_numpy(e: float, υ: NDArray) -> NDArray:
+    """Returns the eccentric anomaly from the true anomaly and the excentricity.
+    Parameters
+    ----------
+    e : float
+        Excentricity of the orbit
+    υ : NDArray
+        True anomaly in radians
+    Returns
+    
+    -------
+    NDArray"""
+    E = np.atan2(
+        (1 - e*e)**.5 * np.sin(υ),
+        e + np.cos(υ)
+    )
+    return E

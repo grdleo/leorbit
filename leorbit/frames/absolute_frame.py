@@ -2,9 +2,9 @@ from enum import Enum
 from functools import lru_cache
 from typing import Callable
 from mathematics.transformation import Identity, Transform, RotationZ, ChainTransform
-from physics.time_custom import Time
+from physics.time import Time
 from mathematics.vec3 import Vec3
-from physics.time_custom import Time
+from physics.time import Time
 from frames import Frame
 
 class AbsoluteFrame(Frame, Enum):

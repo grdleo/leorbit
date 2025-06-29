@@ -14,6 +14,7 @@ class Transform:
         raise NotImplementedError()
     
     def reverse(self) -> Self:
+        # FIXME oof
         tr = copy(self)
         tr.apply = self.unapply
         tr.unapply = self.apply

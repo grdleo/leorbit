@@ -6,7 +6,7 @@ from json import loads, dumps
 from json.decoder import JSONDecodeError
 from pathlib import Path
 from mathematics.units import UREG
-from time import Time
+from physics.time import Time
 from os.path import getmtime
 
 TEMPFILE_CELESTRAK_PREFIX = "python_earthorbit_celestrak_gpdata_"

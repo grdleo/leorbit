@@ -7,12 +7,15 @@ from typing import Optional, Self
 from dataclasses import dataclass, field
 from typing import TypedDict, NamedTuple
 
+import numpy as np
 from pint import Quantity
 
 from coordinates.representations import CoordinatesRepresentation
 
 from coordinates.coordinates import Coordinates
 from frames.absolute_frame import AbsoluteFrame
+from leorbit.algorithms.elements2orthogonal_gcrf import elements2orthogonal_gcrf
+from leorbit.algorithms.elements2orthogonal_gcrf import orb_tels2posvel_gcrf, orb_tels2posvel_gcrf_numpy
 from mathematics.vec3 import Vec3
 from mathematics.units import UREG
 from ext.celestrak import get_celestrak_gpdata_json
@@ -123,39 +126,23 @@ class OrbitalElements(CoordinatesRepresentation):
         """Returns current orbital elements, at given epoch, 
         as a `Coordinates` object."""
         # position of satellite in orbit plane (with z = 0)
-        υ = self.true_anomaly
-        e = self.eccentricity
-        a = self.semi_major_axis
-        Ω = self.ra_of_asc_node
-        ω = self.arg_of_pericenter
-        i = self.inclination
-        E = self.eccentric_anomaly
+        pos_vel_gcrf = elements2orthogonal_gcrf(
+            self.true_anomaly.m_as("rad"),
+            self.eccentricity.m_as("1"),
+            self.semi_major_axis.m_as("m"),
+            self.ra_of_asc_node.m_as("rad"),
+            self.arg_of_pericenter.m_as("rad"),
+            self.inclination.m_as("rad")
+        )
 
-        ee = e**2
-        one_ee = (1 - ee)
-        esinE = e * sin(E)
-        r = a * one_ee / (1 + e * cos(υ))
-        rd = SQRT_MU_EARTH * a**.5 * esinE / r
-        rυd = rd * one_ee / esinE
+        assert not pos_vel_gcrf.array_values
 
-        c_raan, s_raan = cos(Ω), sin(Ω)
-        c_i, s_i = cos(i), sin(i)
-        υpω = υ + ω
-        c_theta, s_theta = cos(υpω), sin(υpω)
-
-        def unitvec_gcrf(x: Quantity, y: Quantity) -> Vec3:
-            return Vec3(
-                c_raan * x - s_raan * c_i * y,
-                s_raan * x + c_raan * c_i * y,
-                s_i * y
-            )
-
-        ur = unitvec_gcrf(c_theta, s_theta)
-        ut = unitvec_gcrf(-s_theta, c_theta)
-        pos_gcrf = ur * r
-        vel_gcrf = ur * rd + ut * rυd
-
-        return Coordinates(AbsoluteFrame.GCRF, pos_gcrf, vel_gcrf, self.epoch)
+        return Coordinates(
+            AbsoluteFrame.GCRF, 
+            Vec3(pos_vel_gcrf.x, pos_vel_gcrf.y, pos_vel_gcrf.z, UREG.meter),
+            Vec3(pos_vel_gcrf.vx, pos_vel_gcrf.vy, pos_vel_gcrf.vz, UREG.meter / UREG.second),
+            self.epoch
+        )
 
     @classmethod
     def from_state_vectors(cls: "OrbitalElements", coordinate: Coordinates) -> "OrbitalElements":
@@ -264,118 +251,3 @@ class OrbitalElements(CoordinatesRepresentation):
         """
         gp_dict = get_celestrak_gpdata_json(catnr, log)
         return OrbitalElements.from_celestrak_json(gp_dict)
-    
-    def _to_tle( # TODO
-        self,
-        obj_id="0000-000X",
-        classi="U",
-        rev_at_epoch="99999",
-        name="NONAME",
-        norad_cat_id="00000",
-        el_set_no="999",
-    ) -> str:
-        """Returns orbital elements as a TLE"""
-        n_dot_tle = ("-" if self.mean_motion_dot < 0 else " ") + str((self.mean_motion_dot.to("turn/day^2") / 2).m)[
-            1:
-        ].ljust(9, "0")
-        n_dot_tle = n_dot_tle[:10]
-
-        n_ddot_tle = ("-" if self.mean_motion_ddot < 0 else " ") + "{:.5e}".format(
-            abs((self.mean_motion_ddot.to("turn/day^3") / 6).m)
-        ).replace("e", "")[2:]
-        n_ddot_tle = n_ddot_tle[:8]
-
-        bstar_tle = ("-" if self.bstar < 0 else " ") + "{:.5e}".format(abs(self.bstar.to("1/earthRadii"))).replace("e", "")[2:]
-        bstar_tle = bstar_tle[:8]
-
-        def checksum(st: str) -> int:
-            somme = 0
-            for s in st.replace("-", "1"):
-                try:
-                    somme += int(s)
-                except:
-                    pass
-            return str(somme % 10)
-
-        def nb_format(nb: float, lsize: int, rsize: int) -> str:
-            l = int(nb)
-            r = str(nb - l)[1:]
-            return (
-                f"{str(l)[:lsize].rjust(lsize, '0')}.{str(r)[:rsize].ljust(rsize, '0')}"
-            )
-
-        one = f"1 {norad_cat_id[:5]}{classi[:1]} {obj_id[2:].replace('-', '')[:6]}   {self.epoch.year_day} {n_dot_tle} {n_ddot_tle} {bstar_tle} 0  {el_set_no[:3]}"
-        one += checksum(one)
-
-        i_tle = nb_format(self.inclination.to("deg").m, 3, 4)
-        raan_tle = nb_format(self.ra_of_asc_node.to("deg").m, 3, 4)
-        argp_tle = nb_format(self.arg_of_pericenter.to("deg").m, 3, 4)
-        M0_tle = nb_format(self.mean_anomaly.to("deg").m, 3, 4)
-        n0_tle = nb_format(self.mean_motion.to("deg").m, 2, 8)
-        e_tle = str(self.eccentricity.m)[2:][:7].ljust(7)
-
-        two = f"2 {norad_cat_id[:5]} {i_tle} {raan_tle} {e_tle} {argp_tle} {M0_tle} {n0_tle}{rev_at_epoch[5:]}"
-        two += checksum(two)
-
-        return f"{name.upper()}\n{one}\n{two}"
-    
-    @classmethod
-    def _from_tle(cls: "OrbitalElements", tle: str) -> Self: # TODO
-        """Creates an instance of Orbit object, using TLE (Two-Line Elements) string.
-
-        String may contain a title line. If not, this is not a problem, a name will be added automatically.
-        Conventions used can be found here: https://en.wikipedia.org/wiki/Two-line_element_set
-
-        Parameters
-        ----------
-        tle : str
-            TLE for the orbit, at given time. Three lines separated with '\n' (slash n)
-
-        """
-        raise NotImplementedError("Needs to be rewritten")
-    
-        if tle.endswith("\n"):  # if ends with break line, remove the last one
-            tle = tle[0 : len(tle) - 2]
-
-        tle = tle.replace("\r", "")
-        splited = tle.split("\n")
-
-        name = "noname"
-        first = ""
-        second = ""
-
-        l = 1 if len(splited) > 2 else 0 # first line may be name
-        first = splited[l]
-        second = splited[l+1]
-
-        y = int(first[18:20])
-        dec_day = float(first[20:32])
-
-        epoch = Time.fromisoformat(f"20{y}-01-01T00:00:00") + Quantity(dec_day - 1, "day")
-
-        inclination = Quantity(float(second[8:15]), "°")
-        raan = Quantity(float(second[17:24]), "°")
-        eccentricity = Quantity(float(f"0.{second[26:33]}"), "dimensionless")
-        argp = Quantity(float(second[34:42]), "°")
-        mean_anomaly = Quantity(float(second[43:51]), "°")
-        mean_motion = Quantity(float(second[52:65]), "turn/day")
-        mean_motion_dot = Quantity(2 * float(first[33:42]), "turn/day^2") # NOTE: factor is cancelled when loading directly from Celestrack
-        mmtay = first[45:52]
-        str_mean_motion_taylor = f"{mmtay[:5]}e{mmtay[5:]}"
-        mean_motion_ddot = Quantity(6 * float(str_mean_motion_taylor), "turn/day^3") # NOTE: factor is cancelled when loading directly from Celestrack
-        bstar_tle = first[54:61]
-        bstar_str = f"{bstar_tle[:6]}e{bstar_tle[6:]}"
-        bstar = Quantity(float(bstar_str), "1/earthRadii")
-
-        return OrbitalElements(
-            epoch,
-            eccentricity,
-            inclination,
-            raan,
-            argp,
-            mean_motion,
-            mean_anomaly,
-            mean_motion_dot,
-            mean_motion_ddot,
-            bstar
-        )
