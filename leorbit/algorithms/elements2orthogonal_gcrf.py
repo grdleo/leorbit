@@ -1,12 +1,12 @@
 import numpy as np
 from pint import Quantity
-from leorbit.algorithms.sgp4 import PosVelGCRF
 from leorbit.algorithms.utils import true2eccentric_anomaly, true2eccentric_anomaly_numpy
 from leorbit.coordinates.coordinates import Coordinates
 from math import sin, cos
 from types import ModuleType
 from numpy.typing import NDArray
 
+from leorbit.coordinates.pos_vel_tuple.gcrf import PosVelGCRF
 from leorbit.frames.absolute_frame import AbsoluteFrame
 from leorbit.mathematics.vec3 import Vec3
 from leorbit.physics.constants import SQRT_MU_EARTH as SQRT_MU_EARTH_PINT

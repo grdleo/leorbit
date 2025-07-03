@@ -1,13 +1,10 @@
 """Pure-Python implementation of SGP4 algorithm."""
 
 from numpy import sin, cos, sqrt, fabs, cbrt, atan2
-
 from numpy.typing import NDArray
-import numpy as np
 
-from coordinates.coordinates import Coordinates
 from coordinates.representations.elements import OrbitalElementsComputeTuple
-from physics.time import Time
+from leorbit.coordinates.pos_vel_tuple.gcrf import PosVelGCRF
 
 PI = 3.141592653589793
 TWOPI = 6.283185307179586
@@ -25,36 +22,9 @@ QO = 1 + 120 / XKMPER
 XKE = sqrt(3600 * GE / XKMPER**3)
 QOMS2T = (QO - S)**4
 
-from typing import NamedTuple
-
-class PosVelGCRF(NamedTuple):
-    x: np.float64 | NDArray # [m]
-    y: np.float64 | NDArray # [m]
-    z: np.float64 | NDArray # [m]
-    vx: np.float64 | NDArray # [m/s]
-    vy: np.float64 | NDArray # [m/s]
-    vz: np.float64 | NDArray # [m/s]
-    
-    @property
-    def array_values(self) -> bool:
-        return isinstance(self.x, np.ndarray)
-    
-    def get_values_at(self, i: int) -> "PosVelGCRF":
-        """If current tuple is made from NumPy arrays instead of floats,
-        retrieve the values at given index and returns a float `PosVelGCRF`"""
-        if not self.array_values:
-            raise RuntimeError()
-        
-        PosVelGCRF(el[i] for el in self)
-        
-    def to_coordinates(self, epoch: Time) -> Coordinates:
-        if self.array_values:
-            raise ValueError()
-        raise NotImplementedError()
-
 def sgp4(
     elements_sat0: OrbitalElementsComputeTuple,
-    tsince: float # [min]
+    tsince: float | NDArray # [min]
 ) -> PosVelGCRF:
     """Pure-Python implementation of SGP4 algorithm.
     

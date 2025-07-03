@@ -1,8 +1,11 @@
 from typing import Iterable, Self, Iterator, Optional
 from physics.time import Time
-from mathematics import Q_
+from mathematics.units import Q_
 from math import ceil
 from algorithms.utils import humanize_duration
+
+import numpy as np
+from numpy.typing import NDArray
 
 class TimeInterval:
     """A time interval between two `Time` objects. """
@@ -48,7 +51,7 @@ class TimeInterval:
     
     def _idx2time(self, idx: int) -> Time:
         if not isinstance(idx, int):
-            raise ValueError()
+            raise TypeError()
         t = self.start + self.dt * idx
         if self.start <= t <= self.stop:
             return t
@@ -86,13 +89,13 @@ class TimeInterval:
             or self.start <= t.stop <= self.stop
         )
     
-    def intersection(self, timeline: "TimeInterval", dt: Q_ | None = None) -> Optional["TimeInterval"]:
+    def intersection(self: "TimeInterval", timeline: "TimeInterval", dt: Q_ | None = None) -> Optional["TimeInterval"]:
         """Returns the intersection of current timeline with given timeline"""
         if self.stop <= timeline.start or self.start >= timeline.stop:
             return None
         smallest, biggest = (self, timeline) if self.duration <= timeline.duration else (timeline, self)
-        start_in = biggest.contains(smallest.start)
-        stop_in = biggest.contains(smallest.stop)
+        start_in = smallest.start in biggest
+        stop_in = smallest.stop in biggest
 
         dt = dt if dt is not None else self.dt
         if start_in and stop_in:
@@ -124,6 +127,9 @@ class TimeInterval:
         Example: `"TimeInterval: from '2024-04-11 at 17:12:49' to '2024-04-12 at 05:33:33', duration=12 hour 20 min 43 s"`
         """
         return f"TimeInterval: from '{self.start.human}' to '{self.stop.human}', duration={humanize_duration(self.duration)}"
+    
+    def to_time_stamps(self) -> NDArray:
+        return np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps)
     
 def get_intersections_timelines(first_set: Iterable[TimeInterval], second_set: Iterable[TimeInterval]) -> list[TimeInterval]:
     """Returns the intersections of the two sets of timelines"""

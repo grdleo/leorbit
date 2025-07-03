@@ -1,13 +1,17 @@
 """Special functions with special purposes. Should not be useful for the average user.
 """
 
+import math
 from math import log10, sin, cos, tan, atan2
+from pint import Quantity
 
 import numpy as np
 from numpy.typing import NDArray
 from mathematics.custom import HALF_REV
 
-from typing import TYPE_CHECKING
+QtOrArray = TypeVar("FloatOrArray", Quantity, NDArray)
+
+from typing import TYPE_CHECKING, TypeVar
 if TYPE_CHECKING:
     from mathematics.vec3 import Vec3
 
@@ -89,7 +93,28 @@ def angle2dms(angle: Quantity) -> str:
     
     return f"{deg}° {min}′ {sec}″"
 
-def eccentric2true_anomaly(e: float, E: Quantity) -> Quantity:
+def mean2true_anomaly(e: float, M: QtOrArray) -> QtOrArray:
+    """ O(e**4)"""
+    math_module = np if isinstance(M, np.ndarray) else math
+    
+    ee = e*e
+    eee = e*ee
+    return (
+        M
+        + (2*e - .25*eee) * math_module.sin(M)
+        + 1.25*ee * math_module.sin(2*M)
+        + (13/12)*eee * math_module.sin(3*M)
+    )
+
+def mean2eccentric_anomaly(e: float, M: QtOrArray) -> QtOrArray:
+    math_module = np if isinstance(M, np.ndarray) else math
+
+    E = M
+    for _ in range(5):
+        E = M + e * math_module.sin(E)
+    return E
+
+def eccentric2true_anomaly(e: float, E: QtOrArray) -> QtOrArray:
     """Returns the true anomaly from the eccentric anomaly and the excentricity.
     
     Parameters
@@ -103,14 +128,16 @@ def eccentric2true_anomaly(e: float, E: Quantity) -> Quantity:
     -------
     float
         True anomaly in radians"""
+    math_module = np if isinstance(E, np.ndarray) else math
 
-    υ = atan2(
-        (1 - e*e)**.5 * sin(E), 
-        cos(E) - e
+    υ = math_module.atan2(
+        (1 - e*e)**.5 * math_module.sin(E), 
+        math_module.cos(E) - e
     )
-    return υ * UREG.radians
 
-def true2eccentric_anomaly(e: float, υ: Quantity) -> Quantity:
+    return υ
+
+def true2eccentric_anomaly(e: float, υ: QtOrArray) -> QtOrArray:
     """Returns the eccentric anomaly from the true anomaly and the excentricity.
     Parameters
     ----------
@@ -122,26 +149,10 @@ def true2eccentric_anomaly(e: float, υ: Quantity) -> Quantity:
     
     -------
     float"""
-    E = atan2(
-        (1 - e*e)**.5 * sin(υ),
-        e + cos(υ)
-    )
-    return E * UREG.radians
+    math_module = np if isinstance(υ, np.ndarray) else math
 
-def true2eccentric_anomaly_numpy(e: float, υ: NDArray) -> NDArray:
-    """Returns the eccentric anomaly from the true anomaly and the excentricity.
-    Parameters
-    ----------
-    e : float
-        Excentricity of the orbit
-    υ : NDArray
-        True anomaly in radians
-    Returns
-    
-    -------
-    NDArray"""
-    E = np.atan2(
-        (1 - e*e)**.5 * np.sin(υ),
-        e + np.cos(υ)
+    E = math_module.atan2(
+        (1 - e*e)**.5 * math_module.sin(υ),
+        e + math_module.cos(υ)
     )
     return E

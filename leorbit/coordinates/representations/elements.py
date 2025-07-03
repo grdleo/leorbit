@@ -16,6 +16,7 @@ from coordinates.coordinates import Coordinates
 from frames.absolute_frame import AbsoluteFrame
 from leorbit.algorithms.elements2orthogonal_gcrf import elements2orthogonal_gcrf
 from leorbit.algorithms.elements2orthogonal_gcrf import orb_tels2posvel_gcrf, orb_tels2posvel_gcrf_numpy
+from leorbit.algorithms.utils import mean2eccentric_anomaly
 from mathematics.vec3 import Vec3
 from mathematics.units import UREG
 from ext.celestrak import get_celestrak_gpdata_json
@@ -87,9 +88,7 @@ class OrbitalElements(CoordinatesRepresentation):
 
         e = self.eccentricity
         M = self.mean_anomaly
-        E = M
-        for _ in range(5):
-            E = M + e * sin(E)
+        E = mean2eccentric_anomaly(e, M)
         object.__setattr__(self, "eccentric_anomaly", E) # NOTE: to avoid `FrozenInstanceError`...
 
         tan_half_nu = sqrt((1 + e) / (1 - e)) * tan(.5 * E)
@@ -155,6 +154,8 @@ class OrbitalElements(CoordinatesRepresentation):
             and any other perturbations.
             Propagating those elements for more than a few hours will lead in huge errors.
         """
+        raise NotImplementedError("should be updated")
+
         if coordinate.epoch is None:
             raise ValueError(f"Epoch of given coordinate {coordinate} needs to be specified.")
         if not coordinate.vel_specified:
