@@ -45,7 +45,7 @@ class PosVelGCRF(NamedTuple):
         if not self.array_values:
             raise RuntimeError()
         
-        PosVelGCRF(el[i] for el in self)
+        PosVelGCRF(*(el[i] for el in self))
     
     def to_coordinates(self, epoch: Time) -> Coordinates:
         if self.array_values:

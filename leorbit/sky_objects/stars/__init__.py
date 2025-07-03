@@ -1,9 +1,11 @@
-from abc import ABC
+from abc import ABC, abstractmethod
 from functools import lru_cache
 from math import atan, cos, sin, sqrt, tan
 from coordinates.coordinates import Coordinates
 from coordinates.representations.elements import OrbitalElements
 from events.timeline import CoordinatesTimeline
+from leorbit.coordinates.trajectory import Trajectory
+from leorbit.propagators.no import NoPropagator
 from physics.constants import MU_EARTH
 from physics.time import Time
 
@@ -25,11 +27,10 @@ class Star(SkyObject, ABC):
     def coordinates(self, at: Time) -> Coordinates:
         return self.earth_osculating_orbit(at).to_coordinates()
     
-    def coordinates_timeline(self, on: TimeInterval):
-        return CoordinatesTimeline(
-            on,
-            self.coordinates # FIXME: not efficient
-        )
+    def trajectory(self, during: TimeInterval) -> Trajectory:
+        els = self.earth_osculating_orbit(during.start)
+        propagator = NoPropagator(els)
+        return propagator.propagate_timeline(during)
 
     def earth_osculating_orbit(self, epoch: Time) -> OrbitalElements:
         return OrbitalElements(
@@ -42,6 +43,7 @@ class Star(SkyObject, ABC):
             self.mean_anomaly(epoch)
         )
 
+    @abstractmethod
     def semi_major_axis(self, epoch: Time) -> Q_:
         """Returns the semi major axis (a) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
@@ -49,6 +51,7 @@ class Star(SkyObject, ABC):
         """Returns the semi major axis (a) of this star at given epoch."""
         return self.semi_major_axis(epoch)
     
+    @abstractmethod
     def eccentricity(self, epoch: Time) -> Q_:
         """Returns the eccentricity (e) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
@@ -56,6 +59,7 @@ class Star(SkyObject, ABC):
         """Returns the eccentricity (e) of this star at given epoch."""
         return self.eccentricity(epoch)
     
+    @abstractmethod
     def inclination(self, epoch: Time) -> Q_:
         """Returns the inclination (i) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
@@ -63,6 +67,7 @@ class Star(SkyObject, ABC):
         """Returns the inclination (i) of this star at given epoch."""
         return self.inclination(epoch)
     
+    @abstractmethod
     def ra_of_asc_node(self, epoch: Time) -> Q_:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
@@ -70,6 +75,7 @@ class Star(SkyObject, ABC):
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         return self.ra_of_asc_node(epoch)
     
+    @abstractmethod
     def arg_of_pericenter(self, epoch: Time) -> Q_:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
@@ -77,6 +83,7 @@ class Star(SkyObject, ABC):
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         return self.arg_of_pericenter(epoch)
     
+    @abstractmethod
     def mean_anomaly(self, epoch: Time) -> Q_:
         """Returns the mean anomaly (M) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")

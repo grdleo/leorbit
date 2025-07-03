@@ -1,12 +1,15 @@
+from abc import ABC, abstractmethod
 from coordinates.coordinates import Coordinates
-from events.timeline import CoordinatesTimeline
+from leorbit.coordinates.trajectory import Trajectory
 from physics.time import Time
 from physics.time_interval import TimeInterval
 
 
-class SkyObject:
+class SkyObject(ABC):
+    @abstractmethod
     def coordinates(self, at: Time) -> Coordinates:
         raise NotImplementedError()
     
-    def coordinates_timeline(self, on: TimeInterval) -> CoordinatesTimeline:
+    @abstractmethod
+    def trajectory(self, during: TimeInterval) -> Trajectory:
         raise NotImplementedError()

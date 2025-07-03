@@ -143,8 +143,8 @@ class OrbitalElements(CoordinatesRepresentation):
             self.epoch
         )
 
-    @classmethod
-    def from_state_vectors(cls: "OrbitalElements", coordinate: Coordinates) -> "OrbitalElements":
+    @staticmethod
+    def from_state_vectors(coordinate: Coordinates) -> "OrbitalElements":
         """
         From the state vectors of a given satellite (position and velocity, both condensed in a `Coordinates` object),
         returns a `OrbitalElements` object corresponding to its orbit.
@@ -212,8 +212,8 @@ class OrbitalElements(CoordinatesRepresentation):
             M
         )
 
-    @classmethod
-    def from_celestrak_json(cls: "OrbitalElements", celestrak_json: str | dict[str, str | float | int]) -> "OrbitalElements":
+    @staticmethod
+    def from_celestrak_json(celestrak_json: str | dict[str, str | float | int]) -> "OrbitalElements":
         """Creates an instance of `OrbitalElements` object from a Celestrak query in JSON format"""
         query = celestrak_json
         if isinstance(query, str):
@@ -242,8 +242,8 @@ class OrbitalElements(CoordinatesRepresentation):
         except KeyError as ex:
             raise ValueError(f"Given argument {celestrak_json} is not an acceptable JSON Celestrak query")
 
-    @classmethod
-    def from_celestrak_norad_cat_id(cls, catnr: int, log: bool = False) -> "OrbitalElements":
+    @staticmethod
+    def from_celestrak_norad_cat_id(catnr: int, log: bool = False) -> "OrbitalElements":
         """
         Fetches lastest GP data on `celestrak.org` corresponding to given NORAD catalog ID, 
         and creates an instance of `OrbitalElements` using those.

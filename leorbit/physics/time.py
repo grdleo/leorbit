@@ -122,16 +122,11 @@ class Time:
             ) from ex
 
     def delta(self: "Time", other: "Time") -> Q_:
-        """Return the duration between two given `Time` objects, as a `pint.Quantity`.
-        The operator `~` overloads this function.
+        """Return the duration between two given `Time` objects (i.e `self - other`), as a `pint.Quantity`.
 
         If `other > self`, the returned duration will be negative. 
         """
         return Q_(self._unixepoch - other._unixepoch, "s")
-    
-    def __invert__(self: "Time", other: "Time") -> Q_: # ~
-        """Operator for `delta` method"""
-        return self.delta(other)
 
     @property
     def isoformat(self: "Time") -> str:

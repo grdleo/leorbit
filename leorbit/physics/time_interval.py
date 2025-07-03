@@ -7,6 +7,8 @@ from algorithms.utils import humanize_duration
 import numpy as np
 from numpy.typing import NDArray
 
+MIN_DURATION = Q_("1ns")
+
 class TimeInterval:
     """A time interval between two `Time` objects. """
     def __init__(self, start: Time, stop: Time, dt=Q_("1s")):
@@ -14,8 +16,8 @@ class TimeInterval:
             raise ValueError()
         if start + dt > stop:
             raise ValueError()
-        if dt <= 0:
-            raise ValueError()
+        if dt < MIN_DURATION:
+            raise ValueError(f"Time delta cannot be lower than minimal duration {MIN_DURATION}")
         
         self.start = start
         self.stop = stop
@@ -40,7 +42,7 @@ class TimeInterval:
         return hash(self.__repr__())
 
     def __iter__(self) -> Iterator[Time]:
-        for i in range(self.steps + 1):
+        for i in range(self.steps):
             yield self.start + i * self.dt
     
     def duplicate(self, dt: Q_ | None = None) -> "TimeInterval":
@@ -128,8 +130,18 @@ class TimeInterval:
         """
         return f"TimeInterval: from '{self.start.human}' to '{self.stop.human}', duration={humanize_duration(self.duration)}"
     
+    @property
+    def ponctual(self) -> bool:
+        """Returns `True` if this `TimeInterval` is ponctual (start == stop + MIN_DURATION)"""
+        return self.start == self.stop + MIN_DURATION
+    
     def to_time_stamps(self) -> NDArray:
         return np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps)
+    
+    @staticmethod
+    def make_ponctual(time: Time) -> "TimeInterval":
+        """Creates a ponctual `TimeInterval` at given `Time`"""
+        return TimeInterval(time, time + MIN_DURATION, MIN_DURATION)
     
 def get_intersections_timelines(first_set: Iterable[TimeInterval], second_set: Iterable[TimeInterval]) -> list[TimeInterval]:
     """Returns the intersections of the two sets of timelines"""

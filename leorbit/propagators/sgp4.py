@@ -2,7 +2,6 @@ from functools import lru_cache
 from algorithms.sgp4 import PosVelGCRF, sgp4
 from coordinates.coordinates import Coordinates
 from coordinates.representations.elements import OrbitalElements
-from events.timeline import CoordinatesTimeline
 from leorbit.coordinates.trajectory import Trajectory
 from physics.time import Time
 from physics.time_interval import TimeInterval
@@ -22,13 +21,10 @@ class SGP4(Propagator):
         ).to_coordinates(to)
     
     def propagate_timeline(self, on: TimeInterval) -> Trajectory:
-        tsince: list[float] = [t.delta(self.elements.epoch).m_as(UREG.min) for t in on]
-        gcrf_positions_arrays = sgp4(self.elements._els_as_float_tuple, tsince)
-        
-        def coordinates_computer(at: Time) -> Coordinates:
-            i = on._time2idx(at)
-            return gcrf_positions_arrays.get_values_at(i).to_coordinates(at)
-        
-        return CoordinatesTimeline(on, coordinates_computer)
-    
-    
+        tsince_min = (on.to_time_stamps() - on.start.unixepoch) / 60.
+        pos_vel = sgp4(
+            self.elements._els_as_float_tuple,
+            tsince_min
+        )
+
+        return Trajectory(pos_vel, on)
