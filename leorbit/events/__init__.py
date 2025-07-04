@@ -34,7 +34,7 @@ class Event(ABC):
 				return False
 		return True
 	
-	def _build_by_predicate(self, predicate_values: list[Time], start: Time, dt: Quantity):
+	def _build_by_predicate(self, predicate_values: list[bool], start: Time, dt: Quantity):
 		steps = len(predicate_values)
 
 		predicate_values = list(predicate_values)
@@ -74,7 +74,7 @@ class Event(ABC):
 			else:
 				interval = TimeInterval(start_time, stop_str, dt)
 
-			self.__pieces[interval] = None
+			self.__pieces.setdefault(interval, None)
 			
 	@abstractmethod
 	def compute(self, on: TimeInterval):

@@ -1,4 +1,5 @@
 from abc import ABC
+from functools import cache, lru_cache
 from leorbit.coordinates.coordinates import Coordinates
 from leorbit.coordinates.representations.elements import OrbitalElements
 from leorbit.coordinates.trajectory import Trajectory
@@ -26,8 +27,10 @@ class Satellite(SkyObject):
 			propagator_cls(els)
 		)
 	
+	@lru_cache(512)
 	def coordinates(self, at: Time) -> Coordinates:
 		return self.propagator.propagate(at)
 	
+	@lru_cache(16)
 	def trajectory(self, during: TimeInterval) -> Trajectory:
 		return self.propagator.propagate_timeline(during)

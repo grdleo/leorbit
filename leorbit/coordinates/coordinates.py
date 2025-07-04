@@ -1,7 +1,6 @@
 from functools import lru_cache
-from typing import Self
+from typing import NamedTuple, Self
 from algorithms.utils import geocentric_radius_earth
-from coordinates import PosVel
 from coordinates.representations import CoordinatesRepresentation
 from coordinates.representations.gps import GPS
 from coordinates.representations.horizontal import Horizontal
@@ -13,11 +12,20 @@ from mathematics.vec3 import Vec3, UREG, POS_UNIT
 
 from pint import Quantity as Q_
 
+class PosVel(NamedTuple):
+	"""A tuple to hold position and velocity.
+	All values are in SI units (meters, meters/second).
+	Can hold coordinates as NumPy arrays or floats.
+	If NumPy arrays are used, all values must have the same length.
+	"""
+	pos: Vec3  # Position in meters
+	vel: Vec3  # Velocity in meters/second
+
 
 class Coordinates:
     def __init__(self, epoch: Time, frame: Frame, pos: Vec3, vel: Vec3 = None):
         self.epoch = epoch
-        self.positions: dict[Frame, PosVel] = {frame: (pos, vel)}
+        self.positions: dict[Frame, PosVel] = {frame: PosVel(pos, vel)}
         self.privileged_frame = frame
         self.vel_available = vel is not None
         self.name = None
@@ -34,34 +42,28 @@ class Coordinates:
         if v is not None:
             v = transform.apply(v)
 
-        self.positions[frame] = p, v
+        self.positions[frame] = PosVel(p, v)
 
         if isinstance(frame, AbsoluteFrame) and not isinstance(self.privileged_frame, AbsoluteFrame):
             self.privileged_frame = frame
     
     def get_pos(self, frame: Frame) -> Vec3:
         self._compute_new_frame(frame)
-        p, v = self.positions[frame]
-        return p
+        return self.positions[frame].pos
     
     def get_vel(self, frame: Frame) -> Vec3 | None:
         if not self.vel_available:
             return None
         self._compute_new_frame(frame)
-        p, v = self.positions[frame]
-        return v
+        return self.positions[frame].vel
     
     @property
     def pos(self) -> Vec3:
-        p, v = self.positions[self.privileged_frame]
-        return p
+        return self.get_pos(self.privileged_frame)
     
     @property
     def vel(self) -> Vec3 | None:
-        if not self.vel_available:
-            return None
-        p, v = self.positions[self.privileged_frame]
-        return v
+        return self.get_vel(self.privileged_frame)
     
     ### GPS ###
     ### ### ###

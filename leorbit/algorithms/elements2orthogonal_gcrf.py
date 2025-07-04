@@ -1,6 +1,7 @@
+from ast import TypeVar
 import numpy as np
 from pint import Quantity
-from leorbit.algorithms.utils import true2eccentric_anomaly, true2eccentric_anomaly_numpy
+from leorbit.algorithms.utils import true2eccentric_anomaly
 from leorbit.coordinates.coordinates import Coordinates
 from math import sin, cos
 from types import ModuleType
@@ -13,7 +14,7 @@ from leorbit.physics.constants import SQRT_MU_EARTH as SQRT_MU_EARTH_PINT
 
 STD_GRAV_PARAM_TERRA_FLOAT = SQRT_MU_EARTH_PINT.m_as("m**1.5/s")
 
-def elements2orthogonal_gcrf(υ: NDArray | np.float64, e: float, a: float, Ω: float, ω: float, i: float) -> PosVelGCRF:
+def elements2orthogonal_gcrf(υ: np.float64 | NDArray, e: float, a: float, Ω: float, ω: float, i: float) -> PosVelGCRF:
 	"""Returns the position and velocity of a satellite in GCRF coordinates (meters, meters/second)
 	All parameters are in radians, except `e` dimensionless and `a` in meters."""
 
@@ -21,7 +22,7 @@ def elements2orthogonal_gcrf(υ: NDArray | np.float64, e: float, a: float, Ω: f
 	
 	ee = e**2
 	one_ee = (1 - ee)
-	E = true2eccentric_anomaly_numpy(e, υ)
+	E = true2eccentric_anomaly(e, υ)
 	esinE = e * np.sin(E)
 	r = a * one_ee / (1 + e * cos(υ))
 	rd = STD_GRAV_PARAM_TERRA_FLOAT * a**.5 * esinE / r

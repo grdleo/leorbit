@@ -23,10 +23,12 @@ class Star(SkyObject, ABC):
     """
     def __init__(self, name: str = "No name star", radius: Q_ = Q_("1e7 m"), mass: Q_ = Q_("1e25 kg")):
         super().__init__(name, radius, mass)
-        
+    
+    @lru_cache(512)
     def coordinates(self, at: Time) -> Coordinates:
         return self.earth_osculating_orbit(at).to_coordinates()
     
+    @lru_cache(16)
     def trajectory(self, during: TimeInterval) -> Trajectory:
         els = self.earth_osculating_orbit(during.start)
         propagator = NoPropagator(els)
