@@ -26,3 +26,9 @@ RADII_EARTH = UREG("1 earthRadii") # `earthRadii` defined in `mathematics.units`
 
 `R🜨 = 6378135 m`
 """
+
+RADII_SUN = 6.957e8 * UREG.meter
+"""Mean radius of Sun (R☉). 
+
+`R☉ = 6.957e8 m`
+"""
