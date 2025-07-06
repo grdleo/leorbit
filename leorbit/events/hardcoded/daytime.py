@@ -1,4 +1,5 @@
 
+from enum import Enum
 from math import acos, pi
 
 import numpy as np
@@ -8,46 +9,66 @@ from leorbit.coordinates.trajectory import Trajectory
 from leorbit.events import Event
 from leorbit.mathematics.units import Q_, UREG
 from leorbit.mathematics.vec3 import Vec3
+from leorbit.mathematics.vec3_numpy_array import Vec3NumpyArray
 from leorbit.physics.constants import RADII_EARTH, RADII_SUN
 from leorbit.physics.time_interval import TimeInterval
 from leorbit.sky_objects.satellites import Satellite
 from leorbit.sky_objects.stars.sun import Sun
 
-R_EARTH_SI = RADII_EARTH.m_as(UREG.meter)
-R_SUN_SI = RADII_SUN.m_as(UREG.meter)
-HALF_PI = pi/2
+RT: float = RADII_EARTH.m_as(UREG.meter)
+RS: float = RADII_SUN.m_as(UREG.meter)
+HALF_PI: float = pi/2
 
-def sun_visi(sat: Trajectory, sun: Trajectory) -> NDArray:
-	assert sat._interval == sun._interval
+class SunShadowState(Enum):
+	# https://en.wikipedia.org/wiki/Umbra,_penumbra_and_antumbra
+	ENLIGHTEN = 1
+	UMBRA = 2
+	PENUMBRA = 3
+	ANTUMBRA = 4
 
-	sat_x, sat_y, sat_z = sat._pos_vel_list.x, sat._pos_vel_list.y, sat._pos_vel_list.z
-	sun_x, sun_y, sun_z = sun._pos_vel_list.x, sun._pos_vel_list.y, sun._pos_vel_list.z
+def sun_visi(traj_sat: Trajectory, traj_sun: Trajectory) -> NDArray:
+	# See `leorbit\assets\sun-visibility-schema.ggb``
+	assert traj_sat._interval == traj_sun._interval
 
-	sat_rho: NDArray = (sat_x**2 + sat_y**2 + sat_z**2)**.5
-	sun_rho: NDArray = (sun_x**2 + sun_y**2 + sun_z**2)**.5
-	sat_sun_dp: NDArray = sat_x * sun_x + sat_y * sun_y + sat_z * sun_z
-	sat_sun_angle: NDArray = np.arccos(sat_sun_dp / (sat_rho * sun_rho))
-	theta: NDArray = np.asin((R_SUN_SI - R_EARTH_SI) / sun_rho)
-	phi: NDArray = np.asin((R_SUN_SI + R_EARTH_SI) / sun_rho)
+	sat = Vec3NumpyArray(traj_sat._pos_vel_list.x, traj_sat._pos_vel_list.y, traj_sat._pos_vel_list.z)
+	sun = Vec3NumpyArray(traj_sun._pos_vel_list.x, traj_sun._pos_vel_list.y, traj_sun._pos_vel_list.z)
 
-	if sat_sun_angle >= HALF_PI - phi:
-		pass # full!
+	u = sun.normalized
+	w = u.cross(sat.normalized)
+	v = u.cross(w)
 
-	b_fact = R_EARTH_SI / (R_SUN_SI + R_EARTH_SI)
-	bx, by, bz = sun_x * b_fact, sun_y * b_fact, sun_z * b_fact
-	bs_x, bs_y, bs_z = sat_x - bx, sat_y - by, sat_z - bz
-	bs_rho = (bs_x**2 + bs_y**2 + bs_z**2)**.5
-	bs_angle = np.acos((bs_x * sun_x + bs_y * sun_y + bs_z * sun_z) / (bs_rho * sun_rho))
+	x = sat.dot(u)
+	y = sat.dot(v)
 
-	a_fact = -R_EARTH_SI / (R_SUN_SI - R_EARTH_SI)
-	ax, ay, az = sun_x * a_fact, sun_y * a_fact, sun_z * a_fact
-	as_x, as_y, as_z = sat_x - ax, sat_y - ay, sat_z - az
-	as_rho = (as_x**2 + as_y**2 + as_z**2)**.5
-	as_angle = np.acos((as_x * sun_x + as_y * sun_y + as_z * sun_z) / (as_rho * sun_rho))
+	alpha: NDArray = np.asin((RS - RT) / sun.rho)
+	beta: NDArray = np.asin((RS + RT) / sun.rho)
 
-	raise NotImplementedError()
-	
+	b = sun.rho * (RT / (RS + RT))
+	a = -sun.rho * (RT / (RS - RT))
+	z0 = RT * np.cos(HALF_PI - beta)
+	z1 = -RT * np.cos(HALF_PI - alpha)
 
+	_below_bline = np.abs(b - x) * np.tan(beta) >= np.abs(y)
+	_below_aline = np.abs(a - x) * np.tan(alpha) >= np.abs(y)
+
+	state = np.zeros(sat.shape, dtype=np.uint8)
+	state[x >= z0] = SunShadowState.ENLIGHTEN.value
+
+	within_z0_z1 = z0 > x & x >= z1
+	state[within_z0_z1 & _below_bline] = SunShadowState.PENUMBRA.value
+	state[within_z0_z1 & ~_below_bline] = SunShadowState.ENLIGHTEN.value
+
+	umbra_zone = z1 > x & x >= a
+	state[umbra_zone & ~_below_bline] = SunShadowState.ENLIGHTEN.value
+	state[umbra_zone & _below_aline] = SunShadowState.UMBRA.value
+	state[umbra_zone & _below_bline & ~_below_aline] = SunShadowState.PENUMBRA.value
+
+	atumbra_zone = a > x
+	state[atumbra_zone & ~_below_bline] = SunShadowState.ENLIGHTEN.value
+	state[atumbra_zone & _below_aline] = SunShadowState.ANTUMBRA.value
+	state[atumbra_zone & _below_bline & ~_below_aline] = SunShadowState.PENUMBRA.value
+
+	raise state
 
 class Daytime(Event):
 	"""When given satellite experiences daytime (i.e. visible by the Sun)"""
@@ -60,6 +81,6 @@ class Daytime(Event):
 		traj_sat = self._sat.trajectory(on)
 		traj_sun = self._sun.trajectory(on)
 
-		predicate_values: list[bool] = list(sun_visi(traj_sat, traj_sun))
+		predicate_values: list[bool] = [SunShadowState.ENLIGHTEN.value == s for s in sun_visi(traj_sat, traj_sun).flatten()]
 
 		self._build_by_predicate(predicate_values, on.start, on.dt)
