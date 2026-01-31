@@ -16,7 +16,7 @@ class DimensionObj:
         components = [
             ("" if self.length == 0 else ("m" if self.length == 1 else f"m^{self.length}")),
             ("" if self.time == 0 else ("s" if self.time == 1 else f"s^{self.time}")),
-            ("" if self.mass == 0 else ("kg" if self.time == 1 else f"kg^{self.mass}"))
+            ("" if self.mass == 0 else ("kg" if self.mass == 1 else f"kg^{self.mass}"))
         ]
 
         return " ".join(components)
@@ -49,6 +49,7 @@ class DimensionRegister:
     dimensionless: DimensionObj = field(default=DimensionObj(), init=False)
     length: DimensionObj = field(default=DimensionObj(length=1), init=False)
     time: DimensionObj = field(default=DimensionObj(time=1), init=False)
+    mass: DimensionObj = field(default=DimensionObj(mass=1), init=False)
     velocity: DimensionObj = field(default=DimensionObj(length=1, time=-1), init=False)
     
 REGISTER = DimensionRegister()
@@ -56,10 +57,8 @@ REGISTER = DimensionRegister()
 Dimensionless = Annotated[Dimension, REGISTER.dimensionless]
 LengthDim = Annotated[Dimension, REGISTER.length]
 TimeDim = Annotated[Dimension, REGISTER.time]
+MassDim = Annotated[Dimension, REGISTER.mass]
 VelocityDim = Annotated[Dimension, REGISTER.velocity]
-
-D = TypeVar("D", bound=DimensionObj)
-E = TypeVar("E", bound=DimensionObj)
 
 AnyDim = TypeVar("AnyDim", bound=Annotated[Dimension, DimensionObj])
 
@@ -117,6 +116,41 @@ class S:
     
     def __radd__(self, o: S | Number) -> S:
         return self.__add__(o)
+    
+    def __sub__(self, o: S | Number) -> S:
+        if isinstance(o, Number):
+            if not self._dimension.dimensionless:
+                raise TypeError()
+            return self.__class__(self._value - o)
+        if self._dimension != o._dimension:
+            raise TypeError()
+        
+        return self.__class__(self._value - o._value)
+    
+    def __rsub__(self, o: S | Number) -> S:
+        if isinstance(o, Number):
+            if not self._dimension.dimensionless:
+                raise TypeError()
+            return self.__class__(o - self._value)
+        if self._dimension != o._dimension:
+            raise TypeError()
+        
+        return self.__class__(o._value - self._value)
+    
+    def __truediv__(self, o: S | Number) -> S:
+        if isinstance(o, Number):
+            return self.__class__(self._value / o)
+        elif isinstance(o, S):
+            return scalar_class_factory(
+                self._dimension / o._dimension
+            )(self._value / o._value)
+        
+        raise TypeError()
+    
+    def __rtruediv__(self, numerator: Number) -> S:
+        return scalar_class_factory(
+                REGISTER.dimensionless / self._dimension
+            )(numerator / self._value)
         
 def scalar_class_factory(dim: DimensionObj) -> type[S]:
     # FIXME cache the types
@@ -154,7 +188,8 @@ class Quantity(metaclass=QuantityMeta):
     km: Scalar[LengthDim]
     """kilometer"""
     
-a = Scalar[LengthDim](1)
-b = 2.5 + Scalar[Dimensionless](1)
+a = Scalar[TimeDim](5.0)
+b = Scalar[MassDim](3.2)
+c = 1 / a
 
-print(a, b)
+print(c)
