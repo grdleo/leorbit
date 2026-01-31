@@ -102,11 +102,21 @@ class S:
         
         raise TypeError()
     
-    def __add__(self, o: S) -> S:
+    def __rmul__(self, o: S | Number) -> S:
+        return self.__mul__(o)
+    
+    def __add__(self, o: S | Number) -> S:
+        if isinstance(o, Number):
+            if not self._dimension.dimensionless:
+                raise TypeError()
+            return self.__class__(self._value + o)
         if self._dimension != o._dimension:
             raise TypeError()
         
         return self.__class__(self._value + o._value)
+    
+    def __radd__(self, o: S | Number) -> S:
+        return self.__add__(o)
         
 def scalar_class_factory(dim: DimensionObj) -> type[S]:
     # FIXME cache the types
@@ -145,6 +155,6 @@ class Quantity(metaclass=QuantityMeta):
     """kilometer"""
     
 a = Scalar[LengthDim](1)
-b = Quantity.km * 3
+b = 2.5 + Scalar[Dimensionless](1)
 
 print(a, b)
