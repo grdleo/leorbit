@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Annotated, Any, Generic, NewType, Self, TypeAlias, TypeVar, overload
+import numpy as np
+import numpy.typing
 
 class Dimension:
     pass
@@ -187,6 +189,121 @@ class Quantity(metaclass=QuantityMeta):
 
     km: Scalar[LengthDim]
     """kilometer"""
+
+class AS:
+    _dimension: DimensionObj
+    _values: np.typing.NDArray[np.floating[Any]]
+
+    def __init__(self, values: np.typing.NDArray[np.floating[Any]]):
+        self._values = values
+
+    @property
+    def dimension(self) -> DimensionObj:
+        """Access the dimension dynamically inside the class"""
+        if self._dimension is None:
+            raise RuntimeError("Dimension not set")
+        return self._dimension
+    
+    def __repr__(self) -> str:
+        return f"{self._values} {self._dimension}"
+    
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, AS):
+            raise NotImplementedError()
+        
+        return (
+            self._dimension == o._dimension 
+            and self._values == o._values
+        )
+    
+    def __neq__(self, o: Self) -> bool:
+        return not self.__eq__(o)
+    
+    def __mul__(self, o: AS | S | Number) -> AS:
+        if isinstance(o, Number):
+            return self.__class__(self._values * o)
+        elif isinstance(o, S):
+            return array_scalar_class_factory(
+                self._dimension * o._dimension
+            )(self._values * o._value)
+        elif isinstance(o, AS):
+            return array_scalar_class_factory(
+                self._dimension * o._dimension
+            )(self._values * o._values)
+        
+        raise TypeError()
+    
+    def __rmul__(self, o: AS | Number) -> AS:
+        return self.__mul__(o)
+    
+    def __add__(self, o: AS | S | Number) -> AS:
+        if isinstance(o, Number):
+            if not self._dimension.dimensionless:
+                raise TypeError()
+            return self.__class__(self._values + o)
+        elif isinstance(o, S):
+            return self.__class__(self._values + o._value)
+        if self._dimension != o._dimension:
+            raise TypeError()
+        
+        return self.__class__(self._values + o._values)
+    
+    def __radd__(self, o: AS | Number) -> AS:
+        return self.__add__(o)
+    
+    def __sub__(self, o: AS | S | Number) -> AS:
+        if isinstance(o, Number):
+            if not self._dimension.dimensionless:
+                raise TypeError()
+            return self.__class__(self._values - o)
+        elif isinstance(o, S):
+            return self.__class__(self._values - o._value)
+        if self._dimension != o._dimension:
+            raise TypeError()
+        
+        return self.__class__(self._values - o._values)
+    
+    def __rsub__(self, o: AS | S | Number) -> AS:
+        if isinstance(o, Number):
+            if not self._dimension.dimensionless:
+                raise TypeError()
+            return self.__class__(o - self._values)
+        elif isinstance(o, S):
+            return self.__class__(o._value - self._values)
+        if self._dimension != o._dimension:
+            raise TypeError()
+        
+        return self.__class__(o._values - self._values)
+    
+    def __truediv__(self, o: AS | S | Number) -> AS:
+        if isinstance(o, Number):
+            return self.__class__(self._values / o)
+        elif isinstance(o, S):
+            return array_scalar_class_factory(
+                self._dimension / o._dimension
+            )(self._values / o._value)
+        elif isinstance(o, AS):
+            return array_scalar_class_factory(
+                self._dimension / o._dimension
+            )(self._values / o._values)
+        
+        raise TypeError()
+    
+    def __rtruediv__(self, numerator: Number) -> S:
+        return array_scalar_class_factory(
+                REGISTER.dimensionless / self._dimension
+            )(numerator / self._values)
+    
+def get_tensor_value(tensor: Number | S | AS) -> Number | np.typing.NDArray[np.floating]:
+    if isinstance(tensor, Number):
+        return np.float64(tensor)
+    elif isinstance(tensor, S):
+        return tensor._value
+    elif isinstance(tensor, AS):
+        return tensor._values
+    
+    raise TypeError()
+
     
 a = Scalar[TimeDim](5.0)
 b = Scalar[MassDim](3.2)
