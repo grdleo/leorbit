@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from functools import cached_property
 from typing import Annotated, Any, Generic, Never, NewType, Self, TypeAlias, TypeVar, cast, overload
 import numpy as np
 import numpy.typing
@@ -63,7 +64,7 @@ TimeDim = Annotated[Dimension, REGISTER.time]
 MassDim = Annotated[Dimension, REGISTER.mass]
 VelocityDim = Annotated[Dimension, REGISTER.velocity]
 
-AnyDim = TypeVar("AnyDim", bound=Annotated[Dimension, DimensionObj])
+SomeDim = TypeVar("SomeDim", bound=Annotated[Dimension, DimensionObj])
 
 TensorData = np.typing.NDArray[np.floating[Any]]
 
@@ -88,6 +89,9 @@ class DimensionalTensor:
     @property
     def tensor_shape(self) -> tuple | tuple[int, ] | tuple[int, int]:
         return self._values.shape
+    
+    def copy(self) -> Self:
+        return self.__class__(self._values.copy())
     
     def __eq__(self, o: object) -> bool:
         if not isinstance(o, DimensionalTensor):
@@ -216,7 +220,7 @@ def dimensional_tensor_class_factory(
         dict(_dimension=dim)
     )
 
-def dim_to_tensor_class(dim: AnyDim, tensor_class: type[DT]) -> type[DT]:
+def dim_to_tensor_class(dim: SomeDim, tensor_class: type[DT]) -> type[DT]:
      # Extract the DimensionObj from the Annotated type
     if hasattr(dim, '__metadata__'):
         dimension_obj = dim.__metadata__[0]
@@ -230,27 +234,27 @@ def dim_to_tensor_class(dim: AnyDim, tensor_class: type[DT]) -> type[DT]:
         dict(_dimension=dim)
     )
 
-class Scalar(Generic[AnyDim], DimensionalTensor):
+class Scalar(Generic[SomeDim], DimensionalTensor):
     def __init__(self, value: Number):
         if self._dimension is None:
             raise TypeError("Scalar must be instantiated with a dimension type: Scalar[LengthDim](value)")
         
         super().__init__(value)
     
-    def __class_getitem__(cls, dim: AnyDim) -> type[Self]:
+    def __class_getitem__(cls, dim: SomeDim) -> type[Self]:
         return dim_to_tensor_class(dim, cls)
 
-class Vector3(Generic[AnyDim], DimensionalTensor):
+class Vector3(Generic[SomeDim], DimensionalTensor):
     def __init__(self, x: Number, y: Number, z: Number):
         if self._dimension is None:
             raise TypeError("Scalar must be instantiated with a dimension type: Vector3[LengthDim](value)")
         
         super().__init__(np.array([x, y, z]))
     
-    def __class_getitem__(cls, dim: AnyDim) -> type[Self]:
+    def __class_getitem__(cls, dim: SomeDim) -> type[Self]:
         return dim_to_tensor_class(dim, cls)
     
-class Matrix33(Generic[AnyDim], DimensionalTensor):
+class Matrix33(Generic[SomeDim], DimensionalTensor):
     def __init__(self,
         a: Number, b: Number, c: Number,
         d: Number, e: Number, f: Number,
@@ -280,6 +284,8 @@ class Quantity(metaclass=QuantityMeta):
     km: Scalar[LengthDim]
     """kilometer"""
 
+### TRANSFORMS ###
+
 class Transform(Generic[DT1, DT2], ABC):
     @abstractmethod
     def do(self, tensor: DT1) -> DT2: ...
@@ -287,19 +293,52 @@ class Transform(Generic[DT1, DT2], ABC):
     @abstractmethod
     def undo(self, tensor: DT2) -> DT1: ...
 
-class TransformIdentify(Transform[DT, DT]):
+    @abstractmethod
+    def copy(self) -> Self: ...
+
+class TransformIdentify(Generic[DT], Transform[DT, DT]):
     def do(self, tensor: DT) -> DT:
         return tensor
     
     def undo(self, tensor: DT) -> DT:
         return tensor
+    
+    def copy(self) -> Self:
+        t = TransformIdentify[DT]()
+        return cast(Self, t)
 
-class TransformLinearVector3[AnyDim](Transform[Vector3[AnyDim], Vector3[AnyDim]]):
+class TransformLinearVector3(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
     def __init__(self, matrix: Matrix33[Dimensionless]):
         self.matrix = matrix
     
-    def do(self, v: Vector3[AnyDim]) -> Vector3[D]:
-        return cast(Vector3[AnyDim], self.matrix * v)
+    def do(self, v: Vector3[SomeDim]) -> Vector3[SomeDim]:
+        return cast(Vector3[SomeDim], self.matrix * v)
     
-    def undo(self, v: DT) -> DT:
-        return cast(Vector3[AnyDim], self.matrix.inverse * v)
+    def undo(self, v: Vector3[SomeDim]) -> Vector3[SomeDim]:
+        return cast(Vector3[SomeDim], self.matrix.inverse * v)
+    
+    def copy(self) -> Self:
+        t = TransformLinearVector3[SomeDim](
+            matrix=self.matrix.copy()
+        )
+        return cast(Self, t)
+
+class TransformAffineVector3(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
+    def __init__(self, matrix: Matrix33[Dimensionless], translation: Vector3[SomeDim]):
+        self.matrix = matrix
+        self.translation = translation
+    
+    def do(self, v: Vector3[SomeDim]) -> Vector3[SomeDim]:
+        result = self.matrix * v + self.translation
+        return cast(Vector3[SomeDim], result)
+    
+    def undo(self, v: Vector3[SomeDim]) -> Vector3[SomeDim]:
+        result = self.matrix.inverse * (v - self.translation)
+        return cast(Vector3[SomeDim], result)
+    
+    def copy(self) -> Self:
+        t = TransformAffineVector3[SomeDim](
+            matrix=self.matrix.copy(), 
+            translation=self.translation.copy()
+        )
+        return cast(Self, t)
