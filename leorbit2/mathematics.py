@@ -240,6 +240,10 @@ class Scalar(Generic[SomeDim], DimensionalTensor):
             raise TypeError("Scalar must be instantiated with a dimension type: Scalar[LengthDim](value)")
         
         super().__init__(value)
+
+    @property
+    def base_units_value(self) -> Number:
+        return np.float64(self._values)
     
     def __class_getitem__(cls, dim: SomeDim) -> type[Self]:
         return dim_to_tensor_class(dim, cls)
@@ -272,17 +276,56 @@ class Matrix33(Generic[SomeDim], DimensionalTensor):
     
 class QuantityMeta(type):
     def __getattr__(cls, name: str) -> Any:
-        if name == "m":
+        if name == "rad":
+            return Scalar[Dimensionless](1)
+        elif name == "deg":
+            return Scalar[Dimensionless](np.pi / 180)
+        elif name == "m":
             return Scalar[LengthDim](1)
         elif name == "km":
             return Scalar[LengthDim](1000)
+        elif name == "s":
+            return Scalar[TimeDim](1)
+        elif name == "min":
+            return Scalar[TimeDim](60)
+        elif name == "hour":
+            return Scalar[TimeDim](3600)
+        elif name == "day":
+            return Scalar[TimeDim](86400)
+        
 
 class Quantity(metaclass=QuantityMeta):
+    # ANGLES
+
+    rad: Scalar[Dimensionless]
+    """radians"""
+
+    deg: Scalar[Dimensionless]
+    """degrees"""
+
+    # DISTANCES
+
     m: Scalar[LengthDim]
     """meter"""
 
     km: Scalar[LengthDim]
     """kilometer"""
+
+    # DURATIONS
+
+    s: Scalar[TimeDim]
+    """second"""
+
+    min: Scalar[TimeDim]
+    """minute"""
+
+    hour: Scalar[TimeDim]
+    """hour"""
+
+    day: Scalar[TimeDim]
+    """day"""
+
+
 
 ### TRANSFORMS ###
 
