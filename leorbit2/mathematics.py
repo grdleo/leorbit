@@ -307,7 +307,7 @@ class TransformIdentify(Generic[DT], Transform[DT, DT]):
         t = TransformIdentify[DT]()
         return cast(Self, t)
 
-class TransformLinearVector3(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
+class TransformVector3Linear(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
     def __init__(self, matrix: Matrix33[Dimensionless]):
         self.matrix = matrix
     
@@ -318,12 +318,12 @@ class TransformLinearVector3(Generic[SomeDim], Transform[Vector3[SomeDim], Vecto
         return cast(Vector3[SomeDim], self.matrix.inverse * v)
     
     def copy(self) -> Self:
-        t = TransformLinearVector3[SomeDim](
+        t = TransformVector3Linear[SomeDim](
             matrix=self.matrix.copy()
         )
         return cast(Self, t)
 
-class TransformAffineVector3(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
+class TransformVector3Affine(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
     def __init__(self, matrix: Matrix33[Dimensionless], translation: Vector3[SomeDim]):
         self.matrix = matrix
         self.translation = translation
@@ -337,8 +337,36 @@ class TransformAffineVector3(Generic[SomeDim], Transform[Vector3[SomeDim], Vecto
         return cast(Vector3[SomeDim], result)
     
     def copy(self) -> Self:
-        t = TransformAffineVector3[SomeDim](
+        t = TransformVector3Affine[SomeDim](
             matrix=self.matrix.copy(), 
             translation=self.translation.copy()
         )
         return cast(Self, t)
+    
+class TransformVector3RotationZ(Generic[SomeDim], TransformVector3Linear[SomeDim]):
+    def __init__(self, angle_rad: Number):
+        c, s = np.cos(angle_rad), np.sin(angle_rad)
+        rot_mat = Matrix33[Dimensionless](
+            c, -s, 0,
+            s, c, 0,
+            0, 0, 1
+        )
+
+        super().__init__(rot_mat) 
+    
+class TransformChain(Generic[DT1, DT2], Transform[DT1, DT2]):
+    def __init__(self, *transforms: Transform[DimensionalTensor, DimensionalTensor]):
+        """executed in the given order"""
+        self.transforms = list(transforms)
+
+    def do(self, tensor: DT1) -> DT2:
+        result = cast(DimensionalTensor, tensor)
+        for t in self.transforms:
+            result = t.do(result)
+        return cast(DT2, result)
+    
+    def undo(self, tensor: DT2) -> DT1:
+        result = cast(DimensionalTensor, tensor)
+        for t in reversed(self.transforms):
+            result = t.undo(result)
+        return cast(DT1, result)
