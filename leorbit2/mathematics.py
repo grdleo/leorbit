@@ -49,26 +49,34 @@ class DimensionObj:
         )
     
 class Dim:
-    class Dimensionless:
+    DIM_TO_FACTORS: dict[DimensionObj, type[UnitRegistry]] = {}
+
+    class UnitRegistry:
+        pass
+
+    class Dimensionless(UnitRegistry):
         _dim = DimensionObj()
-    dimensionless = one = Annotated[Dimension, Dimensionless._dim]
+    dimensionless = Annotated[Dimension, Dimensionless._dim]
+    DIM_TO_FACTORS[Dimensionless._dim] = Dimensionless
     
-    class Angle:
+    class Angle(UnitRegistry):
         _dim = DimensionObj()
 
         rad: float = 1 # base
         deg: float = np.pi / 180
     angle = Annotated[Dimension, Angle._dim]
+    DIM_TO_FACTORS[Dimensionless._dim] = Angle
     
-    class Length:
+    class Length(UnitRegistry):
         _dim = DimensionObj(length=1)
 
         mm: float = 1e-3
         m: float = 1 # base
         km: float = 1e3
     length = Annotated[Dimension, Length._dim]
+    DIM_TO_FACTORS[Length._dim] = Length
     
-    class Time:
+    class Time(UnitRegistry):
         _dim = DimensionObj(time=1)
 
         ms: float = 1e-3
@@ -77,21 +85,28 @@ class Dim:
         hour: float = 3_600
         day: float = 86_400
     time = Annotated[Dimension, Time._dim]
+    DIM_TO_FACTORS[Time._dim] = Time
     
-    class Mass:
+    class Mass(UnitRegistry):
         _dim = DimensionObj(mass=1)
 
         g = 1e-3
         kg = 1 # base
         ton = 1e3
     mass = Annotated[Dimension, Mass._dim]
+    DIM_TO_FACTORS[Mass._dim] = Mass
 
-    class Velocity:
+    class Velocity(UnitRegistry):
         _dim = DimensionObj(length=1, time=-1)
 
         m_s = 1 # m/s base 
         km_h = 1/3.6
     velocity = Annotated[Dimension, Velocity._dim]
+    DIM_TO_FACTORS[Velocity._dim] = Velocity
+
+    @staticmethod
+    def get_factors(dobj: DimensionObj) -> type[UnitRegistry]:
+        return Dim.DIM_TO_FACTORS[dobj]
 
 SomeDim = TypeVar("SomeDim", bound=Annotated[Dimension, DimensionObj])
 
@@ -273,6 +288,17 @@ class Scalar(Generic[SomeDim], DimensionalTensor):
     @property
     def base_units_value(self) -> Number:
         return np.float64(self._values)
+    
+    def magnitude_as(self, unit: str) -> Number:
+        if self._dimension is None:
+            raise TypeError("Scalar must be instantiated with a dimension type: Scalar[Dim.length](value)")
+        
+        dim_factors = Dim.get_factors(self._dimension)
+        factor = getattr(dim_factors, unit, None)
+        if factor is None:
+            raise ValueError(f"No unit '{unit}' for dimension '{self._dimension}'")
+        
+        return np.float64(self._values) / factor
     
     def __class_getitem__(cls, dim: SomeDim) -> type[Self]:
         return dim_to_tensor_class(dim, cls)
