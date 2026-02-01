@@ -341,19 +341,19 @@ class QuantityMeta(type):
         if name == "rad":
             return Scalar[Dim.dimensionless](1)
         elif name == "deg":
-            return Scalar[Dim.dimensionless](np.pi / 180)
+            return Scalar[Dim.dimensionless](Dim.Angle.deg)
         elif name == "m":
             return Scalar[Dim.length](1)
         elif name == "km":
-            return Scalar[Dim.length](1000)
+            return Scalar[Dim.length](Dim.Length.km)
         elif name == "s":
             return Scalar[Dim.time](1)
         elif name == "min":
-            return Scalar[Dim.time](60)
+            return Scalar[Dim.time](Dim.Time.min)
         elif name == "hour":
-            return Scalar[Dim.time](3600)
+            return Scalar[Dim.time](Dim.Time.hour)
         elif name == "day":
-            return Scalar[Dim.time](86400)
+            return Scalar[Dim.time](Dim.Time.day)
         
 
 class Quantity(metaclass=QuantityMeta):

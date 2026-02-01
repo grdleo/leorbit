@@ -187,7 +187,7 @@ class Time:
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Time`.
         """
-        d = self.j2000.base_units_value / 86_400
+        d = self.j2000.magnitude("day")
         angle_rad = ((np.float128(18.697374558) + np.float128(24.06570982441908) * d) * TWELF_PI) % TWOPI
         return cast(Scalar[Dim.dimensionless], angle_rad * Quantity.rad)
     
