@@ -289,16 +289,21 @@ class Scalar(Generic[SomeDim], DimensionalTensor):
     def base_units_value(self) -> Number:
         return np.float64(self._values)
     
-    def magnitude_as(self, unit: str) -> Number:
+    def magnitude(self, unit: str = "1") -> Number:
         if self._dimension is None:
             raise TypeError("Scalar must be instantiated with a dimension type: Scalar[Dim.length](value)")
+        
+        base_value = np.float64(self._values)
+
+        if unit == "1":
+            return base_value
         
         dim_factors = Dim.get_factors(self._dimension)
         factor = getattr(dim_factors, unit, None)
         if factor is None:
             raise ValueError(f"No unit '{unit}' for dimension '{self._dimension}'")
         
-        return np.float64(self._values) / factor
+        return base_value / factor
     
     def __class_getitem__(cls, dim: SomeDim) -> type[Self]:
         return dim_to_tensor_class(dim, cls)
