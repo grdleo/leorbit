@@ -339,6 +339,19 @@ class Transform(Generic[DT1, DT2], ABC):
     @abstractmethod
     def copy(self) -> Self: ...
 
+    def reverse(self) -> Transform[DT2, DT1]:
+        t = self.copy()
+
+        do = t.do
+        undo = t.undo
+
+        tt = cast(Transform[DT2, DT1], t)
+
+        tt.do = undo  # type: ignore
+        tt.undo = do  # type: ignore
+
+        return tt
+
 class TransformIdentify(Generic[DT], Transform[DT, DT]):
     def do(self, tensor: DT) -> DT:
         return tensor
@@ -387,7 +400,10 @@ class TransformVector3Affine(Generic[SomeDim], Transform[Vector3[SomeDim], Vecto
         return cast(Self, t)
     
 class TransformVector3RotationZ(Generic[SomeDim], TransformVector3Linear[SomeDim]):
-    def __init__(self, angle_rad: Number):
+    def __init__(self, angle_rad: Number | Scalar[Dimensionless]):
+        if isinstance(angle_rad, Scalar):
+            angle_rad = angle_rad.base_units_value
+        
         c, s = np.cos(angle_rad), np.sin(angle_rad)
         rot_mat = Matrix33[Dimensionless](
             c, -s, 0,
