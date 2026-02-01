@@ -48,21 +48,50 @@ class DimensionObj:
             mass=self.mass - o.mass
         )
     
-@dataclass
-class DimensionRegister:
-    dimensionless: DimensionObj = field(default=DimensionObj(), init=False)
-    length: DimensionObj = field(default=DimensionObj(length=1), init=False)
-    time: DimensionObj = field(default=DimensionObj(time=1), init=False)
-    mass: DimensionObj = field(default=DimensionObj(mass=1), init=False)
-    velocity: DimensionObj = field(default=DimensionObj(length=1, time=-1), init=False)
+class Dim:
+    class Dimensionless:
+        _dim = DimensionObj()
+    dimensionless = one = Annotated[Dimension, Dimensionless._dim]
     
-REGISTER = DimensionRegister()
+    class Angle:
+        _dim = DimensionObj()
 
-Dimensionless = Annotated[Dimension, REGISTER.dimensionless]
-LengthDim = Annotated[Dimension, REGISTER.length]
-TimeDim = Annotated[Dimension, REGISTER.time]
-MassDim = Annotated[Dimension, REGISTER.mass]
-VelocityDim = Annotated[Dimension, REGISTER.velocity]
+        rad: float = 1 # base
+        deg: float = np.pi / 180
+    angle = Annotated[Dimension, Angle._dim]
+    
+    class Length:
+        _dim = DimensionObj(length=1)
+
+        mm: float = 1e-3
+        m: float = 1 # base
+        km: float = 1e3
+    length = Annotated[Dimension, Length._dim]
+    
+    class Time:
+        _dim = DimensionObj(time=1)
+
+        ms: float = 1e-3
+        s: float = 1 # base
+        min: float = 60
+        hour: float = 3_600
+        day: float = 86_400
+    time = Annotated[Dimension, Time._dim]
+    
+    class Mass:
+        _dim = DimensionObj(mass=1)
+
+        g = 1e-3
+        kg = 1 # base
+        ton = 1e3
+    mass = Annotated[Dimension, Mass._dim]
+
+    class Velocity:
+        _dim = DimensionObj(length=1, time=-1)
+
+        m_s = 1 # m/s base 
+        km_h = 1/3.6
+    velocity = Annotated[Dimension, Velocity._dim]
 
 SomeDim = TypeVar("SomeDim", bound=Annotated[Dimension, DimensionObj])
 
@@ -237,7 +266,7 @@ def dim_to_tensor_class(dim: SomeDim, tensor_class: type[DT]) -> type[DT]:
 class Scalar(Generic[SomeDim], DimensionalTensor):
     def __init__(self, value: Number):
         if self._dimension is None:
-            raise TypeError("Scalar must be instantiated with a dimension type: Scalar[LengthDim](value)")
+            raise TypeError("Scalar must be instantiated with a dimension type: Scalar[Dim.length](value)")
         
         super().__init__(value)
 
@@ -251,7 +280,7 @@ class Scalar(Generic[SomeDim], DimensionalTensor):
 class Vector3(Generic[SomeDim], DimensionalTensor):
     def __init__(self, x: Number, y: Number, z: Number):
         if self._dimension is None:
-            raise TypeError("Scalar must be instantiated with a dimension type: Vector3[LengthDim](value)")
+            raise TypeError("Scalar must be instantiated with a dimension type: Vector3[Dim.length](value)")
         
         super().__init__(np.array([x, y, z]))
     
@@ -266,7 +295,7 @@ class Matrix33(Generic[SomeDim], DimensionalTensor):
     ):
         """order: by lines"""
         if self._dimension is None:
-            raise TypeError("Scalar must be instantiated with a dimension type: Vector3[LengthDim](value)")
+            raise TypeError("Scalar must be instantiated with a dimension type: Vector3[Dim.length](value)")
         
         super().__init__(np.array([[a, b, c], [d, e, f], [g, h, i]]))
 
@@ -274,55 +303,57 @@ class Matrix33(Generic[SomeDim], DimensionalTensor):
     def inverse(self) -> Matrix33:
         raise NotImplementedError()
     
+############################################################
+    
 class QuantityMeta(type):
     def __getattr__(cls, name: str) -> Any:
         if name == "rad":
-            return Scalar[Dimensionless](1)
+            return Scalar[Dim.dimensionless](1)
         elif name == "deg":
-            return Scalar[Dimensionless](np.pi / 180)
+            return Scalar[Dim.dimensionless](np.pi / 180)
         elif name == "m":
-            return Scalar[LengthDim](1)
+            return Scalar[Dim.length](1)
         elif name == "km":
-            return Scalar[LengthDim](1000)
+            return Scalar[Dim.length](1000)
         elif name == "s":
-            return Scalar[TimeDim](1)
+            return Scalar[Dim.time](1)
         elif name == "min":
-            return Scalar[TimeDim](60)
+            return Scalar[Dim.time](60)
         elif name == "hour":
-            return Scalar[TimeDim](3600)
+            return Scalar[Dim.time](3600)
         elif name == "day":
-            return Scalar[TimeDim](86400)
+            return Scalar[Dim.time](86400)
         
 
 class Quantity(metaclass=QuantityMeta):
     # ANGLES
 
-    rad: Scalar[Dimensionless]
+    rad: Scalar[Dim.dimensionless]
     """radians"""
 
-    deg: Scalar[Dimensionless]
+    deg: Scalar[Dim.dimensionless]
     """degrees"""
 
     # DISTANCES
 
-    m: Scalar[LengthDim]
+    m: Scalar[Dim.length]
     """meter"""
 
-    km: Scalar[LengthDim]
+    km: Scalar[Dim.length]
     """kilometer"""
 
     # DURATIONS
 
-    s: Scalar[TimeDim]
+    s: Scalar[Dim.time]
     """second"""
 
-    min: Scalar[TimeDim]
+    min: Scalar[Dim.time]
     """minute"""
 
-    hour: Scalar[TimeDim]
+    hour: Scalar[Dim.time]
     """hour"""
 
-    day: Scalar[TimeDim]
+    day: Scalar[Dim.time]
     """day"""
 
 
@@ -364,7 +395,7 @@ class TransformIdentify(Generic[DT], Transform[DT, DT]):
         return cast(Self, t)
 
 class TransformVector3Linear(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
-    def __init__(self, matrix: Matrix33[Dimensionless]):
+    def __init__(self, matrix: Matrix33[Dim.dimensionless]):
         self.matrix = matrix
     
     def do(self, v: Vector3[SomeDim]) -> Vector3[SomeDim]:
@@ -380,7 +411,7 @@ class TransformVector3Linear(Generic[SomeDim], Transform[Vector3[SomeDim], Vecto
         return cast(Self, t)
 
 class TransformVector3Affine(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
-    def __init__(self, matrix: Matrix33[Dimensionless], translation: Vector3[SomeDim]):
+    def __init__(self, matrix: Matrix33[Dim.dimensionless], translation: Vector3[SomeDim]):
         self.matrix = matrix
         self.translation = translation
     
@@ -400,12 +431,12 @@ class TransformVector3Affine(Generic[SomeDim], Transform[Vector3[SomeDim], Vecto
         return cast(Self, t)
     
 class TransformVector3RotationZ(Generic[SomeDim], TransformVector3Linear[SomeDim]):
-    def __init__(self, angle_rad: Number | Scalar[Dimensionless]):
+    def __init__(self, angle_rad: Number | Scalar[Dim.dimensionless]):
         if isinstance(angle_rad, Scalar):
             angle_rad = angle_rad.base_units_value
         
         c, s = np.cos(angle_rad), np.sin(angle_rad)
-        rot_mat = Matrix33[Dimensionless](
+        rot_mat = Matrix33[Dim.dimensionless](
             c, -s, 0,
             s, c, 0,
             0, 0, 1
@@ -429,3 +460,10 @@ class TransformChain(Generic[DT1, DT2], Transform[DT1, DT2]):
         for t in reversed(self.transforms):
             result = t.undo(result)
         return cast(DT1, result)
+    
+    def copy(self) -> Self:
+        t = TransformChain[DT1, DT2](
+            *(t.copy() for t in self.transforms)
+        )
+
+        return cast(Self, t)
