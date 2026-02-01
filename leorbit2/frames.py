@@ -55,8 +55,11 @@ def absolute_frame_transform_factory(from_frame: AbsoluteFrame, to_frame: Absolu
 
 ### RELATIVE FRAMES
 
+_AbsPos = TypeVar("_AbsPos", bound=PosVec)
+_RelPos = TypeVar("_RelPos", bound=PosVec)
+
 class RelativeFrame(Frame):
-    def __init__(self, reference_frame: AbsoluteFrame, transform: Transform):
+    def __init__(self, reference_frame: AbsoluteFrame, transform: Transform[_AbsPos, _RelPos]):
         """A frame relative to a reference frame. """
         self.reference_frame = reference_frame
         self.transform = transform
@@ -76,14 +79,14 @@ def frame_transform_factory(from_frame: Frame, to_frame: Frame) -> FrameTransfor
     if isinstance(from_frame, AbsoluteFrame):
         abs_frame_from = from_frame
     elif isinstance(from_frame, RelativeFrame):
-        first = from_frame.transform.reverse()
+        first = cast(Transform[DynamicVec, DynamicVec], from_frame.transform.reverse())
         abs_frame_from = from_frame.reference_frame
 
     abs_frame_to: AbsoluteFrame
     if isinstance(to_frame, AbsoluteFrame):
         abs_frame_to = to_frame
     elif isinstance(to_frame, RelativeFrame):
-        last = to_frame.transform
+        last = cast(Transform[DynamicVec, DynamicVec], to_frame.transform)
         abs_frame_to = to_frame.reference_frame
     
     abs_transform = absolute_frame_transform_factory(abs_frame_from, abs_frame_to)
