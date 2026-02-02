@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from functools import cached_property
-from typing import Annotated, Any, Generic, Never, NewType, Self, TypeAlias, TypeVar, cast, overload
+from typing import Annotated, Any, Generic, Never, NewType, Self, TypeAlias, TypeIs, TypeVar, Union, cast, overload
 import numpy as np
 import numpy.typing
 
@@ -81,9 +81,11 @@ class Dim:
 
         ms: float = 1e-3
         s: float = 1 # base
-        min: float = 60
-        hour: float = 3_600
-        day: float = 86_400
+        min: float = 60 * s
+        hour: float = 60 * min
+        day: float = 24 * hour
+        month: float = 30 * day
+        year: float = 365 * day
     time = Annotated[Dimension, Time._dim]
     DIM_TO_FACTORS[Time._dim] = Time
     
@@ -109,8 +111,18 @@ class Dim:
         return Dim.DIM_TO_FACTORS[dobj]
 
 SomeDim = TypeVar("SomeDim", bound=Annotated[Dimension, DimensionObj])
+DimensionlessT = TypeVar("DimensionlessT", bound=Dim.dimensionless)
+DimensionfullT = TypeVar("DimensionfullT", bound=Union[
+    Dim.length, Dim.time, Dim.mass, Dim.velocity
+])
+
+TensorOrNumber = Union["DimensionalTensor", Number]
 
 TensorData = np.typing.NDArray[np.floating[Any]]
+
+def is_tensor_dim(tensor: DT, dim: type[Annotated[Dimension, DimensionObj]]) -> TypeIs[DT[SomeDim]]:
+    dim_obj = cast(DimensionObj, dim.__metadata__[0])
+    return tensor._dimension == dim_obj
 
 class DimensionalTensor:
     _dimension: DimensionObj | None = None
@@ -137,6 +149,10 @@ class DimensionalTensor:
     def copy(self) -> Self:
         return self.__class__(self._values.copy())
     
+    def ensure_equal_dimensions(self, o: DimensionalTensor):
+        if self._dimension != o._dimension:
+            raise RuntimeError("Tensors' dimensions are not equal")
+    
     def __eq__(self, o: object) -> bool:
         if not isinstance(o, DimensionalTensor):
             raise NotImplementedError()
@@ -149,7 +165,7 @@ class DimensionalTensor:
     def __neq__(self, o: DimensionalTensor) -> bool:
         return not self.__eq__(o)
     
-    def __add__(self, o: DimensionalTensor | Number) -> DimensionalTensor:
+    def __add__(self, o: TensorOrNumber) -> DimensionalTensor:
         o = ensure_tensor(o)
         
         if self._dimension != o._dimension:
@@ -165,7 +181,7 @@ class DimensionalTensor:
     def __radd__(self, o: Number) -> DimensionalTensor: # symetric
         return self.__add__(o)
     
-    def __sub__(self, o: DimensionalTensor | Number) -> DimensionalTensor:
+    def __sub__(self, o: TensorOrNumber) -> DimensionalTensor:
         o = ensure_tensor(o)
         
         if self._dimension != o._dimension:
@@ -178,7 +194,7 @@ class DimensionalTensor:
         except ValueError:
             raise RuntimeError("Implement message")
         
-    def __rsub__(self, o: DimensionalTensor | Number) -> DimensionalTensor:
+    def __rsub__(self, o: TensorOrNumber) -> DimensionalTensor:
         o = ensure_tensor(o)
         
         if self._dimension != o._dimension:
@@ -191,7 +207,7 @@ class DimensionalTensor:
         except ValueError:
             raise RuntimeError("Implement message")
     
-    def __mul__(self, o: DimensionalTensor | Number) -> DimensionalTensor:
+    def __mul__(self, o: TensorOrNumber) -> DimensionalTensor:
         o = ensure_tensor(o)
         tensor_class = dimensional_tensor_class_factory(self.dimension * o.dimension)
 
@@ -202,10 +218,10 @@ class DimensionalTensor:
         except ValueError:
             raise RuntimeError("Implement message")
         
-    def __rmul__(self, o: DimensionalTensor | Number) -> DimensionalTensor: # symetric
+    def __rmul__(self, o: TensorOrNumber) -> DimensionalTensor: # symetric
         return self.__mul__(o)
     
-    def __truediv__(self, o: DimensionalTensor | Number) -> DimensionalTensor:
+    def __truediv__(self, o: TensorOrNumber) -> DimensionalTensor:
         o = ensure_tensor(o)
         tensor_class = dimensional_tensor_class_factory(self.dimension * o.dimension)
 
@@ -216,7 +232,7 @@ class DimensionalTensor:
         except ValueError:
             raise RuntimeError("Implement message")
         
-    def __rtruediv__(self, o: DimensionalTensor | Number) -> DimensionalTensor:
+    def __rtruediv__(self, o: TensorOrNumber) -> DimensionalTensor:
         o = ensure_tensor(o)
         tensor_class = dimensional_tensor_class_factory(self.dimension * o.dimension)
 
@@ -304,6 +320,64 @@ class Scalar(Generic[SomeDim], DimensionalTensor):
             raise ValueError(f"No unit '{unit}' for dimension '{self._dimension}'")
         
         return base_value / factor
+
+    @overload
+    def __add__(self, o: Number) -> Scalar[DimensionlessT] | Never:
+        if isinstance(self, Scalar[Dim.dimensionless]):
+            return Scalar[Dim.dimensionless](0)
+        return None
+
+    @overload
+    def __add__(self: Scalar[DimensionfullT], o: Number) -> Never: ...
+
+    @overload
+    def __add__(self, o: DT) -> DT: ...
+
+    def __add__(self, o: TensorOrNumber) -> DimensionalTensor:
+        return super().__add__(o)
+    
+    @overload
+    def __sub__(self, o: DT) -> DT: ...
+    
+    @overload
+    def __sub__(self, o: Number) -> Scalar[SomeDim]: ...
+
+    def __sub__(self, o: TensorOrNumber) -> DimensionalTensor:
+        return super().__sub__(o)
+    
+    @overload
+    def __mul__(self, o: DT) -> DT: ...
+    
+    @overload
+    def __mul__(self, o: Number) -> Scalar[SomeDim]: ...
+
+    def __mul__(self, o: TensorOrNumber) -> DimensionalTensor:
+        return super().__mul__(o)
+    
+    @overload
+    def __truediv__(self, o: DT) -> Never: ...
+    
+    @overload
+    def __truediv__(self, o: Number | Scalar[SomeDim]) -> Scalar[SomeDim]: ...
+
+    def __truediv__(self, o: TensorOrNumber) -> DimensionalTensor:
+        return super().__truediv__(o)
+    
+    def __lt__(self, o: Scalar[SomeDim]) -> bool:
+        self.ensure_equal_dimensions(o)
+        return bool(self._values < o._values)
+
+    def __le__(self, o: Scalar[SomeDim]) -> bool:
+        self.ensure_equal_dimensions(o)
+        return bool(self._values <= o._values)
+
+    def __gt__(self, o: Scalar[SomeDim]) -> bool:
+        self.ensure_equal_dimensions(o)
+        return bool(self._values > o._values)
+
+    def __ge__(self, o: Scalar[SomeDim]) -> bool:
+        self.ensure_equal_dimensions(o)
+        return bool(self._values >= o._values)
     
     def __class_getitem__(cls, dim: SomeDim) -> type[Self]:
         return dim_to_tensor_class(dim, cls)
@@ -337,7 +411,7 @@ class Matrix33(Generic[SomeDim], DimensionalTensor):
 ############################################################
     
 class QuantityMeta(type):
-    def __getattr__(cls, name: str) -> Any:
+    def __getattr__(cls, name: str) -> Scalar:
         if name == "rad":
             return Scalar[Dim.dimensionless](1)
         elif name == "deg":
@@ -354,6 +428,12 @@ class QuantityMeta(type):
             return Scalar[Dim.time](Dim.Time.hour)
         elif name == "day":
             return Scalar[Dim.time](Dim.Time.day)
+        elif name == "month":
+            return Scalar[Dim.time](Dim.Time.month)
+        elif name == "year":
+            return Scalar[Dim.time](Dim.Time.year)
+        
+        raise ValueError(f"No unit named '{name}'")
         
 
 class Quantity(metaclass=QuantityMeta):
@@ -387,6 +467,16 @@ class Quantity(metaclass=QuantityMeta):
     day: Scalar[Dim.time]
     """day"""
 
+    month: Scalar[Dim.time]
+    """month (30 days)"""
+
+    year: Scalar[Dim.time]
+    """year (365 days)"""
+
+def quantity(nb_and_unit: str) -> Scalar:
+    nb, unit_name = nb_and_unit.split(" ")
+    unit: Scalar = getattr(Quantity, unit_name)
+    return cast(Scalar, unit * float(nb))
 
 
 ### TRANSFORMS ###
@@ -498,3 +588,11 @@ class TransformChain(Generic[DT1, DT2], Transform[DT1, DT2]):
         )
 
         return cast(Self, t)
+    
+
+
+
+
+a = Scalar[Dim.mass](123)
+b = Scalar[Dim.mass](321)
+c = b + 1
