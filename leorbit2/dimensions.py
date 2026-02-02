@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import Any, Never, Self, TypeIs, TypeVar, cast, overload
+from typing import Any, ClassVar, Never, Self, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
@@ -29,7 +29,7 @@ class DimEls:
         )
 
 class Dim:
-    d: DimEls | None = None
+    d: ClassVar[DimEls | None] = None
 
 class DimLess(Dim):
     d = DimEls()
@@ -122,6 +122,8 @@ class QuotientDim[SomeDim, SomeOtherDim](Dim):
             (Dim,),
             dict(d=result_els)
         )
+    
+SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
 class Tensor[SomeDim = DimLess]():
     _dimension: DimEls
@@ -137,7 +139,7 @@ class Tensor[SomeDim = DimLess]():
             dim_els,
             cast(type[Tensor], cls)
         )
-    
+
     def ensure_compatible_dimensions(self, o: Tensor) -> TypeIs[Tensor[SomeDim]]:
         return isinstance(o, Tensor) and o._dimension == self._dimension
     
@@ -271,6 +273,12 @@ def dimensional_tensor_class_factory(
 class Scalar[SomeDim](Tensor[SomeDim]):
     def __init__(self, value: Number):
         super().__init__(value)
+
+    def cast(self, dim: type[SomeOtherDim]) -> Scalar[SomeOtherDim]:
+        dim_els = getattr(dim, "d", None) 
+        if dim_els == self._dimension:
+            return self # type: ignore
+        raise RuntimeError("Cannot cast")
 
     ### + OPERATOR ###
 
