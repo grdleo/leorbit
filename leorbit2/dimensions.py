@@ -187,42 +187,66 @@ class Tensor[SomeDim = DimLess]():
     def __mul__(self, o: object) -> Tensor: # self * o
         o = ensure_tensor(o)
         try:
-            return cast(Tensor, self.__class__(self._values * o._values))
+            tensor_class = dimensional_tensor_class_factory(
+                self._dimension * o._dimension, 
+                cast(type[Tensor], self.__class__)
+            )
+            return tensor_class(self._values * o._values)
         except:
             raise RuntimeError("...")
 
     def __rmul__(self, o: object) -> Tensor: # o * self
         o = ensure_tensor(o)
         try:
-            return cast(Tensor, self.__class__(o._values * self._values))
+            tensor_class = dimensional_tensor_class_factory(
+                o._dimension * self._dimension, 
+                cast(type[Tensor], self.__class__)
+            )
+            return tensor_class(o._values * self._values)
         except:
             raise RuntimeError("...")
 
     def __truediv__(self, o: object) -> Tensor: # self / o
         o = ensure_tensor(o)
         try:
-            return cast(Tensor, self.__class__(self._values / o._values))
+            tensor_class = dimensional_tensor_class_factory(
+                self._dimension / o._dimension, 
+                cast(type[Tensor], self.__class__)
+            )
+            return tensor_class(self._values / o._values)
         except:
             raise RuntimeError("...")
 
     def __rtruediv__(self, o: object) -> Tensor: # o / self
         o = ensure_tensor(o)
         try:
-            return cast(Tensor, self.__class__(o._values / self._values))
+            tensor_class = dimensional_tensor_class_factory(
+                o._dimension / self._dimension, 
+                cast(type[Tensor], self.__class__)
+            )
+            return tensor_class(o._values / self._values)
         except:
             raise RuntimeError("...")
 
     def __matmul__(self, o: object) -> Tensor: # self @ o
         o = ensure_tensor(o)
         try:
-            return cast(Tensor, self.__class__(self._values @ o._values))
+            tensor_class = dimensional_tensor_class_factory(
+                self._dimension * o._dimension, 
+                cast(type[Tensor], self.__class__)
+            )
+            return tensor_class(self._values @ o._values)
         except:
             raise RuntimeError("...")
 
     def __rmatmul__(self, o: object) -> Tensor: # o @ self
         o = ensure_tensor(o)
         try:
-            return cast(Tensor, self.__class__(o._values @ self._values))
+            tensor_class = dimensional_tensor_class_factory(
+                o._dimension * self._dimension, 
+                cast(type[Tensor], self.__class__)
+            )
+            return tensor_class(o._values @ self._values)
         except:
             raise RuntimeError("...")
 
@@ -235,6 +259,17 @@ def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[SomeDim] | Tensor[DimLess]
         return Tensor[DimLess](o)
 
     raise RuntimeError("...")
+
+def dimensional_tensor_class_factory(
+    dim: DimEls, 
+    parent_class: type[Tensor] = Tensor
+) -> type[Tensor]:
+    # FIXME
+    return type(
+        "DimTensor",
+        (parent_class, ),
+        dict(_dimension=dim)
+    )
 
 class Scalar[SomeDim](Tensor[SomeDim]):
     def __init__(self, value: Number):
