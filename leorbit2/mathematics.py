@@ -313,7 +313,7 @@ class Vector3(Generic[SomeDim], DimensionalTensor):
         if self._dimension is None:
             raise TypeError("Scalar must be instantiated with a dimension type: Vector3[Dim.length](value)")
         
-        super().__init__(np.array([x, y, z]))
+        super().__init__(np.array([x, y, z]).reshape((3,1)))
     
     def __class_getitem__(cls, dim: SomeDim) -> type[Self]:
         return dim_to_tensor_class(dim, cls)
@@ -462,9 +462,9 @@ class TransformVector3Affine(Generic[SomeDim], Transform[Vector3[SomeDim], Vecto
         return cast(Self, t)
     
 class TransformVector3RotationZ(Generic[SomeDim], TransformVector3Linear[SomeDim]):
-    def __init__(self, angle_rad: Number | Scalar[Dim.dimensionless]):
+    def __init__(self, angle_rad: Number | Scalar[Dim.angle]):
         if isinstance(angle_rad, Scalar):
-            angle_rad = angle_rad.base_units_value
+            angle_rad = angle_rad.magnitude("rad")
         
         c, s = np.cos(angle_rad), np.sin(angle_rad)
         rot_mat = Matrix33[Dim.dimensionless](
