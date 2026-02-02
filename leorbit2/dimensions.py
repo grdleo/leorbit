@@ -133,12 +133,9 @@ class Tensor[SomeDim = DimLess]():
     def __class_getitem__(cls, dim: type[SomeDim]) -> type[Tensor]:
         dim_els: DimEls = getattr(dim, "d")
 
-        return type(
-            "DimTensor",
-            (Tensor, ),
-            dict(
-                _dimension=dim_els
-            )
+        return dimensional_tensor_class_factory(
+            dim_els,
+            cast(type[Tensor], cls)
         )
     
     def ensure_compatible_dimensions(self, o: Tensor) -> TypeIs[Tensor[SomeDim]]:
