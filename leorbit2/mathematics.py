@@ -45,13 +45,26 @@ class AngleD(Dim):
     rad: ClassVar[float] = 1 # base
     deg: ClassVar[float] = np.pi / 180
 
+class AngularAccD(Dim):
+    """rad/s**2"""
+    _d = DimEls(time=-2)
+
+class AngularJerkD(Dim):
+    """rad/s**2"""
+    _d = DimEls(time=-3)
+
 class LengthD(Dim):
+    """m"""
     _d = DimEls(length=1)
 
     meter: ClassVar[float] = 1 # base
 
     milli_meter: ClassVar[float] = 1e-3 * meter
     kilo_meter: ClassVar[float] = 1e3 * meter
+
+class InvLengthD(Dim):
+    """1/m"""
+    _d = DimEls(length=-1)
 
 class TimeD(Dim):
     _d = DimEls(time=1)
@@ -708,6 +721,9 @@ class Matrix33[SomeDim](Tensor[SomeDim]):
     @overload
     def __add__(self: Matrix33[SomeDim], o: Matrix33[SomeDim]) -> Matrix33[SomeDim]: ...
 
+    @overload
+    def __add__(self: Matrix33[SomeDim], o: Scalar[SomeDim]) -> Matrix33[SomeDim]: ...
+
     def __add__(self, o: object) -> Matrix33[Any]:
         return cast(Matrix33[Any], super().__add__(o))
 
@@ -716,6 +732,9 @@ class Matrix33[SomeDim](Tensor[SomeDim]):
 
     @overload
     def __radd__(self: Matrix33[SomeDim], o: Matrix33[SomeDim]) -> Matrix33[SomeDim]: ...
+
+    @overload
+    def __radd__(self: Matrix33[SomeDim], o: Scalar[SomeDim]) -> Matrix33[SomeDim]: ...
 
     def __radd__(self, o: object) -> Matrix33[Any]:
         return cast(Matrix33[Any], super().__radd__(o))
@@ -728,6 +747,9 @@ class Matrix33[SomeDim](Tensor[SomeDim]):
     @overload
     def __sub__(self: Matrix33[SomeDim], o: Matrix33[SomeDim]) -> Matrix33[SomeDim]: ...
 
+    @overload
+    def __sub__(self: Matrix33[SomeDim], o: Scalar[SomeDim]) -> Matrix33[SomeDim]: ...
+
     def __sub__(self, o: object) -> Matrix33[Any]:
         return cast(Matrix33[Any], super().__sub__(o))
 
@@ -736,6 +758,9 @@ class Matrix33[SomeDim](Tensor[SomeDim]):
 
     @overload
     def __rsub__(self: Matrix33[SomeDim], o: Matrix33[SomeDim]) -> Matrix33[SomeDim]: ...
+
+    @overload
+    def __rsub__(self: Matrix33[SomeDim], o: Scalar[SomeDim]) -> Matrix33[SomeDim]: ...
 
     def __rsub__(self, o: object) -> Matrix33[Any]:
         return cast(Matrix33[Any], super().__rsub__(o))
