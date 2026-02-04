@@ -1,6 +1,7 @@
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pyclbr import Class
-from typing import Any, ClassVar, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
@@ -311,6 +312,15 @@ def scalar_class_factory(dim: DimEls) -> type[Scalar]:
         )
     )
 
+def vector3_class_factory(dim: DimEls) -> type[Vector3]:
+    return cast(
+        type[Vector3], 
+        dimensional_tensor_class_factory(
+            dim,
+            Vector3,
+        )
+    )
+
 class Scalar[SomeDim](Tensor[SomeDim]):
     def __init__(self, value: Number | TensorData):
         if isinstance(value, Number):
@@ -482,6 +492,22 @@ class Vector3[SomeDim](Tensor[SomeDim]):
     @property
     def z(self) -> Scalar[SomeDim]:
         return scalar_class_factory(self._dimension)(self._values[0])
+    
+    def dot(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Scalar[ProductDim[SomeDim, SomeOtherDim]]:
+        if not isinstance(o, Vector3):
+            raise TypeError("dot product requires two Vector3 instances")
+
+        # Dot product: transpose first vector and matrix multiply
+        result_values = self._values.transpose().dot(o._values)
+        return scalar_class_factory(self._dimension)(result_values)
+    
+    def cross(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]:
+        if not isinstance(o, Vector3):
+            raise TypeError("cross product requires two Vector3 instances")
+
+        # Dot product: transpose first vector and matrix multiply
+        result_values = np.cross(self._values, o._values, axis=0)
+        return vector3_class_factory(self._dimension)(result_values)
 
     ### + OPERATOR ###
 
@@ -608,12 +634,138 @@ class Vector3[SomeDim](Tensor[SomeDim]):
     def __matmul__(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Scalar[ProductDim[SomeDim, SomeOtherDim]]: ...
 
     def __matmul__(self, o: object) -> Scalar[Any]:
-        if not isinstance(o, Vector3):
-            raise TypeError("@ operation requires two Vector3 instances")
+        if isinstance(o, Vector3):
+            return self.dot(o)
+        
+        raise TypeError("...")
+    
+class Matrix33[SomeDim](Tensor[SomeDim]):
+    def __init__(self,
+        a: NumberOrScalarT, b: NumberOrScalarT, c: NumberOrScalarT,
+        d: NumberOrScalarT, e: NumberOrScalarT, f: NumberOrScalarT,
+        g: NumberOrScalarT, h: NumberOrScalarT, i: NumberOrScalarT,
+    ):
+        """order: by lines"""
+        mat: TensorData
+        mat_els = cast(list[object], [a, b, c, d, e, f, g, h, i])
 
-        # Dot product: transpose first vector and matrix multiply
-        result_values = self._values.transpose().dot(o._values)
-        return Scalar(result_values)
+        if all_simple_numbers(mat_els):
+            mat = np.array(mat_els).reshape((3,3))
+        elif all_scalars_numbers(mat_els):
+            ensure_same_dimensions(*mat_els)
+            mat = np.array([el.base_unit_value for el in mat_els]).reshape((3,1))
+        else:
+            raise RuntimeError("...")
+
+        super().__init__(mat)
+
+    def cast(self, dim: type[SomeOtherDim]) -> Matrix33[SomeOtherDim]:
+        dim_els = getattr(dim, "_d", None)
+        if dim_els == self._dimension:
+            return self # type: ignore
+        raise RuntimeError("Cannot cast")
+    
+###########################################
+
+class QuantityMeta(type):
+    def __getattr__(cls, name: str) -> Scalar:
+        if name == "rad":
+            return Scalar[DimLess](1)
+        elif name == "m":
+            return Scalar[LengthD](LengthD.meter)
+        elif name == "km":
+            return Scalar[LengthD](LengthD.kilo_meter)
+        elif name == "s":
+            return Scalar[TimeD](TimeD.second)
+        elif name == "min":
+            return Scalar[TimeD](TimeD.minute)
+        elif name == "hour":
+            return Scalar[TimeD](TimeD.hour)
+        elif name == "day":
+            return Scalar[TimeD](TimeD.day)
+        elif name == "month":
+            return Scalar[TimeD](TimeD.month)
+        elif name == "year":
+            return Scalar[TimeD](TimeD.year)
+        
+        raise ValueError(f"No unit named '{name}'")
+        
+
+class Quantity(metaclass=QuantityMeta):
+    # ANGLES
+
+    rad: Scalar[DimLess]
+    """radians"""
+
+    # DISTANCES
+
+    m: Scalar[LengthD]
+    """meter"""
+
+    km: Scalar[LengthD]
+    """kilometer"""
+
+    # DURATIONS
+
+    s: Scalar[TimeD]
+    """second"""
+
+    min: Scalar[TimeD]
+    """minute"""
+
+    hour: Scalar[TimeD]
+    """hour"""
+
+    day: Scalar[TimeD]
+    """day"""
+
+    month: Scalar[TimeD]
+    """month (30 days)"""
+
+    year: Scalar[TimeD]
+    """year (365 days)"""
+
+
+#########################################
+
+### TRANSFORMS ###
+
+T1 = TypeVar("T1", bound=Tensor)
+T2 = TypeVar("T2", bound=Tensor)
+
+class Transform(Generic[T1, T2], ABC):
+    @abstractmethod
+    def do(self, tensor: T1) -> T2: ...
+
+    @abstractmethod
+    def undo(self, tensor: T2) -> T1: ...
+
+    @abstractmethod
+    def copy(self) -> Self: ...
+
+    def reverse(self) -> Transform[T2, T1]:
+        t = self.copy()
+
+        do = t.do
+        undo = t.undo
+
+        tt = cast(Transform[T2, T1], t)
+
+        tt.do = undo  # type: ignore
+        tt.undo = do  # type: ignore
+
+        return tt
+    
+class TransformIdentify(Generic[T1], Transform[T1, T1]):
+    def do(self, tensor: T1) -> T1:
+        return tensor
+    
+    def undo(self, tensor: T1) -> T1:
+        return tensor
+    
+    def copy(self) -> Self:
+        t = TransformIdentify[T1]()
+        return cast(Self, t)
 
 
 a = Scalar[LengthD](1)
