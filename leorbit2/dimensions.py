@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from typing import Any, ClassVar, Never, Self, TypeIs, TypeVar, cast, overload
+from pyclbr import Class
+from typing import Any, ClassVar, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
@@ -27,34 +28,55 @@ class DimEls:
             length=self.length - o.length,
             time=self.time - o.time
         )
+    
+class UnitsRegistry:
+    """..."""
 
 class Dim:
-    d: ClassVar[DimEls | None] = None
+    _d: ClassVar[DimEls | None] = None
 
 class DimLess(Dim):
-    d = DimEls()
+    _d = DimEls()
 
-class LengthDim(Dim):
-    d = DimEls(length=1)
+class LengthD(Dim):
+    _d = DimEls(length=1)
 
-class TimeDim(Dim):
-    d = DimEls(time=1)
+    meter: ClassVar[float] = 1 # base
 
-class VelocityDim(Dim):
-    d = DimEls(length=1, time=-1)
+    milli_meter: ClassVar[float] = 1e-3 * meter
+    kilo_meter: ClassVar[float] = 1e3 * meter
+
+class TimeD(Dim):
+    _d = DimEls(time=1)
+
+    second: ClassVar[float] = 1 # base
+
+    milli_second: ClassVar[float] = 1e-3 * second
+    minute: ClassVar[float] = 60 * second
+    hour: ClassVar[float] = 60 * minute
+    day: ClassVar[float] = 24 * hour
+    month: ClassVar[float] = 30 * day
+    year: ClassVar[float] = 365 * day
+
+class VelocityD(Dim):
+    _d = DimEls(length=1, time=-1)
+
+    meter_per_second: ClassVar[float] = 1 # base
+
+    kilo_meter_per_hour: ClassVar[float] = meter_per_second / 3.6
 
 # Registry of known dimensions for lookup
 _DIMENSION_REGISTRY: dict[DimEls, type[Dim]] = {
     DimEls(): DimLess,
-    DimEls(length=1): LengthDim,
-    DimEls(time=1): TimeDim,
-    DimEls(length=1, time=-1): VelocityDim,
+    DimEls(length=1): LengthD,
+    DimEls(time=1): TimeD,
+    DimEls(length=1, time=-1): VelocityD,
 }
 
 Number = float | int | np.floating
 SomeDim = TypeVar("SomeDim", bound=Dim)
 SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
-SomeDimFull = TypeVar("SomeDimFull", bound=LengthDim | TimeDim | VelocityDim)
+SomeDimFull = TypeVar("SomeDimFull", bound=LengthD | TimeD | VelocityD)
 TensorData = np.typing.NDArray[np.floating[Any]]
 
 class ProductDim[SomeDim, SomeOtherDim](Dim):
@@ -66,8 +88,8 @@ class ProductDim[SomeDim, SomeOtherDim](Dim):
             return type(f"ProductDim[{params}]", (Dim,), {})
 
         dim1, dim2 = params
-        dim1_els: DimEls | None = getattr(dim1, "d", None)
-        dim2_els: DimEls | None = getattr(dim2, "d", None)
+        dim1_els: DimEls | None = getattr(dim1, "_d", None)
+        dim2_els: DimEls | None = getattr(dim2, "_d", None)
 
         # If dimensions don't have 'd' attribute, return generic class
         if dim1_els is None or dim2_els is None:
@@ -99,8 +121,8 @@ class QuotientDim[SomeDim, SomeOtherDim](Dim):
             return type(f"QuotientDim[{params}]", (Dim,), {})
 
         dim1, dim2 = params
-        dim1_els: DimEls | None = getattr(dim1, "d", None)
-        dim2_els: DimEls | None = getattr(dim2, "d", None)
+        dim1_els: DimEls | None = getattr(dim1, "_d", None)
+        dim2_els: DimEls | None = getattr(dim2, "_d", None)
 
         # If dimensions don't have 'd' attribute, return generic class
         if dim1_els is None or dim2_els is None:
@@ -133,7 +155,7 @@ class Tensor[SomeDim = DimLess]():
 
     @classmethod
     def __class_getitem__(cls, dim: type[SomeDim]) -> type[Tensor]:
-        dim_els: DimEls = getattr(dim, "d")
+        dim_els: DimEls = getattr(dim, "_d")
 
         return dimensional_tensor_class_factory(
             dim_els,
@@ -259,6 +281,16 @@ def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[SomeDim] | Tensor[DimLess]
 
     raise RuntimeError("...")
 
+def ensure_same_dimensions(*tensors: Tensor[Any]) -> Literal[True]:
+    if len(tensors) == 0:
+        return True
+    
+    t0, *_ = tensors
+    if all(t._dimension == t0._dimension for t in tensors):
+        return True
+    
+    raise RuntimeError("...")
+
 def dimensional_tensor_class_factory(
     dim: DimEls, 
     parent_class: type[Tensor] = Tensor
@@ -270,15 +302,33 @@ def dimensional_tensor_class_factory(
         dict(_dimension=dim)
     )
 
+def scalar_class_factory(dim: DimEls) -> type[Scalar]:
+    return cast(
+        type[Scalar], 
+        dimensional_tensor_class_factory(
+            dim,
+            Scalar,
+        )
+    )
+
 class Scalar[SomeDim](Tensor[SomeDim]):
-    def __init__(self, value: Number):
+    def __init__(self, value: Number | TensorData):
+        if isinstance(value, Number):
+            pass
+        elif isinstance(value, np.ndarray):
+            value = value.item()
+        
         super().__init__(value)
 
     def cast(self, dim: type[SomeOtherDim]) -> Scalar[SomeOtherDim]:
-        dim_els = getattr(dim, "d", None) 
+        dim_els = getattr(dim, "_d", None) 
         if dim_els == self._dimension:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
+    
+    @property
+    def base_unit_value(self) -> Number:
+        return np.floating(self._values)
 
     ### + OPERATOR ###
 
@@ -391,10 +441,183 @@ class Scalar[SomeDim](Tensor[SomeDim]):
 
     def __matmul__(self, o: object) -> Scalar[Any]:
         raise RuntimeError("@ operation not defined for scalar")
+    
+NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
+
+def all_simple_numbers(els: list[object]) -> TypeGuard[list[Number]]:
+    return all(isinstance(el, Number) for el in els)
+
+def all_scalars_numbers(els: list[object]) -> TypeGuard[list[Scalar]]:
+    return all(isinstance(el, Scalar) for el in els)
+
+class Vector3[SomeDim](Tensor[SomeDim]):
+    def __init__(self, x: NumberOrScalarT, y: NumberOrScalarT, z: NumberOrScalarT):
+        v: TensorData
+        xyz = cast(list[object], [x, y, z])
+
+        if all_simple_numbers(xyz):
+            v = np.array(xyz).reshape((3,1))
+        elif all_scalars_numbers(xyz):
+            ensure_same_dimensions(*xyz)
+            v = np.array([el.base_unit_value for el in xyz]).reshape((3,1))
+        else:
+            raise RuntimeError("...")
+
+        super().__init__(v)
+
+    def cast(self, dim: type[SomeOtherDim]) -> Vector3[SomeOtherDim]:
+        dim_els = getattr(dim, "_d", None)
+        if dim_els == self._dimension:
+            return self # type: ignore
+        raise RuntimeError("Cannot cast")
+    
+    @property
+    def x(self) -> Scalar[SomeDim]:
+        return scalar_class_factory(self._dimension)(self._values[0])
+    
+    @property
+    def y(self) -> Scalar[SomeDim]:
+        return scalar_class_factory(self._dimension)(self._values[0])
+    
+    @property
+    def z(self) -> Scalar[SomeDim]:
+        return scalar_class_factory(self._dimension)(self._values[0])
+
+    ### + OPERATOR ###
+
+    @overload
+    def __add__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
+
+    @overload
+    def __add__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[SomeDim]: ...
+
+    def __add__(self, o: object) -> Vector3[Any]:
+        return cast(Vector3[Any], super().__add__(o))
+
+    @overload
+    def __radd__(self: Vector3[DimLess], o: Vector3[DimLess]) -> Vector3[DimLess]: ...
+
+    @overload
+    def __radd__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
+
+    @overload
+    def __radd__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[SomeDim]: ...
+
+    def __radd__(self, o: object) -> Vector3[Any]:
+        return cast(Vector3[Any], super().__radd__(o))
+
+    ### - OPERATOR ###
+
+    @overload
+    def __sub__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
+
+    @overload
+    def __sub__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[SomeDim]: ...
+
+    def __sub__(self, o: object) -> Vector3[Any]:
+        return cast(Vector3[Any], super().__sub__(o))
+
+    @overload
+    def __rsub__(self: Vector3[DimLess], o: Vector3[DimLess]) -> Vector3[DimLess]: ...
+
+    @overload
+    def __rsub__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
+
+    @overload
+    def __rsub__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[SomeDim]: ...
+
+    def __rsub__(self, o: object) -> Vector3[Any]:
+        return cast(Vector3[Any], super().__rsub__(o))
+
+    ### * OPERATOR ###
+
+    @overload
+    def __mul__(self: Vector3[DimLess], o: Number | Scalar[DimLess]) -> Vector3[DimLess]: ...
+
+    @overload
+    def __mul__(self: Vector3[DimLess], o: Scalar[SomeOtherDim]) -> Vector3[SomeOtherDim]: ...
+
+    @overload
+    def __mul__(self: Vector3[SomeDim], o: Number | Scalar[DimLess]) -> Vector3[SomeDim]: ...
+
+    @overload
+    def __mul__(self: Vector3[SomeDim], o: Scalar[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+    @overload
+    def __mul__(self, o: Scalar) -> Vector3[Any]: ...
+
+    def __mul__(self, o: object) -> Vector3[Any]:
+        return cast(Vector3[Any], super().__mul__(o))
+
+    @overload
+    def __rmul__(self: Vector3[DimLess], o: Number | Scalar[DimLess]) -> Vector3[DimLess]: ...
+
+    @overload
+    def __rmul__(self: Vector3[DimLess], o: Scalar[SomeOtherDim]) -> Vector3[SomeOtherDim]: ...
+
+    @overload
+    def __rmul__(self: Vector3[SomeDim], o: Number | Scalar[DimLess]) -> Vector3[SomeDim]: ...
+
+    @overload
+    def __rmul__(self: Vector3[SomeDim], o: Scalar[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+    @overload
+    def __rmul__(self, o: Scalar) -> Vector3[Any]: ...
+
+    def __rmul__(self, o: object) -> Vector3[Any]:
+        return cast(Vector3[Any], super().__rmul__(o))
+
+    ### / OPERATOR ###
+
+    @overload
+    def __truediv__(self: Vector3[DimLess], o: Number | Scalar[DimLess]) -> Vector3[DimLess]: ...
+
+    @overload
+    def __truediv__(self: Vector3[DimLess], o: Scalar[SomeDim]) -> Vector3[QuotientDim[DimLess, SomeDim]]: ...
+
+    @overload
+    def __truediv__(self: Vector3[SomeDim], o: Number | Scalar[DimLess]) -> Vector3[SomeDim]: ...
+
+    @overload
+    def __truediv__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[DimLess]: ...
+
+    @overload
+    def __truediv__(self: Vector3[SomeDim], o: Scalar[SomeOtherDim]) -> Vector3[QuotientDim[SomeDim, SomeOtherDim]]: ...
+
+    @overload
+    def __truediv__(self, o: Scalar) -> Vector3[Any]: ...
+
+    def __truediv__(self, o: object) -> Vector3[Any]:
+        return cast(Vector3[Any], super().__truediv__(o))
+
+    @overload
+    def __rtruediv__(self: Vector3[DimLess], o: Number | Scalar[DimLess]) -> Vector3[DimLess]: ...
+
+    @overload
+    def __rtruediv__(self: Vector3[SomeDim], o: Number | Scalar[DimLess]) -> Vector3[QuotientDim[DimLess, SomeDim]]: ...
+
+    def __rtruediv__(self, o: object) -> Vector3[Any]:
+        return cast(Vector3[Any], super().__rtruediv__(o))
+    
+    ### @ OPERATOR (dot product) ###
+
+    @overload
+    def __matmul__(self: Vector3[DimLess], o: Vector3[DimLess]) -> Scalar[DimLess]: ...
+
+    @overload
+    def __matmul__(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Scalar[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+    def __matmul__(self, o: object) -> Scalar[Any]:
+        if not isinstance(o, Vector3):
+            raise TypeError("@ operation requires two Vector3 instances")
+
+        # Dot product: transpose first vector and matrix multiply
+        result_values = self._values.transpose().dot(o._values)
+        return Scalar(result_values)
 
 
-a = Scalar[LengthDim](1)
+a = Scalar[LengthD](1)
 b = Scalar[DimLess](2)
-c = Scalar[LengthDim](3)
+c = Scalar[TimeD](3)
 
-z = a / c
+z = (a / c).cast(VelocityD)
