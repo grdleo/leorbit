@@ -2,8 +2,13 @@
 
 from datetime import datetime, timezone
 from typing import cast
+from typing import Iterable, Self, Iterator, Optional
+from math import ceil
 
-from leorbit2.mathematics import Dim, Scalar, Number, Quantity
+import numpy as np
+from numpy.typing import NDArray
+
+from leorbit2.mathematics import AngleD, Dim, Scalar, Number, Quantity, TimeD
 
 import numpy as np
 TWOPI = 2 * np.pi
@@ -88,52 +93,52 @@ class Time:
     def __deepcopy__(self, *args, **kwargs) -> "Time":
         return self.copy()
 
-    def __add__(self: "Time", other: Scalar[Dim.time]) -> "Time":
+    def __add__(self: "Time", other: Scalar[TimeD]) -> "Time":
         try:
-            assert other._dimension == Dim.Time._dim
-            delta_seconds = other.base_units_value
+            assert other._dimension == TimeD._d
+            delta_seconds = other.magnitude("s")
             return self.__class__(self._unixepoch + delta_seconds)
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def __iadd__(self: "Time", other: Scalar[Dim.time]) -> None:
+    def __iadd__(self: "Time", other: Scalar[TimeD]) -> None:
         try:
-            assert other._dimension == Dim.Time._dim
-            delta_seconds = other.base_units_value
+            assert other._dimension == TimeD._d
+            delta_seconds = other.magnitude("s")
             self._unixepoch += float(delta_seconds)
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
         
-    def __sub__(self: "Time", other: Scalar[Dim.time]) -> "Time":
+    def __sub__(self: "Time", other: Scalar[TimeD]) -> "Time":
         try:
-            assert other._dimension == Dim.Time._dim
-            delta_seconds = other.base_units_value
+            assert other._dimension == TimeD._d
+            delta_seconds = other.magnitude("s")
             return self.__class__(self._unixepoch - delta_seconds)
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a duration"
             ) from ex
 
-    def __isub__(self: "Time", other: Scalar[Dim.time]) -> None:
+    def __isub__(self: "Time", other: Scalar[TimeD]) -> None:
         try:
-            assert other._dimension == Dim.Time._dim
-            delta_seconds = other.base_units_value
+            assert other._dimension == TimeD._d
+            delta_seconds = other.magnitude("s")
             self._unixepoch -= float(delta_seconds)
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def delta(self: "Time", other: "Time") -> Scalar[Dim.time]:
+    def delta(self: "Time", other: "Time") -> Scalar[TimeD]:
         """Return the duration between two given `Time` objects (i.e `self - other`), as a `pint.Quantity`.
 
         If `other > self`, the returned duration will be negative. 
         """
-        return Scalar[Dim.time](self._unixepoch - other._unixepoch)
+        return Scalar[TimeD].new(self._unixepoch - other._unixepoch)
 
     @property
     def isoformat(self: "Time") -> str:
@@ -148,26 +153,26 @@ class Time:
         return date.strftime("%Y-%m-%d at %H:%M:%S")
 
     @property
-    def jd(self: "Time") -> Scalar[Dim.time]:
+    def jd(self: "Time") -> Scalar[TimeD]:
         """Representation of this `Time` object as "Julian day (JD)", aka 
         the number of days since -4712/01/01."""
         days = (self._unixepoch / 86_400 + 2_440_587.5)
-        return cast(Scalar[Dim.time], days * Quantity.day)
+        return days * Quantity.day
 
     @property
-    def j2000(self: "Time") -> Scalar[Dim.time]:
+    def j2000(self: "Time") -> Scalar[TimeD]:
         """Representation of this `Time` object as "Julian year (J2000)", aka 
         the number of days since 2000/01/01T12:00:00."""
         days = (self._unixepoch / 86_400 - 10_957.5)
-        return cast(Scalar[Dim.time], days * Quantity.day)
+        return days * Quantity.day
 
     @property
-    def from_mil(self: "Time") -> Scalar[Dim.time]:
+    def from_mil(self: "Time") -> Scalar[TimeD]:
         """Representation of this `Time` object as a fraction of days since 1 january 2000 00:00.
 
         Taken from: https://stjarnhimlen.se/comp/ppcomp.html#3"""
         days = (self._unixepoch / 86_400 - 10_957.5) - .5
-        return cast(Scalar[Dim.time], days * Quantity.day)
+        return days * Quantity.day
 
     @property
     def year_day(self: "Time") -> str:
@@ -178,27 +183,20 @@ class Time:
         full_y = iso[0:4]
         newyear = Time.fromisoformat(f"{full_y}-01-01T00:00:00")
         from_newyear = self.delta(newyear)
-        days = from_newyear.base_units_value / 86_400
+        days = from_newyear.magnitude("s") / 86_400
         return f"{full_y[2:4]}{days:012.8f}"
 
     @property
-    def stl0(self: "Time") -> Scalar[Dim.dimensionless]: # FIXME: better algorithm on the Wiki page
+    def stl0(self: "Time") -> Scalar[AngleD]: # FIXME: better algorithm on the Wiki page
         """The 
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Time`.
         """
         d = self.j2000.magnitude("day")
         angle_rad = ((np.float128(18.697374558) + np.float128(24.06570982441908) * d) * TWELF_PI) % TWOPI
-        return cast(Scalar[Dim.dimensionless], angle_rad * Quantity.rad)
+        return angle_rad * Quantity.rad
     
-from typing import Iterable, Self, Iterator, Optional
-from physics.time import Time
-from mathematics.units import Q_
-from math import ceil
-from algorithms.utils import humanize_duration
 
-import numpy as np
-from numpy.typing import NDArray
 
 MIN_DURATION = Q_("1ns")
 
@@ -219,7 +217,7 @@ class TimeInterval:
         steps = ceil(self.duration / dt)
         self.steps = int(steps)
     
-    def __eq__(self, other: "TimeInterval") -> bool:
+    def __eq__(self, other: object) -> bool:
         if not isinstance(other, type(self)):
             return False
         return (

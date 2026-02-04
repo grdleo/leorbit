@@ -2,16 +2,16 @@ from enum import Enum
 from functools import lru_cache
 from typing import ParamSpec, Callable, TypeVar, cast
 
-from leorbit2.mathematics import Dim, SomeDim, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify
+from leorbit2.mathematics import Dim, LengthD, SomeDim, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, VelocityD
 from leorbit2.time import Time
 
-PosVec = Vector3[Dim.length]
-VelVec = Vector3[Dim.velocity]
+PosVec = Vector3[LengthD]
+VelVec = Vector3[VelocityD]
 
-DynamicVec = PosVec | VelVec
+DynamicVec = Vector3[LengthD] | Vector3[VelocityD]
 SomeDynamicVec = TypeVar("SomeDynamicVec", bound=DynamicVec)
-DynamicDim = Dim.length | Dim.velocity
-SomeDynamicDim = TypeVar("SomeDynamicDim", bound=DynamicDim)
+DynamicD = LengthD | VelocityD
+SomeDynamicD = TypeVar("SomeDynamicD", bound=DynamicD)
 
 class Frame:
     """Base class for frames"""
@@ -22,13 +22,13 @@ class AbsoluteFrame(Frame, Enum):
     GCRF = "GCRF"
     ITRF = "ITRF"
 
-FrameTransformFactory = Callable[[Time], Transform[DynamicVec, DynamicVec]]
+FrameTransformFactory = Callable[[Time], Transform[SomeDynamicVec, SomeDynamicVec]]
 
 @lru_cache(4096)
 def itrf2gcrf(epoch: Time) -> Transform[SomeDynamicVec, SomeDynamicVec]:
     """NOTE: This rotation can transform any position or velocity"""
 
-    t = TransformVector3RotationZ[DynamicDim](epoch.stl0)
+    t = TransformVector3RotationZ[DynamicD](epoch.stl0)
     return cast(Transform[SomeDynamicVec, SomeDynamicVec], t)
 
 ABS_FRAME_TRANSFORMS: dict[tuple[AbsoluteFrame, AbsoluteFrame], FrameTransformFactory] = {
@@ -81,6 +81,8 @@ def frame_transform_factory(from_frame: Frame, to_frame: Frame) -> FrameTransfor
     elif isinstance(from_frame, RelativeFrame):
         first = cast(Transform[DynamicVec, DynamicVec], from_frame.transform.reverse())
         abs_frame_from = from_frame.reference_frame
+    else:
+        raise RuntimeError("Unreachable?")
 
     abs_frame_to: AbsoluteFrame
     if isinstance(to_frame, AbsoluteFrame):
@@ -88,6 +90,8 @@ def frame_transform_factory(from_frame: Frame, to_frame: Frame) -> FrameTransfor
     elif isinstance(to_frame, RelativeFrame):
         last = cast(Transform[DynamicVec, DynamicVec], to_frame.transform)
         abs_frame_to = to_frame.reference_frame
+    else:
+        raise RuntimeError("Unreachable?")
     
     abs_transform = absolute_frame_transform_factory(abs_frame_from, abs_frame_to)
 
