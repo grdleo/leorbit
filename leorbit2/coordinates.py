@@ -7,7 +7,8 @@ from functools import lru_cache
 from typing import ParamSpec, Callable, TypeVar, cast
 
 from leorbit2.frames import AbsoluteFrame, frame_transform_factory
-from leorbit2.mathematics import D, Dim, Scalar, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, D.Velocity
+from leorbit2.mathematics import D, Dim, Scalar, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, D
+from leorbit2.mathematics.functions import normalize_angle, normalize_angle_symmetric, angle2dms
 from leorbit2.time import Time
 from leorbit.frames import Frame
 
@@ -182,17 +183,6 @@ class CoordinatesRepresentation:
 from dataclasses import dataclass
 from functools import cached_property, lru_cache
 
-from algorithms.utils import angle2dms
-from coordinates.coordinates import Coordinates
-from coordinates.representations import CoordinatesRepresentation
-
-from pint import Quantity as Q_
-
-from frames.earth_local_frame import EarthLocalFrame
-from mathematics.custom import normalize_angle_symmetric
-from mathematics.units import POS_UNIT
-from physics.time import Time
-
 
 class GPS(CoordinatesRepresentation):
     """Representation of a point on Earth (or around) using GPS standards.
@@ -228,7 +218,7 @@ class GPS(CoordinatesRepresentation):
         return f"<GPS: {self.dms}>"
     
     @lru_cache
-    def to_coordinates(self, epoch: Time = None) -> "Coordinates":
+    def to_coordinates(self, epoch: Time | None = None) -> "Coordinates":
         """If no `epoch` is provided, uses the time of this functions execution."""
 
         coordinates = Coordinates.from_gps(
@@ -245,6 +235,56 @@ class GPS(CoordinatesRepresentation):
     def earth_local_frame(self) -> EarthLocalFrame:
         return EarthLocalFrame(
             self.to_coordinates()
+        )
+    
+class Horizontal(CoordinatesRepresentation):
+    """Horizontal coordinates use a celestial sphere centered on the observer. 
+    Azimuth is measured eastward from the north point of the horizon.
+    Altitude is the angle above the horizon.
+
+    If distance if ommited, the coordinates represents a direction in the sky, 
+    and therefore cannot be converted to a 'real' coordinate.
+    
+    (see https://en.wikipedia.org/wiki/Horizontal_coordinate_system)"""
+
+    azimuth: Scalar[D.Angle]
+    altitude: Scalar[D.Angle]
+    distance: Scalar[D.Length] | None
+
+    def __init__(self,
+        azimuth: Scalar[D.Angle],
+        altitude: Scalar[D.Angle],
+        distance: Scalar[D.Length] | None = None
+    ):
+        self.azimuth = azimuth
+        self.altitude = altitude
+        self.distance = distance
+
+    @cached_property
+    def dms(self) -> str:
+        azi = normalize_angle(self.azimuth)
+        alt = normalize_angle_symmetric(self.altitude)
+
+        return (
+            f"Azimuth: {angle2dms(azi)}, "
+            f"Altitude: {'-' if alt < 0 else ''}{angle2dms(alt)}"
+        )
+    
+    def __repr__(self) -> str:
+        return f"<Horizontal: {self.dms}>"
+    
+    def to_coordinates(self, frame: EarthLocalFrame, epoch: Time | None = None) -> "Coordinates":
+        """If no `epoch` is provided, uses the time of this functions execution."""
+
+        if self.distance is None:
+            raise ValueError("Cannot convert `Horizontal` representation with unset `distance` to `Coordinates`.")
+        
+        return Coordinates.from_horizontal(
+            azimuth=self.azimuth,
+            altitude=self.altitude,
+            distance=self.distance,
+            frame=frame,
+            epoch=Time.now() if epoch is None else epoch
         )
 
 """Implementation of "orbital elements" of an object orbiting Earth."""

@@ -1,9 +1,12 @@
 from enum import Enum
 from functools import lru_cache
-from typing import ParamSpec, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, ParamSpec, Callable, TypeVar, cast
 
 from leorbit2.mathematics import D, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify
 from leorbit2.time import Time
+
+if TYPE_CHECKING:
+    from leorbit2.coordinates import Coordinates
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]
@@ -16,7 +19,7 @@ SomeDynamicD = TypeVar("SomeDynamicD", bound=DynamicD)
 class Frame:
     """Base class for frames"""
 
-class AbsoluteFrame(Frame, Enum):
+class AbsoluteFrame(Enum, Frame):
     """Absolute frame"""
 
     GCRF = "GCRF"
@@ -106,3 +109,45 @@ def frame_transform_factory(from_frame: Frame, to_frame: Frame) -> FrameTransfor
         )
 
     return _factory
+
+########################################################################
+
+class EarthLocalFrame(RelativeFrame):
+    """Coordinates frame relative to a given location on Earth.
+    
+        - Origin: Given location
+        - `z:` towards zenith (aka. towards the sky, perpendicular to ground)
+        - `y:` towards "East"
+        - `x × y = -z`
+    """
+    location: "Coordinates"
+
+    def __init__(self, location: "Coordinates"):
+        itrf: Vec3 = location.get_pos(AbsoluteFrame.ITRF)
+        
+        z = itrf.normalized() # towards zenith
+        north = copy(ZAXIS)
+        ang = Vec3.angle(z, north)
+        x: Vec3 # towards "true north"
+
+        if ang % (180 * UREG.degrees) == 0: # FIXME
+            raise ValueError("Cannot create `EarthLocalFrame` in Earth's poles!")
+        elif ang == 90 * UREG.degrees: # FIXME
+            x = copy(north)
+        else:
+            x = (north / cos(ang) - z).normalized()
+            if ang > 90 * UREG.degrees:
+                x *= -1
+        
+        y = x.cross(z) # towards "east"
+
+        mat = Mat33.from_col_vectors(x, y, z)
+        transform = AffineTransform(mat, itrf)
+
+        super().__init__(AbsoluteFrame.ITRF, transform)
+
+        self.location = location
+    
+    def __repr__(self) -> str:
+        gps = self.location.gps()
+        return f"<EarthLocalFrame at GPS location {gps.dms}>"

@@ -173,6 +173,26 @@ class Tensor[SomeDim = D.Dimless]():
     
     def __neg__(self) -> Self:
         return self.__class__(-self._values)
+    
+    def __lt__(self, o: object) -> bool:
+        o = ensure_tensor(o)
+
+        return bool(self._values < self._values)
+    
+    def __le__(self, o: object) -> bool:
+        o = ensure_tensor(o)
+
+        return bool(self._values <= self._values)
+    
+    def __gt__(self, o: object) -> bool:
+        o = ensure_tensor(o)
+
+        return bool(self._values > self._values)
+    
+    def __ge__(self, o: object) -> bool:
+        o = ensure_tensor(o)
+
+        return bool(self._values >= self._values)
 
 def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[SomeDim] | Tensor[D.Dimless]:
     """ensure tensor. if not a tensor object, creates a dimless tensor"""

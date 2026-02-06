@@ -183,3 +183,41 @@ class Scalar[SomeDim](Tensor[SomeDim]):
 
     def __matmul__(self, o: object) -> Scalar[Any]:
         raise RuntimeError("@ operation not defined for scalar")
+    
+    ### COMPARISONS
+
+    @overload
+    def __lt__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
+
+    @overload
+    def __lt__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
+
+    def __lt__(self, o: object) -> bool:
+        return super().__lt__(o)
+
+    @overload
+    def __le__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
+
+    @overload
+    def __le__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
+
+    def __le__(self, o: object) -> bool:
+        return super().__le__(o)
+
+    @overload
+    def __gt__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
+
+    @overload
+    def __gt__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
+
+    def __gt__(self, o: object) -> bool:
+        return super().__gt__(o)
+
+    @overload
+    def __ge__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
+
+    @overload
+    def __ge__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
+
+    def __ge__(self, o: object) -> bool:
+        return super().__ge__(o)
