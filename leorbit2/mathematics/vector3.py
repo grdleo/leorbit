@@ -1,17 +1,19 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from functools import cached_property
+from math import pi, acos
 from pyclbr import Class
 from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
-from leorbit2.mathematics.dimensions import Dim, DimEls, D, ProductDim, QuotientDim
+from leorbit2.mathematics.dimensions import Dim, DimEls, D, ProductDim, QuotientDim, SomeOtherDim
+from leorbit2.mathematics.functions import atan2
+from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.scalar import Scalar, scalar_class_factory
 from leorbit2.mathematics.tensor import Tensor, dimensional_tensor_class_factory, ensure_same_dimensions
 
 Number = float | int | np.floating
-SomeDim = TypeVar("SomeDim", bound=Dim)
-SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
 TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
@@ -33,6 +35,12 @@ def all_scalars_numbers(els: list[object]) -> TypeGuard[list[Scalar]]:
     return all(isinstance(el, Scalar) for el in els)
 
 class Vector3[SomeDim](Tensor[SomeDim]):
+    O: ClassVar[Vector3[D.Dimless]]
+    X: ClassVar[Vector3[D.Dimless]]
+    Y: ClassVar[Vector3[D.Dimless]]
+    Z: ClassVar[Vector3[D.Dimless]]
+    ONE: ClassVar[Vector3[D.Dimless]]
+
     @classmethod
     def new(cls, x: NumberOrScalarT, y: NumberOrScalarT, z: NumberOrScalarT):
         v: TensorData
@@ -54,19 +62,95 @@ class Vector3[SomeDim](Tensor[SomeDim]):
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
-    @property
+    @cached_property
     def x(self) -> Scalar[SomeDim]:
         return scalar_class_factory(self._dimension)(self._values[0])
     
-    @property
+    @cached_property
     def y(self) -> Scalar[SomeDim]:
         return scalar_class_factory(self._dimension)(self._values[1])
     
-    @property
+    @cached_property
     def z(self) -> Scalar[SomeDim]:
         return scalar_class_factory(self._dimension)(self._values[2])
     
-    def dot(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Scalar[ProductDim[SomeDim, SomeOtherDim]]:
+    @cached_property
+    def length(self) -> Scalar[SomeDim]:
+        return scalar_class_factory(self._dimension)(
+            self._values.transpose().dot(self._values)**.5
+        )
+    
+    @cached_property
+    def theta(self) -> Scalar[D.Angle]:
+        """Angle between the projection of `self` on the (xy) plane, and the x axis.
+        In [-π, π] range
+        """
+
+        # FIXME
+        return np.atan2(self.y.base_unit_value, self.x.base_unit_value) * Quantity.rad
+    
+    @cached_property
+    def delta(self) -> Scalar[D.Angle]:
+        """The complementary angle between `self` and z axis.
+        In [-π/2, π/2] range
+        """
+
+        # FIXME
+        x = self.x.base_unit_value
+        y = self.y.base_unit_value
+        z = self.z.base_unit_value
+        xy = (x**2 + y**2)**.5
+        return np.atan2(z, xy) * Quantity.rad
+    
+    def angle(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Scalar[D.Angle]:
+        """Returns the angle between the two given vectors.
+        Returned angle is in `[0;π]` range.
+        """
+        if self == o:
+            return 0 * Quantity.rad
+        cos_angle = cast(Scalar[D.Dimless], self.dot(o) / (self.length * o.length))
+        if cos_angle >= 1:
+            return 0 * Quantity.rad
+        elif cos_angle <= -1:
+            return pi * Quantity.rad
+        return cos_angle.acos()
+    
+    def normalized(self) -> Vector3[D.Dimless]:
+        l = self.length
+        return self / l
+    
+    @staticmethod
+    def from_spherical(theta: Scalar[D.Angle], delta: Scalar[D.Angle], rho: Scalar[SomeOtherDim]) -> Vector3[SomeOtherDim]:
+        """
+        Creates and returns a 3D vector from spherical coordinates. 
+
+        Uses "radius-longitude-latitude" convention, [see in Wikipedia.](https://fr.wikipedia.org/wiki/Coordonn%C3%A9es_sph%C3%A9riques#Convention_rayon-longitude-latitude))
+
+        Arguments
+        ---------
+        - `theta:` Longitude angle (θ) from given convention. If is a `pint.Quantity`, must have angle dimension.
+        - `delta:` Latitude angle (δ) from given convention. If is a `pint.Quantity`, must have angle dimension.
+        - `rho:` Radius (ρ) from given convention.
+        """
+
+        cos_delta = delta.cos()
+        sin_delta = delta.sin()
+        cos_theta = theta.cos()
+        sin_theta = theta.sin()
+
+        return vector3_class_factory(rho._dimension).new(
+            x = rho * cos_theta * cos_delta,
+            y = rho * sin_theta * cos_delta,
+            z = rho * sin_delta
+        )
+    
+    @overload
+    def dot(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Scalar[ProductDim[SomeDim, SomeDim]]: ...
+
+    @overload
+    def dot(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Scalar[ProductDim[SomeDim, SomeOtherDim]]: ...
+    
+    def dot(self, o: object) -> Scalar[Any]:
         if not isinstance(o, Vector3):
             raise TypeError("dot product requires two Vector3 instances")
 
@@ -74,7 +158,16 @@ class Vector3[SomeDim](Tensor[SomeDim]):
         result_values = self._values.transpose().dot(o._values)
         return scalar_class_factory(self._dimension)(result_values)
     
-    def cross(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]:
+    @overload
+    def cross(self: Vector3[D.Dimless], o: Vector3[D.Dimless]) -> Vector3[D.Dimless]: ...
+    
+    @overload
+    def cross(self: Vector3[D.Dimless], o: Vector3[SomeOtherDim]) -> Vector3[SomeOtherDim]: ...
+    
+    @overload
+    def cross(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]: ...
+    
+    def cross(self, o: object) -> Vector3[Any]:
         if not isinstance(o, Vector3):
             raise TypeError("cross product requires two Vector3 instances")
 
@@ -220,3 +313,10 @@ class Vector3[SomeDim](Tensor[SomeDim]):
             return self.dot(o)
         
         raise TypeError("...")
+
+_vector3_dimless = Vector3[D.Dimless]
+Vector3.O = _vector3_dimless.new(0, 0, 0)
+Vector3.X = _vector3_dimless.new(1, 0, 0)
+Vector3.Y = _vector3_dimless.new(0, 1, 0)
+Vector3.Z = _vector3_dimless.new(0, 0, 1)
+Vector3.ONE = _vector3_dimless.new(1, 1, 1)

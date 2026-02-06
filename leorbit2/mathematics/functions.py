@@ -1,13 +1,16 @@
-from math import pi
-from leorbit2.mathematics.dimensions import D, Number
+import math
+from leorbit2.mathematics.dimensions import D, Dim, Number
 from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.scalar import Scalar
 
-TWELF_PI = pi / 12
-TWOPI = 2 * pi
+TWELF_PI = math.pi / 12
+TWOPI = 2 * math.pi
 
-FULL_REV = (2 * pi) * Quantity.rad
+FULL_REV = (2 * math.pi) * Quantity.rad
 HALF_REV = FULL_REV / 2
+
+def atan2[SomeDim: Dim](y: Scalar[SomeDim], x: Scalar[SomeDim]) -> Scalar[D.Angle]:
+    return math.atan2(y.base_unit_value, x.base_unit_value) * Quantity.rad
 
 def normalize_angle(angle: Scalar[D.Angle]) -> Scalar[D.Angle]:
     """Returns the given angle in its [0, 2π] range."""

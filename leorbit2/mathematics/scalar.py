@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from math import acos, asin, atan, cos, sin, tan
 from pyclbr import Class
 from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
@@ -190,6 +191,9 @@ class Scalar[SomeDim](Tensor[SomeDim]):
     def __lt__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
 
     @overload
+    def __lt__(self: Scalar[D.Dimless], o: Scalar[D.Dimless] | Number) -> bool: ...
+
+    @overload
     def __lt__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
 
     def __lt__(self, o: object) -> bool:
@@ -197,6 +201,9 @@ class Scalar[SomeDim](Tensor[SomeDim]):
 
     @overload
     def __le__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
+
+    @overload
+    def __le__(self: Scalar[D.Dimless], o: Scalar[D.Dimless] | Number) -> bool: ...
 
     @overload
     def __le__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
@@ -208,6 +215,9 @@ class Scalar[SomeDim](Tensor[SomeDim]):
     def __gt__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
 
     @overload
+    def __gt__(self: Scalar[D.Dimless], o: Scalar[D.Dimless] | Number) -> bool: ...
+
+    @overload
     def __gt__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
 
     def __gt__(self, o: object) -> bool:
@@ -217,7 +227,47 @@ class Scalar[SomeDim](Tensor[SomeDim]):
     def __ge__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
 
     @overload
+    def __ge__(self: Scalar[D.Dimless], o: Scalar[D.Dimless] | Number) -> bool: ...
+
+    @overload
     def __ge__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
 
     def __ge__(self, o: object) -> bool:
         return super().__ge__(o)
+    
+    #############################################
+
+    def cos(self: Scalar[D.Angle]) -> Scalar[D.Dimless]:
+        return Scalar[D.Dimless].new(
+            cos(self.base_unit_value)
+        )
+    
+    def sin(self: Scalar[D.Angle]) -> Scalar[D.Dimless]:
+        return Scalar[D.Dimless].new(
+            sin(self.base_unit_value)
+        )
+    
+    def tan(self: Scalar[D.Angle]) -> Scalar[D.Dimless]:
+        return Scalar[D.Dimless].new(
+            tan(self.base_unit_value)
+        )
+    
+    def acos(self: Scalar[D.Dimless]) -> Scalar[D.Angle]:
+        return Scalar[D.Angle].new(
+            acos(self.base_unit_value)
+        )
+    
+    def asin(self: Scalar[D.Dimless]) -> Scalar[D.Angle]:
+        return Scalar[D.Angle].new(
+            asin(self.base_unit_value)
+        )
+    
+    def atan(self: Scalar[D.Dimless]) -> Scalar[D.Angle]:
+        return Scalar[D.Angle].new(
+            atan(self.base_unit_value)
+        )
+    
+    def sqrt(self: Scalar[ProductDim[SomeDim, SomeDim]]) -> Scalar[SomeDim]:
+        return scalar_class_factory(self._dimension.sqrt()).new(
+            self.base_unit_value**.5
+        )

@@ -3,14 +3,10 @@
 
 import math
 from math import log10, sin, cos, tan, atan2
-from leorbit2.mathematics import Dim, Scalar, Quantity, Vector3, quantity
-from pint import Quantity
-
+from leorbit2.mathematics import D, Scalar, Quantity, Vector3, quantity
+from leorbit2.mathematics 
 import numpy as np
 from numpy.typing import NDArray
-from mathematics.custom import HALF_REV
-
-QtOrArray = TypeVar("FloatOrArray", Quantity, NDArray)
 
 from typing import TYPE_CHECKING, TypeVar, cast
 if TYPE_CHECKING:
@@ -24,15 +20,13 @@ RADIIE_A4 = RADIIE_AA**2
 RADIIE_BB = (6_356_752 * UREG.meter)**2
 RADIIE_B4 = RADIIE_BB**2
 
-def geocentric_radius_earth(latitude: Quantity | float) -> Quantity:
+def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
     """Returns the mean radius of Earth at given latitude.
     Earth is considered as a spheroid. 
     
     Algorithm from: https://en.wikipedia.org/wiki/Earth_radius#Geocentric_radius"""
-    if isinstance(latitude, Quantity):
-        assert latitude.check("rad")
-    cc = cos(latitude)
-    ss = sin(latitude)
+    cc = latitude.cos()
+    ss = latitude.sin()
     rr = (RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)
     return rr**.5
 

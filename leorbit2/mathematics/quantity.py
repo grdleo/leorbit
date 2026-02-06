@@ -1,4 +1,5 @@
 
+from math import pi
 from leorbit2.mathematics.dimensions import D
 from leorbit2.mathematics.scalar import Scalar
 
@@ -7,6 +8,8 @@ class QuantityMeta(type):
     def __getattr__(cls, name: str) -> Scalar:
         if name == "rad":
             return Scalar[D.Angle].new(1)
+        elif name == "deg":
+            return Scalar[D.Angle].new(pi / 180)
         elif name == "m":
             return Scalar[D.Length].new(D.Length.meter)
         elif name == "km":
@@ -32,6 +35,9 @@ class Quantity(metaclass=QuantityMeta):
 
     rad: Scalar[D.Angle]
     """radians"""
+
+    deg: Scalar[D.Angle]
+    """degrees"""
 
     # DISTANCES
 

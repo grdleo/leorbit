@@ -3,6 +3,9 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, ParamSpec, Callable, TypeVar, cast
 
 from leorbit2.mathematics import D, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify
+from leorbit2.mathematics.matrix33 import Matrix33
+from leorbit2.mathematics.quantity import Quantity
+from leorbit2.mathematics.transform import TransformVector3Affine
 from leorbit2.time import Time
 
 if TYPE_CHECKING:
@@ -16,10 +19,7 @@ SomeDynamicVec = TypeVar("SomeDynamicVec", bound=DynamicVec)
 DynamicD = D.Length | D.Velocity
 SomeDynamicD = TypeVar("SomeDynamicD", bound=DynamicD)
 
-class Frame:
-    """Base class for frames"""
-
-class AbsoluteFrame(Enum, Frame):
+class AbsoluteFrame(Enum):
     """Absolute frame"""
 
     GCRF = "GCRF"
@@ -61,11 +61,13 @@ def absolute_frame_transform_factory(from_frame: AbsoluteFrame, to_frame: Absolu
 _AbsPos = TypeVar("_AbsPos", bound=PosVec)
 _RelPos = TypeVar("_RelPos", bound=PosVec)
 
-class RelativeFrame(Frame):
-    def __init__(self, reference_frame: AbsoluteFrame, transform: Transform[_AbsPos, _RelPos]):
+class RelativeFrame:
+    def __init__(self, reference_frame: AbsoluteFrame, transform: Transform[_RelPos, _AbsPos]):
         """A frame relative to a reference frame. """
         self.reference_frame = reference_frame
         self.transform = transform
+
+Frame = AbsoluteFrame | RelativeFrame
 
 @lru_cache
 def frame_transform_factory(from_frame: Frame, to_frame: Frame) -> FrameTransformFactory:
@@ -123,26 +125,33 @@ class EarthLocalFrame(RelativeFrame):
     location: "Coordinates"
 
     def __init__(self, location: "Coordinates"):
-        itrf: Vec3 = location.get_pos(AbsoluteFrame.ITRF)
+        itrf = location.get_pos(AbsoluteFrame.ITRF)
         
         z = itrf.normalized() # towards zenith
-        north = copy(ZAXIS)
-        ang = Vec3.angle(z, north)
-        x: Vec3 # towards "true north"
+        north = Vector3.Z
+        ang = z.angle(north)
 
-        if ang % (180 * UREG.degrees) == 0: # FIXME
+        half_turn = 180 * Quantity.deg
+        quart_turn = 90 * Quantity.deg
+
+        if ang % half_turn == 0: # FIXME
             raise ValueError("Cannot create `EarthLocalFrame` in Earth's poles!")
-        elif ang == 90 * UREG.degrees: # FIXME
-            x = copy(north)
+        elif ang == quart_turn: # FIXME
+            x = north.copy()
         else:
-            x = (north / cos(ang) - z).normalized()
-            if ang > 90 * UREG.degrees:
-                x *= -1
+            x = (north / ang.cos() - z).normalized()
+            if ang > quart_turn:
+                x = -x
         
         y = x.cross(z) # towards "east"
 
-        mat = Mat33.from_col_vectors(x, y, z)
-        transform = AffineTransform(mat, itrf)
+        mat = Matrix33[D.Dimless].new(
+            x.x, y.x, z.x,
+            x.y, y.y, z.y,
+            x.z, y.z, z.z
+        )
+
+        transform = TransformVector3Affine(mat, itrf)
 
         super().__init__(AbsoluteFrame.ITRF, transform)
 

@@ -6,11 +6,12 @@ from enum import Enum
 from functools import lru_cache
 from typing import ParamSpec, Callable, TypeVar, cast
 
-from leorbit2.frames import AbsoluteFrame, frame_transform_factory
+from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
 from leorbit2.mathematics import D, Dim, Scalar, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, D
 from leorbit2.mathematics.functions import normalize_angle, normalize_angle_symmetric, angle2dms
+from leorbit2.mathematics.quantity import Quantity
 from leorbit2.time import Time
-from leorbit.frames import Frame
+from leorbit2.utils import geocentric_radius_earth
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]
@@ -73,15 +74,16 @@ class Coordinates:
     ### ### ###
     
     @staticmethod
-    def from_gps(longitude: Q_, latitude: Q_, altitude: Q_ = 0 * POS_UNIT, epoch: Time = None) -> Self:
-        assert longitude.check(UREG.radians)
-        assert latitude.check(UREG.radians)
-        assert altitude.check(UREG.meters)
-
+    def from_gps(
+        longitude: Scalar[D.Angle], 
+        latitude: Scalar[D.Angle], 
+        altitude: Scalar[D.Length] = 0 * Quantity.m, 
+        epoch: Time | None = None
+    ) -> Coordinates:
         theta = longitude
         delta = latitude
         rho = geocentric_radius_earth(delta) + altitude
-        pos = Vec3.from_spherical(theta, delta, rho)
+        pos = Vector3.from_spherical(theta, delta, rho)
         epoch = Time.now() if epoch is None else epoch
 
         return Coordinates(epoch, AbsoluteFrame.ITRF, pos)
@@ -91,12 +93,12 @@ class Coordinates:
         """Returns this coordinates as their GPS representation"""
         gps = self._already_computed_repr.get(GPS, None)
         if gps is not None:
-            return gps
+            return cast(GPS, gps)
         
         itrf_pos = self.get_pos(AbsoluteFrame.ITRF)
         lon = itrf_pos.theta
         lat = itrf_pos.delta
-        alt = itrf_pos.rho - geocentric_radius_earth(lat)
+        alt = itrf_pos.length - geocentric_radius_earth(lat)
 
         return GPS(
             longitude=lon, 

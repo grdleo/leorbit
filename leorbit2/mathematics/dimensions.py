@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from fractions import Fraction
 from pyclbr import Class
 from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
@@ -7,8 +8,8 @@ import numpy as np
 
 @dataclass(frozen=True)
 class DimEls:
-    length: int = 0
-    time: int = 0
+    length: Fraction | int = 0
+    time: Fraction | int = 0
 
     @property
     def dimensionless(self) -> bool:
@@ -28,6 +29,12 @@ class DimEls:
         return DimEls(
             length=self.length - o.length,
             time=self.time - o.time
+        )
+    
+    def sqrt(self) -> DimEls:
+        return DimEls(
+            length=Fraction(self.length) / 2,
+            time=Fraction(self.time) / 2
         )
 
 class Dim:
@@ -170,3 +177,6 @@ class QuotientDim[SomeDim, SomeOtherDim](Dim):
             (Dim,),
             dict(d=result_els)
         )
+    
+SomeDim = TypeVar("SomeDim", bound=Dim)
+SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
