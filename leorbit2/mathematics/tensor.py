@@ -148,6 +148,26 @@ class Tensor[SomeDim = D.Dimless]():
         except:
             raise RuntimeError("...")
         
+    def __mod__(self, o: object) -> Tensor[SomeDim]: # self % o
+        o = ensure_tensor(o)
+        if not self.ensure_compatible_dimensions(o):
+            raise RuntimeError("Tensors dimensions are not compatible!")
+        
+        try:
+            return self.__class__(self._values % o._values)
+        except:
+            raise RuntimeError("...")
+
+    def __rmod__(self, o: object) -> Tensor[SomeDim]: # o % self
+        o = ensure_tensor(o)
+        if not self.ensure_compatible_dimensions(o):
+         raise RuntimeError("Tensors dimensions are not compatible!")
+
+        try:
+            return self.__class__(o._values % self._values)
+        except:
+            raise RuntimeError("...")
+        
     def __pos__(self) -> Self:
         return self.__class__(+self._values)
     

@@ -156,6 +156,29 @@ class Scalar[SomeDim](Tensor[SomeDim]):
     def __rtruediv__(self, o: object) -> Scalar[Any]:
         return cast(Scalar[Any], super().__rtruediv__(o))
     
+    ### % OPERATOR ###
+
+    @overload
+    def __mod__(self: Scalar[D.Dimless], o: Number | Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
+
+    @overload
+    def __mod__(self: Scalar[SomeDim], o: Number) -> Never: ...
+
+    @overload
+    def __mod__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> Scalar[SomeDim]: ...
+
+    def __mod__(self, o: object) -> Scalar[Any]:
+        return cast(Scalar[Any], super().__mod__(o))
+    
+    @overload
+    def __rmod__(self: Scalar[D.Dimless], o: Number) -> Scalar[D.Dimless]: ...
+
+    @overload
+    def __rmod__(self: Scalar[SomeDim], o: Number) -> Never: ...
+
+    def __rmod__(self, o: object) -> Scalar[Any]:
+        return cast(Scalar[Any], super().__radd__(o))
+    
     ### @ OPERATOR ###
 
     def __matmul__(self, o: object) -> Scalar[Any]:
