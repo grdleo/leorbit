@@ -8,7 +8,7 @@ from math import ceil
 import numpy as np
 from numpy.typing import NDArray
 
-from leorbit2.mathematics import AngleD, Dim, Scalar, Number, Quantity, TimeD
+from leorbit2.mathematics import D, Scalar, Number, Quantity
 
 import numpy as np
 TWOPI = 2 * np.pi
@@ -93,9 +93,9 @@ class Time:
     def __deepcopy__(self, *args, **kwargs) -> "Time":
         return self.copy()
 
-    def __add__(self: "Time", other: Scalar[TimeD]) -> "Time":
+    def __add__(self: "Time", other: Scalar[D.Time]) -> "Time":
         try:
-            assert other._dimension == TimeD._d
+            assert other._dimension == D.Time._d
             delta_seconds = other.magnitude("s")
             return self.__class__(self._unixepoch + delta_seconds)
         except Exception as ex:
@@ -103,9 +103,9 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def __iadd__(self: "Time", other: Scalar[TimeD]) -> None:
+    def __iadd__(self: "Time", other: Scalar[D.Time]) -> None:
         try:
-            assert other._dimension == TimeD._d
+            assert other._dimension == D.Time._d
             delta_seconds = other.magnitude("s")
             self._unixepoch += float(delta_seconds)
         except Exception as ex:
@@ -113,9 +113,9 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
         
-    def __sub__(self: "Time", other: Scalar[TimeD]) -> "Time":
+    def __sub__(self: "Time", other: Scalar[D.Time]) -> "Time":
         try:
-            assert other._dimension == TimeD._d
+            assert other._dimension == D.Time._d
             delta_seconds = other.magnitude("s")
             return self.__class__(self._unixepoch - delta_seconds)
         except Exception as ex:
@@ -123,9 +123,9 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a duration"
             ) from ex
 
-    def __isub__(self: "Time", other: Scalar[TimeD]) -> None:
+    def __isub__(self: "Time", other: Scalar[D.Time]) -> None:
         try:
-            assert other._dimension == TimeD._d
+            assert other._dimension == D.Time._d
             delta_seconds = other.magnitude("s")
             self._unixepoch -= float(delta_seconds)
         except Exception as ex:
@@ -133,12 +133,12 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def delta(self: "Time", other: "Time") -> Scalar[TimeD]:
+    def delta(self: "Time", other: "Time") -> Scalar[D.Time]:
         """Return the duration between two given `Time` objects (i.e `self - other`), as a `pint.Quantity`.
 
         If `other > self`, the returned duration will be negative. 
         """
-        return Scalar[TimeD].new(self._unixepoch - other._unixepoch)
+        return Scalar[D.Time].new(self._unixepoch - other._unixepoch)
 
     @property
     def isoformat(self: "Time") -> str:
@@ -153,21 +153,21 @@ class Time:
         return date.strftime("%Y-%m-%d at %H:%M:%S")
 
     @property
-    def jd(self: "Time") -> Scalar[TimeD]:
+    def jd(self: "Time") -> Scalar[D.Time]:
         """Representation of this `Time` object as "Julian day (JD)", aka 
         the number of days since -4712/01/01."""
         days = (self._unixepoch / 86_400 + 2_440_587.5)
         return days * Quantity.day
 
     @property
-    def j2000(self: "Time") -> Scalar[TimeD]:
+    def j2000(self: "Time") -> Scalar[D.Time]:
         """Representation of this `Time` object as "Julian year (J2000)", aka 
         the number of days since 2000/01/01T12:00:00."""
         days = (self._unixepoch / 86_400 - 10_957.5)
         return days * Quantity.day
 
     @property
-    def from_mil(self: "Time") -> Scalar[TimeD]:
+    def from_mil(self: "Time") -> Scalar[D.Time]:
         """Representation of this `Time` object as a fraction of days since 1 january 2000 00:00.
 
         Taken from: https://stjarnhimlen.se/comp/ppcomp.html#3"""
@@ -187,7 +187,7 @@ class Time:
         return f"{full_y[2:4]}{days:012.8f}"
 
     @property
-    def stl0(self: "Time") -> Scalar[AngleD]: # FIXME: better algorithm on the Wiki page
+    def stl0(self: "Time") -> Scalar[D.Angle]: # FIXME: better algorithm on the Wiki page
         """The 
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Time`.
@@ -196,6 +196,11 @@ class Time:
         angle_rad = ((np.float128(18.697374558) + np.float128(24.06570982441908) * d) * TWELF_PI) % TWOPI
         return angle_rad * Quantity.rad
     
+
+
+
+
+
 
 
 MIN_DURATION = Q_("1ns")

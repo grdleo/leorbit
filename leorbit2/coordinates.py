@@ -7,16 +7,17 @@ from functools import lru_cache
 from typing import ParamSpec, Callable, TypeVar, cast
 
 from leorbit2.frames import AbsoluteFrame, frame_transform_factory
-from leorbit2.mathematics import AngleD, AngularAccD, AngularJerkD, Dim, DimLess, InvLengthD, LengthD, Scalar, SomeDim, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, VelocityD
+from leorbit2.mathematics import D, Dim, Scalar, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, D.Velocity
 from leorbit2.time import Time
 from leorbit.frames import Frame
 
-PosVec = Vector3[LengthD]
-VelVec = Vector3[VelocityD]
+PosVec = Vector3[D.Length]
+VelVec = Vector3[D.Velocity]
 
-DynamicVec = Vector3[LengthD] | Vector3[VelocityD]
+SomeDim = TypeVar("SomeDim", bound=Dim)
+DynamicVec = Vector3[D.Length] | Vector3[D.Velocity]
 SomeDynamicVec = TypeVar("SomeDynamicVec", bound=DynamicVec)
-DynamicD = LengthD | VelocityD
+DynamicD = D.Length | D.Velocity
 SomeDynamicD = TypeVar("SomeDynamicD", bound=DynamicD)
 
 class PosVel(NamedTuple):
@@ -186,24 +187,24 @@ class OrbitalElements(CoordinatesRepresentation):
     """Dataclass holding orbital elements, at a given epoch, gathered from Celestrak.org 
     (also known as GP data)"""
     epoch: Time
-    eccentricity: Scalar[DimLess] # [1]
-    inclination: Scalar[AngleD] # [rad]
-    ra_of_asc_node: Scalar[AngleD] # [rad]
-    arg_of_pericenter: Scalar[AngleD] # [rad]
-    mean_motion: Scalar[AngleD] # [rad]
-    mean_anomaly: Scalar[AngleD] # [rad]
-    mean_motion_dot: Scalar[AngularAccD] = field(init=True, default_factory=lambda: Scalar[AngularAccD].new(0)) # [rad/s²]
-    mean_motion_ddot: Scalar[AngularJerkD] = field(init=True, default_factory=lambda: Scalar[AngularJerkD].new(0)) # [rad/s3]
-    bstar: Scalar[InvLengthD] = field(init=True, default_factory=lambda: Scalar[InvLengthD].new(0)) # [1/m]
+    eccentricity: Scalar[D.Dimless] # [1]
+    inclination: Scalar[D.Angle] # [rad]
+    ra_of_asc_node: Scalar[D.Angle] # [rad]
+    arg_of_pericenter: Scalar[D.Angle] # [rad]
+    mean_motion: Scalar[D.Angle] # [rad]
+    mean_anomaly: Scalar[D.Angle] # [rad]
+    mean_motion_dot: Scalar[D.AngularAcc] = field(init=True, default_factory=lambda: Scalar[D.AngularAcc].new(0)) # [rad/s²]
+    mean_motion_ddot: Scalar[D.AngularJerk] = field(init=True, default_factory=lambda: Scalar[D.AngularJerk].new(0)) # [rad/s3]
+    bstar: Scalar[D.InvLength] = field(init=True, default_factory=lambda: Scalar[D.InvLength].new(0)) # [1/m]
 
     name: str = "No name"
     norad_cat_id: Optional[int] = None
 
     # \/ CACHED PROPERTIES \/
-    eccentric_anomaly: Scalar[LengthD] = field(init=False) # [rad]
-    true_anomaly: Scalar[AngleD] = field(init=False) # [rad]
-    semi_major_axis: Scalar[LengthD] = field(init=False) # [m]
-    semi_minor_axis: Scalar[LengthD] = field(init=False) # [m]
+    eccentric_anomaly: Scalar[D.Length] = field(init=False) # [rad]
+    true_anomaly: Scalar[D.Angle] = field(init=False) # [rad]
+    semi_major_axis: Scalar[D.Length] = field(init=False) # [m]
+    semi_minor_axis: Scalar[D.Length] = field(init=False) # [m]
     time_at_periaster: Time = field(init=False)
 
     def __post_init__(self):

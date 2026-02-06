@@ -2,15 +2,15 @@ from enum import Enum
 from functools import lru_cache
 from typing import ParamSpec, Callable, TypeVar, cast
 
-from leorbit2.mathematics import Dim, LengthD, SomeDim, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, VelocityD
+from leorbit2.mathematics import D, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify
 from leorbit2.time import Time
 
-PosVec = Vector3[LengthD]
-VelVec = Vector3[VelocityD]
+PosVec = Vector3[D.Length]
+VelVec = Vector3[D.Velocity]
 
-DynamicVec = Vector3[LengthD] | Vector3[VelocityD]
+DynamicVec = Vector3[D.Length] | Vector3[D.Velocity]
 SomeDynamicVec = TypeVar("SomeDynamicVec", bound=DynamicVec)
-DynamicD = LengthD | VelocityD
+DynamicD = D.Length | D.Velocity
 SomeDynamicD = TypeVar("SomeDynamicD", bound=DynamicD)
 
 class Frame:
