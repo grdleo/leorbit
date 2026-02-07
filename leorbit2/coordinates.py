@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from functools import cache, lru_cache
-from typing import NamedTuple, Self
+from typing import Literal, NamedTuple, Self
 
 from enum import Enum
 from functools import lru_cache
@@ -11,7 +11,7 @@ from leorbit2.mathematics import D, Dim, Scalar, TransformChain, Vector3, Transf
 from leorbit2.mathematics.functions import normalize_angle, normalize_angle_symmetric, angle2dms
 from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.transform import TransformVector3Affine
-from leorbit2.time import Time
+from leorbit2.time import Time, TimeInterval
 from leorbit2.utils import geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
 PosVec = Vector3[D.Length]
@@ -524,3 +524,44 @@ class OrbitalElements(CoordinatesRepresentation):
         """
         gp_dict = get_celestrak_gpdata_json(catnr, log)
         return OrbitalElements.from_celestrak_json(gp_dict)
+    
+
+
+
+
+
+class Interpolation(Enum):
+    SNAP = "snap"
+    """Snaps to closest"""
+
+    LINEAR = "linear"
+    """Linear interpolation between two closest"""
+
+class PosVelArray(NamedTuple):
+    pos: "PosVecArray"
+    vel: "VelVecArray"
+
+class Trajectory:
+    def __init__(self, interval: TimeInterval, frame: Frame, pos: "PosVecArray", vel: "VelVecArray" | None = None):
+        self.interval = interval
+        self.positions: dict[Frame, PosVel] = {frame: PosVelArray(pos, vel)}
+        self.privileged_frame = frame
+        self.vel_available = vel is not None
+        self.name = None
+        
+        self._already_computed_repr: dict[type[CoordinatesRepresentation], CoordinatesRepresentation] = {}
+
+    def coordinates_at(self, epoch: Time, interpolation: Interpolation = Interpolation.SNAP) -> Coordinates:
+        raise NotImplementedError()
+
+    def get_pos(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.SNAP) -> PosVec: 
+        raise NotImplementedError()
+    
+    def get_vel(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.SNAP) -> VelVec: 
+        raise NotImplementedError()
+    
+    def gps(self) -> dict[Time, GPS]:
+        raise NotImplementedError()
+    
+    def horizontal(self) -> dict[Time, Horizontal]:
+        raise NotImplementedError()
