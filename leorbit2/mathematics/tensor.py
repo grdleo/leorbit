@@ -178,23 +178,33 @@ class Tensor[SomeDim = D.Dimless]():
     def __neg__(self) -> Self:
         return self.__class__(-self._values)
     
+    def __eq__(self, o: object) -> bool:
+        o = ensure_tensor(o)
+        ensure_same_dimensions(self, o)
+
+        return self._values == o._values
+    
     def __lt__(self, o: object) -> bool:
         o = ensure_tensor(o)
+        ensure_same_dimensions(self, o)
 
         return bool(self._values < self._values)
     
     def __le__(self, o: object) -> bool:
         o = ensure_tensor(o)
+        ensure_same_dimensions(self, o)
 
         return bool(self._values <= self._values)
     
     def __gt__(self, o: object) -> bool:
         o = ensure_tensor(o)
+        ensure_same_dimensions(self, o)
 
         return bool(self._values > self._values)
     
     def __ge__(self, o: object) -> bool:
         o = ensure_tensor(o)
+        ensure_same_dimensions(self, o)
 
         return bool(self._values >= self._values)
 

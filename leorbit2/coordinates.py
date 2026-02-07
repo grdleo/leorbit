@@ -6,6 +6,7 @@ from enum import Enum
 from functools import lru_cache
 from typing import ParamSpec, Callable, TypeVar, cast
 
+from leorbit2.algorithms import OrbitalElementsComputeTuple
 from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
 from leorbit2.mathematics import D, Dim, Scalar, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, D
 from leorbit2.mathematics.functions import normalize_angle, normalize_angle_symmetric, angle2dms
@@ -292,15 +293,6 @@ class Horizontal(CoordinatesRepresentation):
 
 """Implementation of "orbital elements" of an object orbiting Earth."""
 
-class OrbitalElementsComputeTuple(NamedTuple):
-    n: float # [rad/min]
-    i: float # [rad]
-    e: float # [1]
-    argp: float # [rad]
-    raan: float # [rad]
-    M: float # [rad]
-    bstar: float # [1/earthRadii]
-
 class OrbitalElements(CoordinatesRepresentation):
     """Dataclass holding orbital elements, at a given epoch, gathered from Celestrak.org 
     (also known as GP data)"""
@@ -327,19 +319,19 @@ class OrbitalElements(CoordinatesRepresentation):
         self.epoch = epoch
 
         self.eccentricity = e = eccentricity
-        if e < 0 or not e.check(D.Dimless):
+        if e < 0:
             raise ValueError()
         
         self.inclination = i = inclination
-        if not (deg_0 <= i <= deg_180) or not i.check(D.Angle):
+        if not (deg_0 <= i <= deg_180):
             raise ValueError()
 
         self.ra_of_asc_node = raan = ra_of_asc_node
-        if not (deg_0 <= raan <= deg_360) or not raan.check(D.Angle):
+        if not (deg_0 <= raan <= deg_360):
             raise ValueError()
 
         self.arg_of_pericenter = argp = arg_of_pericenter
-        if not (deg_0 <= argp <= deg_360) or not argp.check(D.Angle):
+        if not (deg_0 <= argp <= deg_360):
             raise ValueError()
 
         self.mean_motion = n = mean_motion
@@ -347,7 +339,7 @@ class OrbitalElements(CoordinatesRepresentation):
             raise ValueError()
 
         self.mean_anomaly = M = mean_anomaly
-        if not (deg_0 <= M <= deg_360) or not M.check(D.Angle):
+        if not (deg_0 <= M <= deg_360):
             raise ValueError()
 
         self.mean_motion_dot = mean_motion_dot
@@ -376,17 +368,23 @@ class OrbitalElements(CoordinatesRepresentation):
 
         self.semi_minor_axis = self.semi_major_axis * (1 - e ** 2) ** .5
 
-        _els_as_float_tuple = OrbitalElementsComputeTuple(
-            n=self.mean_motion.m_as("rad/min"),
-            i=self.inclination.m_as("rad"),
-            e=self.eccentricity.m,
-            argp=self.arg_of_pericenter.m_as("rad"),
-            raan=self.ra_of_asc_node.m_as("rad"),
-            M=self.mean_anomaly.m_as("rad"),
-            bstar=self.bstar.m_as("1/earthRadii")
+    @cached_property
+    def compute_tuple(self) -> OrbitalElementsComputeTuple:
+        n = self.mean_motion.base_unit_value # [rad/s]
+        n = n * 60 # [rad/min]
+
+        bstar = self.bstar.base_unit_value # [1/m]
+        bstar = bstar * Quantity.radii_earth.base_unit_value # [1/Earth radii]
+
+        return OrbitalElementsComputeTuple(
+            n=n,
+            i=self.inclination.base_unit_value,
+            e=self.eccentricity.base_unit_value,
+            argp=self.arg_of_pericenter.base_unit_value,
+            raan=self.ra_of_asc_node.base_unit_value,
+            M=self.mean_anomaly.base_unit_value,
+            bstar=bstar
         )
-        object.__setattr__(self, "_els_as_float_tuple", _els_as_float_tuple)
-        self._els_as_float_tuple: OrbitalElementsComputeTuple
     
     @property
     def period(self) -> Quantity:
