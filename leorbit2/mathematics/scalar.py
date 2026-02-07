@@ -1,17 +1,18 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from enum import Enum, IntEnum
+from fractions import Fraction
 from math import acos, asin, atan, cos, sin, tan
 from pyclbr import Class
-from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import Annotated, Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
+from numpy._typing import _UFunc_Nin1_Nout1
 
-from leorbit2.mathematics.dimensions import Dim, DimEls, D, ProductDim, QuotientDim
+from leorbit2.mathematics.dimensions import Dim, DimEls, D, PowerDim, ProductDim, QuotientDim, SomeDim, SomeOtherDim
 from leorbit2.mathematics.tensor import Tensor, dimensional_tensor_class_factory
 
 Number = float | int | np.floating
-SomeDim = TypeVar("SomeDim", bound=Dim)
-SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
 TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
@@ -24,7 +25,10 @@ def scalar_class_factory(dim: DimEls) -> type[Scalar]:
         )
     )
 
-class Scalar[SomeDim](Tensor[SomeDim]):
+class Exponent(IntEnum):
+    TWO = 2
+
+class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     @classmethod
     def new(cls, value: Number | TensorData):
         if isinstance(value, Number):
@@ -137,7 +141,7 @@ class Scalar[SomeDim](Tensor[SomeDim]):
     def __truediv__(self: Scalar[SomeDim], o: Number | Scalar[D.Dimless]) -> Scalar[SomeDim]: ...
 
     @overload
-    def __truediv__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> Scalar[D.Dimless]: ...
+    def __truediv__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> Scalar[D.Dimless]: ... # type: ignore
 
     @overload
     def __truediv__(self: Scalar[SomeDim], o: Scalar[SomeOtherDim]) -> Scalar[QuotientDim[SomeDim, SomeOtherDim]]: ...
@@ -237,6 +241,18 @@ class Scalar[SomeDim](Tensor[SomeDim]):
     
     #############################################
 
+    # ** OPERATOR
+
+    def __pow__(self, o: object) -> Scalar[Any]:
+        if not isinstance(o, Fraction | int | float):
+            raise ValueError()
+        
+        return scalar_class_factory(self._dimension ** Fraction(o)).new(
+            self.base_unit_value ** float(o)
+        )
+    
+    #############################################
+
     def cos(self: Scalar[D.Angle]) -> Scalar[D.Dimless]:
         return Scalar[D.Dimless].new(
             cos(self.base_unit_value)
@@ -266,8 +282,76 @@ class Scalar[SomeDim](Tensor[SomeDim]):
         return Scalar[D.Angle].new(
             atan(self.base_unit_value)
         )
+
+    #############################################
+
+    # NumPy ufunc support for trigonometric functions
+
+    @overload
+    def __array_ufunc__(self: Scalar[D.Angle], ufunc: _UFunc_Nin1_Nout1[Literal['cos'], Literal[9], None], method: Literal["__call__"], *inputs: Any, **_kwargs: Any) -> Scalar[D.Dimless]: ...
+
+    @overload
+    def __array_ufunc__(self: Scalar[D.Angle], ufunc: _UFunc_Nin1_Nout1[Literal["sin"], Literal[9], None], method: Literal["__call__"], *inputs: Any, **_kwargs: Any) -> Scalar[D.Dimless]: ...
+
+    def __array_ufunc__(self, ufunc: Any, method: str, *inputs: Any, **_kwargs: Any) -> Any:
+        """Enable NumPy universal functions to work with Scalar objects."""
+        if method != '__call__':
+            return NotImplemented
+
+        # Handle single-argument trigonometric functions
+        if len(inputs) == 1 and inputs[0] is self:
+            # Forward trig functions: angle -> dimensionless
+            if ufunc == np.sin:
+                if not isinstance(self, Scalar):  # type guard
+                    return NotImplemented
+                # Type checker will see this as Scalar[D.Angle] -> Scalar[D.Dimless]
+                return self.sin()  # type: ignore
+            elif ufunc == np.cos:
+                return self.cos()  # type: ignore
+            elif ufunc == np.tan:
+                return self.tan()  # type: ignore
+            # Inverse trig functions: dimensionless -> angle
+            elif ufunc == np.arcsin:
+                return self.asin()  # type: ignore
+            elif ufunc == np.arccos:
+                return self.acos()  # type: ignore
+            elif ufunc == np.arctan:
+                return self.atan()  # type: ignore
+            # Square root
+            elif ufunc == np.sqrt:
+                return self.sqrt()  # type: ignore
+            elif ufunc == np.square:
+                return self.sqr()  # type: ignore
+
+        return NotImplemented
+
+    @overload
+    def sqr(self: Scalar[PowerDim[SomeDim, Literal[1], Literal[2]]]) -> Scalar[SomeDim]: ...
+
+    @overload
+    def sqr(self: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, Literal[2], Literal[1]]]: ...
     
-    def sqrt(self: Scalar[ProductDim[SomeDim, SomeDim]]) -> Scalar[SomeDim]:
-        return scalar_class_factory(self._dimension.sqrt()).new(
-            self.base_unit_value**.5
+    def sqr(self) -> Scalar[Any]:
+        return scalar_class_factory(self._dimension ** 2).new(
+            self.base_unit_value ** 2
         )
+    
+    @overload
+    def sqrt(self: Scalar[PowerDim[SomeDim, Literal[2], Literal[1]]]) -> Scalar[SomeDim]: ...
+    
+    @overload
+    def sqrt(self: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, Literal[1], Literal[2]]]: ...
+    
+    def sqrt(self) -> Scalar[Any]:
+        return scalar_class_factory(self._dimension ** .5).new(
+            self.base_unit_value ** .5
+        )
+    
+
+a = Scalar[D.Length].new(11)
+b = Scalar[D.Length].new(1)
+
+aa = np.cos(a)
+
+c = a.sqr()
+d = c.sqrt()

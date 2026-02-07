@@ -62,7 +62,7 @@ _AbsPos = TypeVar("_AbsPos", bound=PosVec)
 _RelPos = TypeVar("_RelPos", bound=PosVec)
 
 class RelativeFrame:
-    def __init__(self, reference_frame: AbsoluteFrame, transform: Transform[_RelPos, _AbsPos]):
+    def __init__(self, reference_frame: AbsoluteFrame, transform: Transform[_AbsPos, _RelPos]):
         """A frame relative to a reference frame. """
         self.reference_frame = reference_frame
         self.transform = transform
@@ -123,6 +123,7 @@ class EarthLocalFrame(RelativeFrame):
         - `x × y = -z`
     """
     location: "Coordinates"
+    transform: TransformVector3Affine[DynamicD]
 
     def __init__(self, location: "Coordinates"):
         itrf = location.get_pos(AbsoluteFrame.ITRF)

@@ -7,7 +7,7 @@ from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, Type
 
 import numpy as np
 
-from leorbit2.mathematics.dimensions import Dim, DimEls, D, ProductDim, QuotientDim, SomeOtherDim
+from leorbit2.mathematics.dimensions import Dim, DimEls, D, ProductDim, QuotientDim, SomeDim, SomeOtherDim
 from leorbit2.mathematics.functions import atan2
 from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.scalar import Scalar, scalar_class_factory
@@ -34,7 +34,7 @@ def all_simple_numbers(els: list[object]) -> TypeGuard[list[Number]]:
 def all_scalars_numbers(els: list[object]) -> TypeGuard[list[Scalar]]:
     return all(isinstance(el, Scalar) for el in els)
 
-class Vector3[SomeDim](Tensor[SomeDim]):
+class Vector3(Generic[SomeDim], Tensor[SomeDim]):
     O: ClassVar[Vector3[D.Dimless]]
     X: ClassVar[Vector3[D.Dimless]]
     Y: ClassVar[Vector3[D.Dimless]]
@@ -86,8 +86,7 @@ class Vector3[SomeDim](Tensor[SomeDim]):
         In [-π, π] range
         """
 
-        # FIXME
-        return np.atan2(self.y.base_unit_value, self.x.base_unit_value) * Quantity.rad
+        return atan2(self.y, self.x)
     
     @cached_property
     def delta(self) -> Scalar[D.Angle]:
@@ -95,12 +94,12 @@ class Vector3[SomeDim](Tensor[SomeDim]):
         In [-π/2, π/2] range
         """
 
-        # FIXME
-        x = self.x.base_unit_value
-        y = self.y.base_unit_value
-        z = self.z.base_unit_value
-        xy = (x**2 + y**2)**.5
-        return np.atan2(z, xy) * Quantity.rad
+        xy = cast(
+            Scalar[SomeDim], 
+            (self.x.sqr() + self.y.sqr()).sqrt()
+        )
+
+        return atan2(self.z, xy)
     
     def angle(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Scalar[D.Angle]:
         """Returns the angle between the two given vectors.
@@ -280,7 +279,7 @@ class Vector3[SomeDim](Tensor[SomeDim]):
     def __truediv__(self: Vector3[SomeDim], o: Number | Scalar[D.Dimless]) -> Vector3[SomeDim]: ...
 
     @overload
-    def __truediv__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[D.Dimless]: ...
+    def __truediv__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[D.Dimless]: ... # type: ignore
 
     @overload
     def __truediv__(self: Vector3[SomeDim], o: Scalar[SomeOtherDim]) -> Vector3[QuotientDim[SomeDim, SomeOtherDim]]: ...

@@ -1,5 +1,5 @@
 import math
-from leorbit2.mathematics.dimensions import D, Dim, Number
+from leorbit2.mathematics.dimensions import D, Dim, Number, SomeDim
 from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.scalar import Scalar
 
@@ -9,7 +9,7 @@ TWOPI = 2 * math.pi
 FULL_REV = (2 * math.pi) * Quantity.rad
 HALF_REV = FULL_REV / 2
 
-def atan2[SomeDim: Dim](y: Scalar[SomeDim], x: Scalar[SomeDim]) -> Scalar[D.Angle]:
+def atan2(y: Scalar[SomeDim], x: Scalar[SomeDim]) -> Scalar[D.Angle]:
     return math.atan2(y.base_unit_value, x.base_unit_value) * Quantity.rad
 
 def normalize_angle(angle: Scalar[D.Angle]) -> Scalar[D.Angle]:

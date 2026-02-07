@@ -14,6 +14,10 @@ class QuantityMeta(type):
             return Scalar[D.Length].new(D.Length.meter)
         elif name == "km":
             return Scalar[D.Length].new(D.Length.kilo_meter)
+        elif name == "radii_earth":
+            return Scalar[D.Length].new(6378135)
+        elif name == "radii_sun":
+            return Scalar[D.Length].new(6.957e8)
         elif name == "s":
             return Scalar[D.Time].new(D.Time.second)
         elif name == "min":
@@ -46,6 +50,18 @@ class Quantity(metaclass=QuantityMeta):
 
     km: Scalar[D.Length]
     """kilometer"""
+
+    radii_earth: Scalar[D.Length]
+    """Mean radius of planet Earth (R🜨). 
+
+    `R🜨 = 6378135 m`
+    """
+
+    radii_sun: Scalar[D.Length]
+    """Mean radius of Sun (R☉). 
+
+    `R☉ = 6.957e8 m`
+    """
 
     # DURATIONS
 

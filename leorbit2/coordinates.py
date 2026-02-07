@@ -10,8 +10,9 @@ from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_fact
 from leorbit2.mathematics import D, Dim, Scalar, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, D
 from leorbit2.mathematics.functions import normalize_angle, normalize_angle_symmetric, angle2dms
 from leorbit2.mathematics.quantity import Quantity
+from leorbit2.mathematics.transform import TransformVector3Affine
 from leorbit2.time import Time
-from leorbit2.utils import geocentric_radius_earth
+from leorbit2.utils import geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]
@@ -38,7 +39,7 @@ class Coordinates:
         self._already_computed_repr: dict[type[CoordinatesRepresentation], CoordinatesRepresentation] = {}
 
     def _compute_new_frame(self, frame: Frame):
-        if frame in self.positions:
+        if frame in self.positions.keys():
             return
         
         p, v = self.positions[self.privileged_frame]
@@ -112,10 +113,16 @@ class Coordinates:
     ### ########## ###
 
     @staticmethod
-    def from_horizontal(azimuth: Q_, altitude: Q_, distance: Q_, frame: EarthLocalFrame, epoch: Time = None) -> Self:
+    def from_horizontal(
+        azimuth: Scalar[D.Angle], 
+        altitude: Scalar[D.Angle], 
+        distance: Scalar[D.Length], 
+        frame: EarthLocalFrame, 
+        epoch: Time | None = None
+    ) -> Coordinates:
         assert isinstance(frame, EarthLocalFrame)
         
-        pos_local = Vec3.from_spherical(azimuth, altitude, distance)
+        pos_local = Vector3.from_spherical(azimuth, altitude, distance)
         epoch = Time.now() if epoch is None else epoch
 
         return Coordinates(epoch, frame, pos_local)
@@ -126,31 +133,29 @@ class Coordinates:
         assert local_frame.reference_frame == AbsoluteFrame.ITRF # FIXME
 
         itrf_pos = self.get_pos(AbsoluteFrame.ITRF)
-        horizontal_pos = local_frame.transform.apply(itrf_pos)
+        t = cast(
+            TransformVector3Affine[D.Length],
+            local_frame.transform
+        )
+        horizontal_pos = t.do(itrf_pos)
 
         return Horizontal(
             azimuth=horizontal_pos.theta,
             altitude=horizontal_pos.delta,
-            distance=itrf_pos.rho
+            distance=itrf_pos.length
         )
     
     ### ########## ###
     
-    def __eq__(self, o: Self) -> bool:
-        common_computed_frames = set(self.positions.keys()).intersection(o.positions.keys())
-
-        if common_computed_frames:
-            f: Frame
-            for f in common_computed_frames: break # Get any element from set
-            p, v = self.positions[f]
-            po, vo = o.positions[f]
-
-            return (p == po) and (v == vo)
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, Coordinates):
+            return False
         
-        # We get a frame already computed in `self` and compute it for the other
-        o._compute_new_frame(self.privileged_frame)
-        # Now they have a common frame. We can call `__eq__` again
-        return self.__eq__(o)
+        return (
+            self.get_pos(AbsoluteFrame.ITRF) == o.get_pos(AbsoluteFrame.ITRF)
+            and self.get_vel(AbsoluteFrame.ITRF) == o.get_vel(AbsoluteFrame.ITRF)
+            and self.epoch == o.epoch
+        )
     
     def __neq__(self, o: Self) -> bool:
         return not self.__eq__(o)
@@ -220,16 +225,14 @@ class GPS(CoordinatesRepresentation):
         return f"<GPS: {self.dms}>"
     
     @lru_cache
-    def to_coordinates(self, epoch: Time | None = None) -> "Coordinates":
-        """If no `epoch` is provided, uses the time of this functions execution."""
-
+    def to_coordinates(self, epoch: Time) -> "Coordinates":
         coordinates = Coordinates.from_gps(
             longitude=self.longitude,
             latitude=self.latitude,
             altitude=self.altitude,
-            epoch=Time.now() if epoch is None else epoch
+            epoch=epoch
         )
-        coordinates._already_computer_repr[GPS] = self
+        coordinates._already_computed_repr[GPS] = self
         
         return coordinates
     
@@ -275,9 +278,7 @@ class Horizontal(CoordinatesRepresentation):
     def __repr__(self) -> str:
         return f"<Horizontal: {self.dms}>"
     
-    def to_coordinates(self, frame: EarthLocalFrame, epoch: Time | None = None) -> "Coordinates":
-        """If no `epoch` is provided, uses the time of this functions execution."""
-
+    def to_coordinates(self, frame: EarthLocalFrame, epoch: Time) -> "Coordinates":
         if self.distance is None:
             raise ValueError("Cannot convert `Horizontal` representation with unset `distance` to `Coordinates`.")
         
@@ -286,22 +287,10 @@ class Horizontal(CoordinatesRepresentation):
             altitude=self.altitude,
             distance=self.distance,
             frame=frame,
-            epoch=Time.now() if epoch is None else epoch
+            epoch=epoch
         )
 
 """Implementation of "orbital elements" of an object orbiting Earth."""
-
-from collections import namedtuple
-import json
-from math import atan, cos, sin, sqrt, tan, atan2, tau
-from typing import Optional, Self
-from dataclasses import dataclass, field
-from typing import TypedDict, NamedTuple
-
-import numpy as np
-
-def angle_between(angle: Quantity, mini_deg: float, maxi_deg: float) -> bool:
-    return (mini_deg * UREG.degree) <= angle <= (maxi_deg * UREG.degree)
 
 class OrbitalElementsComputeTuple(NamedTuple):
     n: float # [rad/min]
@@ -312,75 +301,80 @@ class OrbitalElementsComputeTuple(NamedTuple):
     M: float # [rad]
     bstar: float # [1/earthRadii]
 
-@dataclass(frozen=True)
 class OrbitalElements(CoordinatesRepresentation):
     """Dataclass holding orbital elements, at a given epoch, gathered from Celestrak.org 
     (also known as GP data)"""
-    epoch: Time
-    eccentricity: Scalar[D.Dimless] # [1]
-    inclination: Scalar[D.Angle] # [rad]
-    ra_of_asc_node: Scalar[D.Angle] # [rad]
-    arg_of_pericenter: Scalar[D.Angle] # [rad]
-    mean_motion: Scalar[D.Angle] # [rad]
-    mean_anomaly: Scalar[D.Angle] # [rad]
-    mean_motion_dot: Scalar[D.AngularAcc] = field(init=True, default_factory=lambda: Scalar[D.AngularAcc].new(0)) # [rad/s²]
-    mean_motion_ddot: Scalar[D.AngularJerk] = field(init=True, default_factory=lambda: Scalar[D.AngularJerk].new(0)) # [rad/s3]
-    bstar: Scalar[D.InvLength] = field(init=True, default_factory=lambda: Scalar[D.InvLength].new(0)) # [1/m]
 
-    name: str = "No name"
-    norad_cat_id: Optional[int] = None
+    def __init__(self,
+        epoch: Time,
+        eccentricity: Scalar[D.Dimless],
+        inclination: Scalar[D.Angle],
+        ra_of_asc_node: Scalar[D.Angle],
+        arg_of_pericenter: Scalar[D.Angle],
+        mean_motion: Scalar[D.AngularVelocity],
+        mean_anomaly: Scalar[D.Angle],
+        mean_motion_dot: Scalar[D.AngularAcc] = Scalar[D.AngularAcc].new(0),
+        mean_motion_ddot: Scalar[D.AngularJerk] = Scalar[D.AngularJerk].new(0),
+        bstar: Scalar[D.InvLength] = Scalar[D.InvLength].new(0),
+    ):
+        deg_0 = 0 * Quantity.deg
+        deg_180 = 180 * Quantity.deg
+        deg_360 = 360 * Quantity.deg
 
-    # \/ CACHED PROPERTIES \/
-    eccentric_anomaly: Scalar[D.Length] = field(init=False) # [rad]
-    true_anomaly: Scalar[D.Angle] = field(init=False) # [rad]
-    semi_major_axis: Scalar[D.Length] = field(init=False) # [m]
-    semi_minor_axis: Scalar[D.Length] = field(init=False) # [m]
-    time_at_periaster: Time = field(init=False)
+        self.name: str = "No name"
+        self.norad_cat_id: Optional[int] = None
 
-    def __post_init__(self):
-        assert self.eccentricity.check("1")
-        if not self.eccentricity >= 0:
-            raise ValueError()
+        self.epoch = epoch
 
-        assert self.inclination.check("°")
-        if not angle_between(self.inclination, 0, 180):
-            raise ValueError()
-
-        assert self.ra_of_asc_node.check("°")
-        if not angle_between(self.ra_of_asc_node, 0, 360):
-            raise ValueError()
-
-        assert self.arg_of_pericenter.check("°")
-        if not angle_between(self.arg_of_pericenter, 0, 360):
-            raise ValueError()
-
-        assert self.mean_motion.check("rad/s")
-
-        self.mean_anomaly.check("°")
-        if not angle_between(self.mean_anomaly, 0, 360):
+        self.eccentricity = e = eccentricity
+        if e < 0 or not e.check(D.Dimless):
             raise ValueError()
         
-        assert self.mean_motion_dot.check("rad/s**2")
-        assert self.mean_motion_ddot.check("rad/s**3")
-        assert self.bstar.check("1/m")
+        self.inclination = i = inclination
+        if not (deg_0 <= i <= deg_180) or not i.check(D.Angle):
+            raise ValueError()
+
+        self.ra_of_asc_node = raan = ra_of_asc_node
+        if not (deg_0 <= raan <= deg_360) or not raan.check(D.Angle):
+            raise ValueError()
+
+        self.arg_of_pericenter = argp = arg_of_pericenter
+        if not (deg_0 <= argp <= deg_360) or not argp.check(D.Angle):
+            raise ValueError()
+
+        self.mean_motion = n = mean_motion
+        if not n.check(D.AngularVelocity):
+            raise ValueError()
+
+        self.mean_anomaly = M = mean_anomaly
+        if not (deg_0 <= M <= deg_360) or not M.check(D.Angle):
+            raise ValueError()
+
+        self.mean_motion_dot = mean_motion_dot
+        if not mean_motion_dot.check(D.AngularAcc):
+            raise ValueError()
+
+        self.mean_motion_ddot = mean_motion_ddot
+        if not mean_motion_ddot.check(D.AngularJerk):
+            raise ValueError()
+
+        self.bstar = bstar
+        if not bstar.check(D.InvLength):
+            raise ValueError()
 
         e = self.eccentricity
         M = self.mean_anomaly
-        E = mean2eccentric_anomaly(e, M)
-        object.__setattr__(self, "eccentric_anomaly", E) # NOTE: to avoid `FrozenInstanceError`...
+        self.eccentric_anomaly = E = mean2eccentric_anomaly(e, M)
 
-        tan_half_nu = sqrt((1 + e) / (1 - e)) * tan(.5 * E)
-        true_anomaly = 2 * atan(tan_half_nu)
-        object.__setattr__(self, "true_anomaly", true_anomaly)
+        tan_half_nu = cast(Scalar[D.Dimless], ((1 + e) / (1 - e)).sqrt() * (.5 * E).tan())
+        self.true_anomaly = 2 * tan_half_nu.atan()
 
-        semi_major_axis = ((MU_EARTH / self.mean_motion**2)**(1/3)).to("m")
-        object.__setattr__(self, "semi_major_axis", semi_major_axis)
+        self.semi_major_axis = mean_motion_to_semi_major_axis_earth(self.mean_motion)
 
-        time_at_periaster = self.epoch - self.mean_anomaly / self.mean_motion
-        object.__setattr__(self, "time_at_periaster", time_at_periaster)
+        dt = cast(Scalar[D.Time], self.mean_anomaly / self.mean_motion)
+        self.time_at_periaster = self.epoch - dt
 
-        semi_minor_axis = self.semi_major_axis * sqrt(1 - e**2)
-        object.__setattr__(self, "semi_minor_axis", semi_minor_axis)
+        self.semi_minor_axis = self.semi_major_axis * sqrt(1 - e.sqr())
 
         _els_as_float_tuple = OrbitalElementsComputeTuple(
             n=self.mean_motion.m_as("rad/min"),

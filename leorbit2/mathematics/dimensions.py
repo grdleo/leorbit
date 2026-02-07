@@ -31,10 +31,12 @@ class DimEls:
             time=self.time - o.time
         )
     
-    def sqrt(self) -> DimEls:
+    def __pow__(self, p: Fraction | int | float) -> DimEls:
+        p = Fraction(p)
+
         return DimEls(
-            length=Fraction(self.length) / 2,
-            time=Fraction(self.time) / 2
+            length=self.length * p,
+            time=self.time * p
         )
 
 class Dim:
@@ -54,6 +56,10 @@ class D:
 
         rad: ClassVar[float] = 1 # base
         deg: ClassVar[float] = np.pi / 180
+
+    class AngularVelocity(Dim):
+        """rad/s"""
+        _d = DimEls(time=-1)
 
     class AngularAcc(Dim):
         """rad/s**2"""
@@ -177,6 +183,9 @@ class QuotientDim[SomeDim, SomeOtherDim](Dim):
             (Dim,),
             dict(d=result_els)
         )
+    
+class PowerDim[SomeDim, Numerator, Denominator](Dim):
+    ...
     
 SomeDim = TypeVar("SomeDim", bound=Dim)
 SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)

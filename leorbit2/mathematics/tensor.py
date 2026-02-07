@@ -42,6 +42,9 @@ class Tensor[SomeDim = D.Dimless]():
     def ensure_compatible_dimensions(self, o: Tensor) -> TypeIs[Tensor[SomeDim]]:
         return isinstance(o, Tensor) and o._dimension == self._dimension
     
+    def check(self, dim: type[Dim]) -> bool:
+        return self._dimension == dim._d
+    
     def __add__(self, o: object) -> Tensor[SomeDim]: # self + o
         o = ensure_tensor(o)
         if not self.ensure_compatible_dimensions(o):

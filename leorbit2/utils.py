@@ -2,23 +2,43 @@
 """
 
 import math
-from math import log10, sin, cos, tan, atan2
-from leorbit2.mathematics import D, Scalar, Quantity, Vector3, quantity
-from leorbit2.mathematics 
+from leorbit2.mathematics import D, Scalar, Quantity, Vector3
+from leorbit2.mathematics.dimensions import DimEls
+from leorbit2.mathematics.functions import atan2
 import numpy as np
 from numpy.typing import NDArray
 
 from typing import TYPE_CHECKING, TypeVar, cast
-if TYPE_CHECKING:
-    from mathematics.vec3 import Vec3
 
-from pint import Quantity
-from mathematics.units import UREG
+from leorbit2.mathematics.scalar import scalar_class_factory
 
-RADIIE_AA = (6_378_137 * UREG.meter)**2
-RADIIE_A4 = RADIIE_AA**2
-RADIIE_BB = (6_356_752 * UREG.meter)**2
-RADIIE_B4 = RADIIE_BB**2
+MU_EARTH = scalar_class_factory(
+    DimEls(
+        length=3, 
+        time=-2
+    )
+).new(
+    398_600_441_800_000
+)
+"""Gravitational parameter for planet Earth (µ🜨) 
+
+`µ🜨 = 3.986e14 m**3/s**2`
+"""
+
+SQRT_MU_EARTH = MU_EARTH.sqrt()
+"""
+`√µ🜨 = 1.996e7 m**1.5/s`
+"""
+
+RADIIE_AA = (6_378_137 * Quantity.m).sqr()
+RADIIE_A4 = RADIIE_AA.sqr()
+RADIIE_BB = (6_356_752 * Quantity.m).sqr()
+RADIIE_B4 = RADIIE_BB.sqr()
+
+def mean_motion_to_semi_major_axis_earth(mean_motion: Scalar[D.AngularVelocity]) -> Scalar[D.Length]:
+    return Scalar[D.Length].new(
+        (MU_EARTH.base_unit_value / mean_motion.base_unit_value**2)**(1/3)
+    )
 
 def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
     """Returns the mean radius of Earth at given latitude.
@@ -27,8 +47,10 @@ def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
     Algorithm from: https://en.wikipedia.org/wiki/Earth_radius#Geocentric_radius"""
     cc = latitude.cos()
     ss = latitude.sin()
-    rr = (RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)
-    return rr**.5
+    return cast(
+        Scalar[D.Length],
+        ((RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)).sqrt()
+    )
 
 def apparent_magnitude(sun: Vec3, sat: Vec3, observer: Vec3, std_mag: float) -> float:
     """Returns the apparent magnitude of a satellite from its standard magnitude,
@@ -71,41 +93,29 @@ def humanize_duration(t: Scalar[Dim.time]) -> str:
             
     
     return " ".join(f"{v} {k}" for k, v in components.items() if v > 0)
-    
-def angle2dms(angle: Quantity) -> str:
-    """Representation of the angle in DSM notation (degrees, minutes, seconds)
 
-    Example: `39° 17′ N, 76° 36′ O`"""
-    
-    angle2convert = abs(angle.m_as(UREG.degrees))
-    deg, deg_dec = divmod(angle2convert, 1)
-    min, min_dec = divmod(deg_dec * 60, 1)
-    sec, _ = divmod(min_dec * 60, 1)
-    
-    return f"{deg}° {min}′ {sec}″"
-
-def mean2true_anomaly(e: float, M: QtOrArray) -> QtOrArray:
+def mean2true_anomaly(e: Scalar[D.Dimless], M: Scalar[D.Angle]) -> Scalar[D.Angle]:
     """ O(e**4)"""
-    math_module = np if isinstance(M, np.ndarray) else math
-    
-    ee = e*e
-    eee = e*ee
+
+    _e = cast(Scalar[D.Angle], e)
+    _ee = cast(Scalar[D.Angle], _e*_e)
+    _eee = cast(Scalar[D.Angle], _e*_ee)
     return (
         M
-        + (2*e - .25*eee) * math_module.sin(M)
-        + 1.25*ee * math_module.sin(2*M)
-        + (13/12)*eee * math_module.sin(3*M)
+        + (2 * _e - .25 * _eee) * M.sin()
+        + 1.25 * _ee * (2 * M).sin()
+        + (13 / 12) * _eee * (3 * M).sin()
     )
 
-def mean2eccentric_anomaly(e: float, M: QtOrArray) -> QtOrArray:
+def mean2eccentric_anomaly(e: Scalar[D.Dimless], M: Scalar[D.Angle]) -> Scalar[D.Angle]:
     math_module = np if isinstance(M, np.ndarray) else math
 
     E = M
     for _ in range(5):
-        E = M + e * math_module.sin(E)
+        E = M + cast(Scalar[D.Angle], e * E.sin())
     return E
 
-def eccentric2true_anomaly(e: float, E: QtOrArray) -> QtOrArray:
+def eccentric2true_anomaly(e: Scalar[D.Dimless], E: Scalar[D.Angle]) -> Scalar[D.Angle]:
     """Returns the true anomaly from the eccentric anomaly and the excentricity.
     
     Parameters
@@ -119,31 +129,28 @@ def eccentric2true_anomaly(e: float, E: QtOrArray) -> QtOrArray:
     -------
     float
         True anomaly in radians"""
-    math_module = np if isinstance(E, np.ndarray) else math
 
-    υ = math_module.atan2(
-        (1 - e*e)**.5 * math_module.sin(E), 
-        math_module.cos(E) - e
+    return atan2(
+        (1 - e*e)**.5 * E.sin(), 
+        E.cos() - e
     )
 
-    return υ
 
-def true2eccentric_anomaly(e: float, υ: QtOrArray) -> QtOrArray:
+def true2eccentric_anomaly(e: Scalar[D.Dimless], nu: Scalar[D.Angle]) -> Scalar[D.Angle]:
     """Returns the eccentric anomaly from the true anomaly and the excentricity.
     Parameters
     ----------
     e : float
         Excentricity of the orbit
-    υ : float
+    nu : float
         True anomaly in radians
     Returns
     
     -------
     float"""
-    math_module = np if isinstance(υ, np.ndarray) else math
 
-    E = math_module.atan2(
-        (1 - e*e)**.5 * math_module.sin(υ),
-        e + math_module.cos(υ)
+    E = atan2(
+        (1 - e*e)**.5 * nu.sin(),
+        e + nu.cos()
     )
     return E
