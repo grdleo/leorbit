@@ -47,10 +47,7 @@ def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
     Algorithm from: https://en.wikipedia.org/wiki/Earth_radius#Geocentric_radius"""
     cc = latitude.cos()
     ss = latitude.sin()
-    return cast(
-        Scalar[D.Length],
-        ((RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)).sqrt()
-    )
+    return ((RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)).sqrt().cast(D.Length)
 
 def apparent_magnitude(sun: Vec3, sat: Vec3, observer: Vec3, std_mag: float) -> float:
     """Returns the apparent magnitude of a satellite from its standard magnitude,
@@ -97,9 +94,9 @@ def humanize_duration(t: Scalar[Dim.time]) -> str:
 def mean2true_anomaly(e: Scalar[D.Dimless], M: Scalar[D.Angle]) -> Scalar[D.Angle]:
     """ O(e**4)"""
 
-    _e = cast(Scalar[D.Angle], e)
-    _ee = cast(Scalar[D.Angle], _e*_e)
-    _eee = cast(Scalar[D.Angle], _e*_ee)
+    _e = e.cast(D.Angle)
+    _ee = (_e*_e).cast(D.Angle)
+    _eee = (_e*_ee).cast(D.Angle)
     return (
         M
         + (2 * _e - .25 * _eee) * M.sin()
@@ -112,7 +109,7 @@ def mean2eccentric_anomaly(e: Scalar[D.Dimless], M: Scalar[D.Angle]) -> Scalar[D
 
     E = M
     for _ in range(5):
-        E = M + cast(Scalar[D.Angle], e * E.sin())
+        E = M + (e * E.sin()).cast(D.Angle)
     return E
 
 def eccentric2true_anomaly(e: Scalar[D.Dimless], E: Scalar[D.Angle]) -> Scalar[D.Angle]:

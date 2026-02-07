@@ -43,6 +43,7 @@ class Tensor[SomeDim = D.Dimless]():
         return isinstance(o, Tensor) and o._dimension == self._dimension
     
     def check(self, dim: type[Dim]) -> bool:
+        """Returns `True` if tensor is of dimension `dim`"""
         return self._dimension == dim._d
     
     def __add__(self, o: object) -> Tensor[SomeDim]: # self + o

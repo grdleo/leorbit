@@ -5,19 +5,17 @@ from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, Type
 
 import numpy as np
 
-from leorbit2.mathematics.dimensions import Dim, D, ProductDim, QuotientDim
+from leorbit2.mathematics.dimensions import Dim, D, ProductDim, QuotientDim, SomeDim, SomeOtherDim
 from leorbit2.mathematics.scalar import Scalar
 from leorbit2.mathematics.tensor import Tensor, ensure_same_dimensions
 from leorbit2.mathematics.vector3 import Vector3, all_scalars_numbers, all_simple_numbers
 
 Number = float | int | np.floating
-SomeDim = TypeVar("SomeDim", bound=Dim)
-SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
 TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
     
-class Matrix33[SomeDim](Tensor[SomeDim]):
+class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
     @classmethod
     def new(cls,
         a: NumberOrScalarT, b: NumberOrScalarT, c: NumberOrScalarT,
@@ -39,8 +37,7 @@ class Matrix33[SomeDim](Tensor[SomeDim]):
         return cls(mat)
 
     def cast(self, dim: type[SomeOtherDim]) -> Matrix33[SomeOtherDim]:
-        dim_els = getattr(dim, "_d", None)
-        if dim_els == self._dimension:
+        if dim._d == self._dimension:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
@@ -158,7 +155,7 @@ class Matrix33[SomeDim](Tensor[SomeDim]):
     def __truediv__(self: Matrix33[SomeDim], o: Number | Scalar[D.Dimless]) -> Matrix33[SomeDim]: ...
 
     @overload
-    def __truediv__(self: Matrix33[SomeDim], o: Scalar[SomeDim]) -> Matrix33[D.Dimless]: ...
+    def __truediv__(self: Matrix33[SomeDim], o: Scalar[SomeDim]) -> Matrix33[D.Dimless]: ... # type: ignore
 
     @overload
     def __truediv__(self: Matrix33[SomeDim], o: Scalar[SomeOtherDim]) -> Matrix33[QuotientDim[SomeDim, SomeOtherDim]]: ...

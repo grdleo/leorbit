@@ -57,8 +57,7 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
         return cls(v)
 
     def cast(self, dim: type[SomeOtherDim]) -> Vector3[SomeOtherDim]:
-        dim_els = getattr(dim, "_d", None)
-        if dim_els == self._dimension:
+        if dim._d == self._dimension:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     

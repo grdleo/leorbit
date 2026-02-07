@@ -25,9 +25,6 @@ def scalar_class_factory(dim: DimEls) -> type[Scalar]:
         )
     )
 
-class Exponent(IntEnum):
-    TWO = 2
-
 class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     @classmethod
     def new(cls, value: Number | TensorData):
@@ -39,8 +36,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
         return cls(value)
 
     def cast(self, dim: type[SomeOtherDim]) -> Scalar[SomeOtherDim]:
-        dim_els = getattr(dim, "_d", None) 
-        if dim_els == self._dimension:
+        if dim._d == self._dimension:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
@@ -295,10 +291,13 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     #############################################
 
     @overload
-    def sqr(self: Scalar[PowerDim[SomeDim, Literal[1], Literal[2]]]) -> Scalar[SomeDim]: ...
+    def sqr(self: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ... # type: ignore
 
     @overload
-    def sqr(self: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, Literal[2], Literal[1]]]: ...
+    def sqr(self: Scalar[PowerDim[SomeDim, Literal[1], Literal[2]]]) -> Scalar[SomeDim]: ... # type: ignore
+
+    @overload
+    def sqr(self: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, Literal[2], Literal[1]]]: ... # type: ignore
     
     def sqr(self) -> Scalar[Any]:
         return scalar_class_factory(self._dimension ** 2).new(
@@ -306,10 +305,13 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
         )
     
     @overload
-    def sqrt(self: Scalar[PowerDim[SomeDim, Literal[2], Literal[1]]]) -> Scalar[SomeDim]: ...
+    def sqrt(self: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ... # type: ignore
+
+    @overload
+    def sqrt(self: Scalar[PowerDim[SomeDim, Literal[2], Literal[1]]]) -> Scalar[SomeDim]: ... # type: ignore
     
     @overload
-    def sqrt(self: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, Literal[1], Literal[2]]]: ...
+    def sqrt(self: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, Literal[1], Literal[2]]]: ... # type: ignore
     
     def sqrt(self) -> Scalar[Any]:
         return scalar_class_factory(self._dimension ** .5).new(

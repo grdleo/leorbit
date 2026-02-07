@@ -366,12 +366,12 @@ class OrbitalElements(CoordinatesRepresentation):
         M = self.mean_anomaly
         self.eccentric_anomaly = E = mean2eccentric_anomaly(e, M)
 
-        tan_half_nu = cast(Scalar[D.Dimless], ((1 + e) / (1 - e)) ** .5 * (.5 * E).tan())
+        tan_half_nu = ((1 + e) / (1 - e)) ** .5 * (.5 * E).tan()
         self.true_anomaly = 2 * tan_half_nu.atan()
 
         self.semi_major_axis = mean_motion_to_semi_major_axis_earth(self.mean_motion)
 
-        dt = cast(Scalar[D.Time], self.mean_anomaly / self.mean_motion)
+        dt = (self.mean_anomaly / self.mean_motion).cast(D.Time)
         self.time_at_periaster = self.epoch - dt
 
         self.semi_minor_axis = self.semi_major_axis * (1 - e ** 2) ** .5
