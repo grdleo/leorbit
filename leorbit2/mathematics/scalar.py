@@ -243,8 +243,17 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
 
     # ** OPERATOR
 
+    @overload
+    def __pow__(self: Scalar[D.Dimless], o: Fraction | Number) -> Scalar[D.Dimless]: ...
+
+    @overload
+    def __pow__(self: Scalar[D.Dimless], o: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
+
     def __pow__(self, o: object) -> Scalar[Any]:
-        if not isinstance(o, Fraction | int | float):
+        if isinstance(o, Scalar) and o.check(D.Dimless):
+            o = o.base_unit_value
+
+        if not isinstance(o, Fraction | Number):
             raise ValueError()
         
         return scalar_class_factory(self._dimension ** Fraction(o)).new(
@@ -285,46 +294,6 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
 
     #############################################
 
-    # NumPy ufunc support for trigonometric functions
-
-    @overload
-    def __array_ufunc__(self: Scalar[D.Angle], ufunc: _UFunc_Nin1_Nout1[Literal['cos'], Literal[9], None], method: Literal["__call__"], *inputs: Any, **_kwargs: Any) -> Scalar[D.Dimless]: ...
-
-    @overload
-    def __array_ufunc__(self: Scalar[D.Angle], ufunc: _UFunc_Nin1_Nout1[Literal["sin"], Literal[9], None], method: Literal["__call__"], *inputs: Any, **_kwargs: Any) -> Scalar[D.Dimless]: ...
-
-    def __array_ufunc__(self, ufunc: Any, method: str, *inputs: Any, **_kwargs: Any) -> Any:
-        """Enable NumPy universal functions to work with Scalar objects."""
-        if method != '__call__':
-            return NotImplemented
-
-        # Handle single-argument trigonometric functions
-        if len(inputs) == 1 and inputs[0] is self:
-            # Forward trig functions: angle -> dimensionless
-            if ufunc == np.sin:
-                if not isinstance(self, Scalar):  # type guard
-                    return NotImplemented
-                # Type checker will see this as Scalar[D.Angle] -> Scalar[D.Dimless]
-                return self.sin()  # type: ignore
-            elif ufunc == np.cos:
-                return self.cos()  # type: ignore
-            elif ufunc == np.tan:
-                return self.tan()  # type: ignore
-            # Inverse trig functions: dimensionless -> angle
-            elif ufunc == np.arcsin:
-                return self.asin()  # type: ignore
-            elif ufunc == np.arccos:
-                return self.acos()  # type: ignore
-            elif ufunc == np.arctan:
-                return self.atan()  # type: ignore
-            # Square root
-            elif ufunc == np.sqrt:
-                return self.sqrt()  # type: ignore
-            elif ufunc == np.square:
-                return self.sqr()  # type: ignore
-
-        return NotImplemented
-
     @overload
     def sqr(self: Scalar[PowerDim[SomeDim, Literal[1], Literal[2]]]) -> Scalar[SomeDim]: ...
 
@@ -346,12 +315,3 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
         return scalar_class_factory(self._dimension ** .5).new(
             self.base_unit_value ** .5
         )
-    
-
-a = Scalar[D.Length].new(11)
-b = Scalar[D.Length].new(1)
-
-aa = np.cos(a)
-
-c = a.sqr()
-d = c.sqrt()

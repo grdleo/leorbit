@@ -322,7 +322,7 @@ class OrbitalElements(CoordinatesRepresentation):
         deg_360 = 360 * Quantity.deg
 
         self.name: str = "No name"
-        self.norad_cat_id: Optional[int] = None
+        self.norad_cat_id: int | None = None
 
         self.epoch = epoch
 
@@ -366,7 +366,7 @@ class OrbitalElements(CoordinatesRepresentation):
         M = self.mean_anomaly
         self.eccentric_anomaly = E = mean2eccentric_anomaly(e, M)
 
-        tan_half_nu = cast(Scalar[D.Dimless], ((1 + e) / (1 - e)).sqrt() * (.5 * E).tan())
+        tan_half_nu = cast(Scalar[D.Dimless], ((1 + e) / (1 - e)) ** .5 * (.5 * E).tan())
         self.true_anomaly = 2 * tan_half_nu.atan()
 
         self.semi_major_axis = mean_motion_to_semi_major_axis_earth(self.mean_motion)
@@ -374,7 +374,7 @@ class OrbitalElements(CoordinatesRepresentation):
         dt = cast(Scalar[D.Time], self.mean_anomaly / self.mean_motion)
         self.time_at_periaster = self.epoch - dt
 
-        self.semi_minor_axis = self.semi_major_axis * sqrt(1 - e.sqr())
+        self.semi_minor_axis = self.semi_major_axis * (1 - e ** 2) ** .5
 
         _els_as_float_tuple = OrbitalElementsComputeTuple(
             n=self.mean_motion.m_as("rad/min"),
