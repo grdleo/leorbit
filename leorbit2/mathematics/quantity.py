@@ -35,6 +35,10 @@ class QuantityMeta(type):
         
 
 class Quantity(metaclass=QuantityMeta):
+    @classmethod
+    def get(cls, value: str) -> Scalar:
+        raise NotImplementedError()
+
     # ANGLES
 
     rad: Scalar[D.Angle]

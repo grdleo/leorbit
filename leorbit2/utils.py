@@ -4,7 +4,7 @@
 import math
 from leorbit2.mathematics import D, Scalar, Quantity, Vector3
 from leorbit2.mathematics.dimensions import DimEls
-from leorbit2.mathematics.functions import atan2
+from leorbit2.mathematics.functions import atan2, cos, sin, square, sqrt
 import numpy as np
 from numpy.typing import NDArray
 
@@ -25,15 +25,15 @@ MU_EARTH = scalar_class_factory(
 `µ🜨 = 3.986e14 m**3/s**2`
 """
 
-SQRT_MU_EARTH = MU_EARTH.sqrt()
+SQRT_MU_EARTH = sqrt(MU_EARTH)
 """
 `√µ🜨 = 1.996e7 m**1.5/s`
 """
 
-RADIIE_AA = (6_378_137 * Quantity.m).sqr()
-RADIIE_A4 = RADIIE_AA.sqr()
-RADIIE_BB = (6_356_752 * Quantity.m).sqr()
-RADIIE_B4 = RADIIE_BB.sqr()
+RADIIE_AA = square(6_378_137 * Quantity.m)
+RADIIE_A4 = square(RADIIE_AA)
+RADIIE_BB = square(6_356_752 * Quantity.m)
+RADIIE_B4 = square(RADIIE_BB)
 
 def mean_motion_to_semi_major_axis_earth(mean_motion: Scalar[D.AngularVelocity]) -> Scalar[D.Length]:
     return Scalar[D.Length].new(
@@ -45,9 +45,9 @@ def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
     Earth is considered as a spheroid. 
     
     Algorithm from: https://en.wikipedia.org/wiki/Earth_radius#Geocentric_radius"""
-    cc = latitude.cos()
-    ss = latitude.sin()
-    return ((RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)).sqrt().cast(D.Length)
+    cc = cos(latitude)
+    ss = sin(latitude)
+    return sqrt((RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)).cast(D.Length)
 
 def apparent_magnitude(sun: Vec3, sat: Vec3, observer: Vec3, std_mag: float) -> float:
     """Returns the apparent magnitude of a satellite from its standard magnitude,
@@ -65,7 +65,7 @@ def apparent_magnitude(sun: Vec3, sat: Vec3, observer: Vec3, std_mag: float) -> 
 
     return std_mag + 5 * log10(dist_sat.m_as("megameter")) - 2.5 * log10(phi_term)
 
-def humanize_duration(t: Scalar[Dim.time]) -> str:
+def humanize_duration(t: Scalar[D.Time]) -> str:
     """Make a duration human-readable.
     
     Example:
@@ -80,7 +80,7 @@ def humanize_duration(t: Scalar[Dim.time]) -> str:
     components = {s: 0 for s in stages}
 
     for s in stages:
-        stage_d: Scalar[Dim.time] = quantity(f"1 {s}")
+        stage_d = Quantity.get(f"1 {s}").cast(D.Time)
         if t < stage_d:
             continue
         c = int(t.magnitude(s))
@@ -99,17 +99,15 @@ def mean2true_anomaly(e: Scalar[D.Dimless], M: Scalar[D.Angle]) -> Scalar[D.Angl
     _eee = (_e*_ee).cast(D.Angle)
     return (
         M
-        + (2 * _e - .25 * _eee) * M.sin()
-        + 1.25 * _ee * (2 * M).sin()
-        + (13 / 12) * _eee * (3 * M).sin()
+        + (2 * _e - .25 * _eee) * sin(M)
+        + 1.25 * _ee * sin(2 * M)
+        + (13 / 12) * _eee * sin(3 * M)
     )
 
 def mean2eccentric_anomaly(e: Scalar[D.Dimless], M: Scalar[D.Angle]) -> Scalar[D.Angle]:
-    math_module = np if isinstance(M, np.ndarray) else math
-
     E = M
     for _ in range(5):
-        E = M + (e * E.sin()).cast(D.Angle)
+        E = M + (e * sin(E)).cast(D.Angle)
     return E
 
 def eccentric2true_anomaly(e: Scalar[D.Dimless], E: Scalar[D.Angle]) -> Scalar[D.Angle]:
@@ -128,8 +126,8 @@ def eccentric2true_anomaly(e: Scalar[D.Dimless], E: Scalar[D.Angle]) -> Scalar[D
         True anomaly in radians"""
 
     return atan2(
-        (1 - e*e)**.5 * E.sin(), 
-        E.cos() - e
+        sqrt(1 - square(e)) * sin(E), 
+        cos(E) - e
     )
 
 
@@ -147,7 +145,7 @@ def true2eccentric_anomaly(e: Scalar[D.Dimless], nu: Scalar[D.Angle]) -> Scalar[
     float"""
 
     E = atan2(
-        (1 - e*e)**.5 * nu.sin(),
-        e + nu.cos()
+        sqrt(1 - square(e)) * sin(nu),
+        e + cos(nu)
     )
     return E

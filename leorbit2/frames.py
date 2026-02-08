@@ -3,6 +3,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, ParamSpec, Callable, TypeVar, cast
 
 from leorbit2.mathematics import D, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify
+from leorbit2.mathematics.functions import cos
 from leorbit2.mathematics.matrix33 import Matrix33
 from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.transform import TransformVector3Affine
@@ -140,7 +141,7 @@ class EarthLocalFrame(RelativeFrame):
         elif ang == quart_turn: # FIXME
             x = north.copy()
         else:
-            x = (north / ang.cos() - z).normalized()
+            x = (north / cos(ang) - z).normalized()
             if ang > quart_turn:
                 x = -x
         

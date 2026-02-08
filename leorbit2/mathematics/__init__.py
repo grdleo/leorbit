@@ -7,3 +7,4 @@ from leorbit2.mathematics.transform import (
     Transform, TransformChain, TransformIdentify, 
     TransformVector3Affine, TransformVector3Linear, TransformVector3RotationZ
 )
+from leorbit2.mathematics.functions import square, sqrt, atan2

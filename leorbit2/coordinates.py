@@ -9,7 +9,7 @@ from typing import ParamSpec, Callable, TypeVar, cast
 from leorbit2.algorithms import OrbitalElementsComputeTuple
 from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
 from leorbit2.mathematics import D, Dim, Scalar, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, D
-from leorbit2.mathematics.functions import normalize_angle, normalize_angle_symmetric, angle2dms
+from leorbit2.mathematics.functions import atan, normalize_angle, normalize_angle_symmetric, angle2dms, sqrt, square, tan
 from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.transform import TransformVector3Affine
 from leorbit2.time import Time, TimeInterval
@@ -358,15 +358,15 @@ class OrbitalElements(CoordinatesRepresentation):
         M = self.mean_anomaly
         self.eccentric_anomaly = E = mean2eccentric_anomaly(e, M)
 
-        tan_half_nu = ((1 + e) / (1 - e)) ** .5 * (.5 * E).tan()
-        self.true_anomaly = 2 * tan_half_nu.atan()
+        tan_half_nu = sqrt((1 + e) / (1 - e)) * tan(.5 * E)
+        self.true_anomaly = 2 * atan(tan_half_nu)
 
         self.semi_major_axis = mean_motion_to_semi_major_axis_earth(self.mean_motion)
 
         dt = (self.mean_anomaly / self.mean_motion).cast(D.Time)
         self.time_at_periaster = self.epoch - dt
 
-        self.semi_minor_axis = self.semi_major_axis * (1 - e ** 2) ** .5
+        self.semi_minor_axis = self.semi_major_axis * sqrt(1 - square(e))
 
     @cached_property
     def compute_tuple(self) -> OrbitalElementsComputeTuple:

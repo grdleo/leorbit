@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pyclbr import Class
-from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import Any, Callable, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
@@ -24,6 +24,10 @@ class Tensor[SomeDim = D.Dimless]():
         
         self._values = np.array(values)
 
+    @property
+    def dim(self) -> DimEls:
+        return self._dimension
+
     def __repr__(self) -> str:
         return f"Tensor[D.{self._dimension.__class__.__name__}]({self._values})"
 
@@ -36,6 +40,11 @@ class Tensor[SomeDim = D.Dimless]():
             cast(type[Tensor], cls)
         )
     
+    def cast(self, dim: type[SomeOtherDim]) -> Tensor[SomeOtherDim]:
+        if dim._d == self._dimension:
+            return self # type: ignore
+        raise RuntimeError("Cannot cast")
+    
     def copy(self) -> Self:
         return self.__class__(self._values)
 
@@ -45,6 +54,14 @@ class Tensor[SomeDim = D.Dimless]():
     def check(self, dim: type[Dim]) -> bool:
         """Returns `True` if tensor is of dimension `dim`"""
         return self._dimension == dim._d
+    
+    def transform(self, new_dim: DimEls, function: Callable[[TensorData], TensorData]) -> Tensor[Any]: # type: ignore
+        return dimensional_tensor_class_factory(
+            new_dim,
+            cast(type[Tensor], self.__class__)
+        )(
+            function(self._values)
+        )
     
     def __add__(self, o: object) -> Tensor[SomeDim]: # self + o
         o = ensure_tensor(o)
