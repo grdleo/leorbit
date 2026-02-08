@@ -387,9 +387,11 @@ class OrbitalElements(CoordinatesRepresentation):
         )
     
     @property
-    def period(self) -> Quantity:
+    def period(self) -> Scalar[D.Time]:
         """The period of a full revolution."""
-        return (tau * UREG("rad")) / self.mean_motion
+        from math import tau
+
+        return ((tau * Quantity.rad) / self.mean_motion).cast(D.Time)
     
     def to_coordinates(self) -> Coordinates:
         """Returns current orbital elements, at given epoch, 
