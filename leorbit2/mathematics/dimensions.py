@@ -2,14 +2,25 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from fractions import Fraction
 from pyclbr import Class
-from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import Any, ClassVar, Generic, Literal, NamedTuple, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
-@dataclass(frozen=True)
-class DimEls:
-    length: Fraction | int = 0
-    time: Fraction | int = 0
+class DimEls(NamedTuple):
+    def __init__(self,
+        length: Fraction | int = 0,
+        time: Fraction | int = 0
+    ):
+        self.__length = Fraction(length)
+        self.__time = Fraction(time)
+
+    @property
+    def length(self) -> Fraction:
+        return self.__length
+    
+    @property
+    def time(self) -> Fraction:
+        return self.__time
 
     @property
     def dimensionless(self) -> bool:
@@ -17,6 +28,15 @@ class DimEls:
             self.length
             == self.time
             == 0
+        )
+    
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, DimEls):
+            return False
+        
+        return (
+            self.length == o.length
+            and self.time == o.time
         )
     
     def __mul__(self, o: DimEls) -> DimEls:
@@ -102,6 +122,14 @@ class D:
         meter_per_second: ClassVar[float] = 1 # base
 
         kilo_meter_per_hour: ClassVar[float] = meter_per_second / 3.6
+
+    @staticmethod
+    def registered_dimensions() -> dict[DimEls, type[Dim]]:
+        return {
+            dim_cls._d: dim_cls
+            for dim_cls in D.__dict__.values()
+            if issubclass(dim_cls, Dim)
+        }
 
 # Registry of known dimensions for lookup
 _DIMENSION_REGISTRY: dict[DimEls, type[Dim]] = {
