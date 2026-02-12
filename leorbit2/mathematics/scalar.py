@@ -187,6 +187,12 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     
     ### COMPARISONS
 
+    def __eq__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool:
+        return bool(super().__eq__(o)._values)
+    
+    def __neq__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool:
+        return bool(super().__eq__(o)._values)
+
     @overload
     def __lt__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
 
@@ -197,7 +203,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     def __lt__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
 
     def __lt__(self, o: object) -> bool:
-        return super().__lt__(o)
+        return bool(super().__lt__(o)._values)
 
     @overload
     def __le__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
@@ -209,7 +215,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     def __le__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
 
     def __le__(self, o: object) -> bool:
-        return super().__le__(o)
+        return bool(super().__le__(o)._values)
 
     @overload
     def __gt__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
@@ -221,7 +227,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     def __gt__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
 
     def __gt__(self, o: object) -> bool:
-        return super().__gt__(o)
+        return bool(super().__gt__(o)._values)
 
     @overload
     def __ge__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> bool: ...
@@ -233,7 +239,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     def __ge__(self: Scalar[SomeDim], o: Literal[0]) -> bool: ...
 
     def __ge__(self, o: object) -> bool:
-        return super().__ge__(o)
+        return bool(super().__ge__(o)._values)
     
     #############################################
 

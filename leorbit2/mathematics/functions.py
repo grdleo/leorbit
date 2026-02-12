@@ -2,7 +2,7 @@ import math
 from typing import Any, TypeVar, overload, Literal
 
 import numpy as np
-from leorbit2.mathematics.dimensions import D, Dim, Number, SomeDim, PowerDim
+from leorbit2.mathematics.dimensions import D, Dim, Number, SomeDim, PowerDim, P1, P2
 from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.scalar import Scalar, scalar_class_factory
 from leorbit2.mathematics.tensor import Tensor, dimensional_tensor_class_factory
@@ -17,10 +17,10 @@ HALF_REV = FULL_REV / 2
 def square(tensor: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ... # type: ignore
 
 @overload
-def square(tensor: Scalar[PowerDim[SomeDim, Literal[1], Literal[2]]]) -> Scalar[SomeDim]: ... # type: ignore
+def square(tensor: Scalar[PowerDim[SomeDim, P1, P2]]) -> Scalar[SomeDim]: ... # type: ignore
 
 @overload
-def square(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, Literal[2], Literal[1]]]: ... # type: ignore
+def square(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P2, P1]]: ... # type: ignore
 
 def square(tensor: Tensor[Any]) -> Tensor[Any]:
     return tensor.transform(
@@ -32,10 +32,10 @@ def square(tensor: Tensor[Any]) -> Tensor[Any]:
 def sqrt(tensor: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ... # type: ignore
 
 @overload
-def sqrt(tensor: Scalar[PowerDim[SomeDim, Literal[2], Literal[1]]]) -> Scalar[SomeDim]: ... # type: ignore
+def sqrt(tensor: Scalar[PowerDim[SomeDim, P2, P1]]) -> Scalar[SomeDim]: ... # type: ignore
 
 @overload
-def sqrt(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, Literal[1], Literal[2]]]: ... # type: ignore
+def sqrt(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P1, P2]]: ... # type: ignore
 
 def sqrt(tensor: Tensor[Any]) -> Tensor[Any]:
     return tensor.transform(

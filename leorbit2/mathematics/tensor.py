@@ -169,7 +169,7 @@ class Tensor[SomeDim = D.Dimless]():
         except:
             raise RuntimeError("...")
         
-    def __mod__(self, o: object) -> Tensor[SomeDim]: # self % o
+    def __mod__(self, o: object) -> Tensor: # self % o
         o = ensure_tensor(o)
         if not self.ensure_compatible_dimensions(o):
             raise RuntimeError("Tensors dimensions are not compatible!")
@@ -179,7 +179,7 @@ class Tensor[SomeDim = D.Dimless]():
         except:
             raise RuntimeError("...")
 
-    def __rmod__(self, o: object) -> Tensor[SomeDim]: # o % self
+    def __rmod__(self, o: object) -> Tensor: # o % self
         o = ensure_tensor(o)
         if not self.ensure_compatible_dimensions(o):
          raise RuntimeError("Tensors dimensions are not compatible!")
@@ -195,36 +195,78 @@ class Tensor[SomeDim = D.Dimless]():
     def __neg__(self) -> Self:
         return self.__class__(-self._values)
     
-    def __eq__(self, o: object) -> bool:
+    def __eq__(self, o: object) -> Tensor[D.Dimless]:
         o = ensure_tensor(o)
         ensure_same_dimensions(self, o)
 
-        return self._values == o._values
+        try:
+            return self.transform(
+                D.Dimless._d,
+                np.equal
+            )
+        except:
+            raise RuntimeError("...")
+        
+    def __neq__(self, o: object) -> Tensor[D.Dimless]:
+        o = ensure_tensor(o)
+        ensure_same_dimensions(self, o)
+
+        try:
+            return self.transform(
+                D.Dimless._d,
+                np.not_equal
+            )
+        except:
+            raise RuntimeError("...")
     
-    def __lt__(self, o: object) -> bool:
+    def __lt__(self, o: object) -> Tensor[D.Dimless]:
         o = ensure_tensor(o)
         ensure_same_dimensions(self, o)
 
-        return bool(self._values < self._values)
+        try:
+            return self.transform(
+                D.Dimless._d,
+                lambda data: data < o._values
+            )
+        except:
+            raise RuntimeError("...")
     
-    def __le__(self, o: object) -> bool:
+    def __le__(self, o: object) -> Tensor[D.Dimless]:
         o = ensure_tensor(o)
         ensure_same_dimensions(self, o)
 
-        return bool(self._values <= self._values)
+        try:
+            return self.transform(
+                D.Dimless._d,
+                lambda data: data <= o._values
+            )
+        except:
+            raise RuntimeError("...")
     
-    def __gt__(self, o: object) -> bool:
+    def __gt__(self, o: object) -> Tensor[D.Dimless]:
         o = ensure_tensor(o)
         ensure_same_dimensions(self, o)
 
-        return bool(self._values > self._values)
+        try:
+            return self.transform(
+                D.Dimless._d,
+                lambda data: data > o._values
+            )
+        except:
+            raise RuntimeError("...")
     
-    def __ge__(self, o: object) -> bool:
+    def __ge__(self, o: object) -> Tensor[D.Dimless]:
         o = ensure_tensor(o)
         ensure_same_dimensions(self, o)
 
-        return bool(self._values >= self._values)
-
+        try:
+            return self.transform(
+                D.Dimless._d,
+                lambda data: data >= o._values
+            )
+        except:
+            raise RuntimeError("...")
+    
 def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[SomeDim] | Tensor[D.Dimless]:
     """ensure tensor. if not a tensor object, creates a dimless tensor"""
 

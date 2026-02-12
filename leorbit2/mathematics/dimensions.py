@@ -2,17 +2,19 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from fractions import Fraction
 from pyclbr import Class
-from typing import Any, ClassVar, Generic, Literal, NamedTuple, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import Any, ClassVar, Generic, Literal, NamedTuple, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
-class DimEls(NamedTuple):
+class DimEls:
     def __init__(self,
         length: Fraction | int = 0,
-        time: Fraction | int = 0
+        time: Fraction | int = 0,
+        mass: Fraction | int = 0,
     ):
         self.__length = Fraction(length)
         self.__time = Fraction(time)
+        self.__mass = Fraction(mass)
 
     @property
     def length(self) -> Fraction:
@@ -21,13 +23,18 @@ class DimEls(NamedTuple):
     @property
     def time(self) -> Fraction:
         return self.__time
+    
+    @property
+    def mass(self) -> Fraction:
+        return self.__mass
 
     @property
     def dimensionless(self) -> bool:
         return (
-            self.length
+            0
+            == self.length
             == self.time
-            == 0
+            == self.mass
         )
     
     def __eq__(self, o: object) -> bool:
@@ -37,18 +44,21 @@ class DimEls(NamedTuple):
         return (
             self.length == o.length
             and self.time == o.time
+            and self.mass == o.mass
         )
     
     def __mul__(self, o: DimEls) -> DimEls:
         return DimEls(
             length=self.length + o.length,
-            time=self.time + o.time
+            time=self.time + o.time,
+            mass=self.mass + o.mass
         )
     
     def __truediv__(self, o: DimEls) -> DimEls:
         return DimEls(
             length=self.length - o.length,
-            time=self.time - o.time
+            time=self.time - o.time,
+            mass=self.mass - o.mass
         )
     
     def __pow__(self, p: Fraction | int | float) -> DimEls:
@@ -56,12 +66,14 @@ class DimEls(NamedTuple):
 
         return DimEls(
             length=self.length * p,
-            time=self.time * p
+            time=self.time * p,
+            mass=self.mass * p
         )
 
 class Dim:
     """Base class for dimensions"""
     _d: ClassVar[DimEls | None] = None
+
 
 class D:
     """Dimensions registry."""
@@ -99,7 +111,7 @@ class D:
         kilo_meter: ClassVar[float] = 1e3 * meter
 
     class InvLength(Dim):
-        """1/m"""
+        """m**-1"""
         _d = DimEls(length=-1)
 
     class Time(Dim):
@@ -115,13 +127,37 @@ class D:
         month: ClassVar[float] = 30 * day
         year: ClassVar[float] = 365 * day
 
+    class Mass(Dim):
+        """kg"""
+        _d = DimEls(mass=1)
+
+        kilo_gram: ClassVar[float] = 1 # base
+
+        gram: ClassVar[float] = 1e-3 * kilo_gram
+        milli_gram: ClassVar[float] = 1e-3 * gram
+        metric_ton: ClassVar[float] = 1e3 * kilo_gram
+
     class Velocity(Dim):
-        """m/s"""
+        """m.s**-1"""
         _d = DimEls(length=1, time=-1)
 
         meter_per_second: ClassVar[float] = 1 # base
 
         kilo_meter_per_hour: ClassVar[float] = meter_per_second / 3.6
+
+    class Acceleration(Dim):
+        """m.s**-2"""
+        _d = DimEls(length=1, time=-2)
+
+    class Force(Dim):
+        """kg.m.s**-2"""
+        _d = DimEls(mass=1, length=1, time=-2)
+
+        newton: ClassVar[float] = 1 # base
+
+    class GrativationnalParam(Dim):
+        """m**3.s**-2"""
+        _d = DimEls(length=3, time=-2)
 
     @staticmethod
     def registered_dimensions() -> dict[DimEls, type[Dim]]:
@@ -131,15 +167,6 @@ class D:
             if issubclass(dim_cls, Dim)
         }
 
-# Registry of known dimensions for lookup
-_DIMENSION_REGISTRY: dict[DimEls, type[Dim]] = {
-    DimEls(): D.Dimless,
-    DimEls(length=1): D.Length,
-    DimEls(time=1): D.Time,
-    DimEls(length=1, time=-1): D.Velocity,
-}
-
-
 Number = float | int | np.floating
 SomeDim = TypeVar("SomeDim", bound=Dim)
 SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
@@ -147,73 +174,19 @@ SomeDimFull = TypeVar("SomeDimFull", bound=D.Length | D.Time | D.Velocity)
 TensorData = np.typing.NDArray[np.floating[Any]]
 
 class ProductDim[SomeDim, SomeOtherDim](Dim):
-    @classmethod
-    def __class_getitem__(cls, params):
-        # Handle non-tuple params (e.g., type variables for generic purposes)
-        if not isinstance(params, tuple) or len(params) != 2:
-            # Return a generic class for type-checking purposes
-            return type(f"ProductDim[{params}]", (Dim,), {})
-
-        dim1, dim2 = params
-        dim1_els: DimEls | None = getattr(dim1, "_d", None)
-        dim2_els: DimEls | None = getattr(dim2, "_d", None)
-
-        # If dimensions don't have 'd' attribute, return generic class
-        if dim1_els is None or dim2_els is None:
-            dim1_name = getattr(dim1, '__name__', str(dim1))
-            dim2_name = getattr(dim2, '__name__', str(dim2))
-            return type(f"ProductDim[{dim1_name}, {dim2_name}]", (Dim,), {})
-
-        # Compute product dimension
-        result_els = dim1_els * dim2_els
-
-        # Look up in registry for known dimensions
-        result_dim = _DIMENSION_REGISTRY.get(result_els)
-        if result_dim is not None:
-            return result_dim
-
-        # Create dynamic class for unknown dimension combinations
-        return type(
-            f"ProductDim[{dim1.__name__}, {dim2.__name__}]",
-            (Dim,),
-            dict(d=result_els)
-        )
+    ...
 
 class QuotientDim[SomeDim, SomeOtherDim](Dim):
-    @classmethod
-    def __class_getitem__(cls, params):
-        # Handle non-tuple params (e.g., type variables for generic purposes)
-        if not isinstance(params, tuple) or len(params) != 2:
-            # Return a generic class for type-checking purposes
-            return type(f"QuotientDim[{params}]", (Dim,), {})
-
-        dim1, dim2 = params
-        dim1_els: DimEls | None = getattr(dim1, "_d", None)
-        dim2_els: DimEls | None = getattr(dim2, "_d", None)
-
-        # If dimensions don't have 'd' attribute, return generic class
-        if dim1_els is None or dim2_els is None:
-            dim1_name = getattr(dim1, '__name__', str(dim1))
-            dim2_name = getattr(dim2, '__name__', str(dim2))
-            return type(f"QuotientDim[{dim1_name}, {dim2_name}]", (Dim,), {})
-
-        # Compute quotient dimension
-        result_els = dim1_els / dim2_els
-
-        # Look up in registry for known dimensions
-        result_dim = _DIMENSION_REGISTRY.get(result_els)
-        if result_dim is not None:
-            return result_dim
-
-        # Create dynamic class for unknown dimension combinations
-        return type(
-            f"QuotientDim[{dim1.__name__}, {dim2.__name__}]",
-            (Dim,),
-            dict(d=result_els)
-        )
+    ...
     
 class PowerDim[SomeDim, Numerator, Denominator](Dim):
     ...
-    
-SomeDim = TypeVar("SomeDim", bound=Dim)
-SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
+
+
+N3: TypeAlias = Literal[-3]
+N2: TypeAlias = Literal[-2]
+N1: TypeAlias = Literal[-1]
+OO: TypeAlias = Literal[0]
+P1: TypeAlias = Literal[1]
+P2: TypeAlias = Literal[2]
+P3: TypeAlias = Literal[3]

@@ -111,7 +111,7 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
             return 0 * Quantity.rad
         elif cos_angle <= -1:
             return pi * Quantity.rad
-        return cos_angle.acos()
+        return acos(cos_angle)
     
     def normalized(self) -> Vector3[D.Dimless]:
         l = self.length
