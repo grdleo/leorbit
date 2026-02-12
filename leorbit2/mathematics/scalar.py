@@ -182,7 +182,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     
     ### @ OPERATOR ###
 
-    def __matmul__(self, o: object) -> Scalar[Any]:
+    def __matmul__(self, o: Never) -> Never:
         raise RuntimeError("@ operation not defined for scalar")
     
     ### COMPARISONS

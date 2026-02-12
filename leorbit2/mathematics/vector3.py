@@ -311,6 +311,28 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
             return self.dot(o)
         
         raise TypeError("...")
+    
+    ################
+
+    def __eq__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> bool:
+        return bool(np.all(super().__eq__(o)._values))
+    
+    def __neq__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> bool:
+        return not self.__eq__(o)
+    
+    def __le__(self, o: Never) -> Never:
+        raise RuntimeError("Comparisons operations not defined for Vector3")
+    
+    def __lt__(self, o: Never) -> Never:
+        raise RuntimeError("Comparisons operations not defined for Vector3")
+    
+    def __ge__(self, o: Never) -> Never:
+        raise RuntimeError("Comparisons operations not defined for Vector3")
+    
+    def __gt__(self, o: Never) -> Never:
+        raise RuntimeError("Comparisons operations not defined for Vector3")
+    
+
 
 _vector3_dimless = Vector3[D.Dimless]
 Vector3.O = _vector3_dimless.new(0, 0, 0)
