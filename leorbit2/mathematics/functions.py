@@ -4,8 +4,8 @@ from typing import Any, TypeVar, overload, Literal
 import numpy as np
 from leorbit2.mathematics.dimensions import D, Dim, Number, SomeDim, PowerDim, P1, P2
 from leorbit2.mathematics.quantity import Quantity
-from leorbit2.mathematics.scalar import Scalar, scalar_class_factory
-from leorbit2.mathematics.tensor import Tensor, dimensional_tensor_class_factory
+from leorbit2.mathematics.scalar import Scalar
+from leorbit2.mathematics.tensor import Tensor
 
 TWELF_PI = math.pi / 12
 TWOPI = 2 * math.pi
@@ -24,7 +24,7 @@ def square(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P2, P1]]: ... # 
 
 def square(tensor: Tensor[Any]) -> Tensor[Any]:
     return tensor.transform(
-        tensor.dim ** 2,
+        tensor.dim_coords ** 2,
         np.square
     )
 
@@ -39,7 +39,7 @@ def sqrt(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P1, P2]]: ... # ty
 
 def sqrt(tensor: Tensor[Any]) -> Tensor[Any]:
     return tensor.transform(
-        tensor.dim ** .5,
+        tensor.dim_coords ** .5,
         np.sqrt
     )
 

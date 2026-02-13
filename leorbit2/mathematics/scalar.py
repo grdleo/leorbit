@@ -9,21 +9,12 @@ from typing import Annotated, Any, ClassVar, Generic, Literal, Never, Self, Type
 import numpy as np
 from numpy._typing import _UFunc_Nin1_Nout1
 
-from leorbit2.mathematics.dimensions import Dim, DimEls, D, PowerDim, ProductDim, QuotientDim, SomeDim, SomeOtherDim
-from leorbit2.mathematics.tensor import Tensor, dimensional_tensor_class_factory
+from leorbit2.mathematics.dimensions import Dim, DimCoords, D, PowerDim, ProductDim, QuotientDim, SomeDim, SomeOtherDim
+from leorbit2.mathematics.tensor import Tensor
 
 Number = float | int | np.floating
 TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
-
-def scalar_class_factory(dim: DimEls) -> type[Scalar]:
-    return cast(
-        type[Scalar], 
-        dimensional_tensor_class_factory(
-            dim,
-            Scalar,
-        )
-    )
 
 class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     @classmethod
@@ -36,7 +27,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
         return cls(value)
 
     def cast(self, dim: type[SomeOtherDim]) -> Scalar[SomeOtherDim]:
-        if dim._d == self._dimension:
+        if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
@@ -48,7 +39,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
         raise NotImplementedError()
     
     def __repr__(self) -> str:
-        return f"Scalar[D.{self._dimension.__class__.__name__}]({self.base_unit_value})"
+        return f"Scalar[D.{self.dim.__class__.__name__}]({self._values})"
 
     ### + OPERATOR ###
 
@@ -251,15 +242,16 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     @overload
     def __pow__(self: Scalar[D.Dimless], o: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
 
-    def __pow__(self, o: object) -> Scalar[Any]:
+    def __pow__(self, o: object) -> Tensor[Any]:
         if isinstance(o, Scalar) and o.check(D.Dimless):
             o = o.base_unit_value
 
         if not isinstance(o, Fraction | Number):
             raise ValueError()
         
-        return scalar_class_factory(self._dimension ** Fraction(o)).new(
-            self.base_unit_value ** float(o)
+        return self.transform(
+            self.dim_coords ** Fraction(o),
+            lambda data: np.power(data, float(o))
         )
     
     #############################################

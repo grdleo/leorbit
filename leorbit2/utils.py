@@ -3,7 +3,7 @@
 
 import math
 from leorbit2.mathematics import D, Scalar, Quantity, Vector3
-from leorbit2.mathematics.dimensions import DimEls
+from leorbit2.mathematics.dimensions import DimCoords
 from leorbit2.mathematics.functions import atan2, cos, sin, square, sqrt
 import numpy as np
 from numpy.typing import NDArray
@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, TypeVar, cast
 from leorbit2.mathematics.scalar import scalar_class_factory
 
 MU_EARTH = scalar_class_factory(
-    DimEls(
+    DimCoords(
         length=3, 
         time=-2
     )

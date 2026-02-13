@@ -37,7 +37,7 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
         return cls(mat)
 
     def cast(self, dim: type[SomeOtherDim]) -> Matrix33[SomeOtherDim]:
-        if dim._d == self._dimension:
+        if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
@@ -51,7 +51,7 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
         raise NotImplementedError()
     
     def __repr__(self) -> str:
-        return f"Matrix33[D.{self._dimension.__class__.__name__}]({self._values})"
+        return f"Matrix33[D.{self.dim.__class__.__name__}]({self._values})"
 
     ### + OPERATOR ###
 

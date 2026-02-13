@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from fractions import Fraction
+from functools import cache
 from pyclbr import Class
 from typing import Any, ClassVar, Generic, Literal, NamedTuple, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
-class DimEls:
+class DimCoords:
     def __init__(self,
         length: Fraction | int = 0,
         time: Fraction | int = 0,
@@ -38,7 +39,7 @@ class DimEls:
         )
     
     def __eq__(self, o: object) -> bool:
-        if not isinstance(o, DimEls):
+        if not isinstance(o, DimCoords):
             return False
         
         return (
@@ -47,24 +48,24 @@ class DimEls:
             and self.mass == o.mass
         )
     
-    def __mul__(self, o: DimEls) -> DimEls:
-        return DimEls(
+    def __mul__(self, o: DimCoords) -> DimCoords:
+        return DimCoords(
             length=self.length + o.length,
             time=self.time + o.time,
             mass=self.mass + o.mass
         )
     
-    def __truediv__(self, o: DimEls) -> DimEls:
-        return DimEls(
+    def __truediv__(self, o: DimCoords) -> DimCoords:
+        return DimCoords(
             length=self.length - o.length,
             time=self.time - o.time,
             mass=self.mass - o.mass
         )
     
-    def __pow__(self, p: Fraction | int | float) -> DimEls:
+    def __pow__(self, p: Fraction | int | float) -> DimCoords:
         p = Fraction(p)
 
-        return DimEls(
+        return DimCoords(
             length=self.length * p,
             time=self.time * p,
             mass=self.mass * p
@@ -72,7 +73,7 @@ class DimEls:
 
 class Dim:
     """Base class for dimensions"""
-    _d: ClassVar[DimEls | None] = None
+    _d: ClassVar[DimCoords] = None # type: ignore (all derived dimensions must have this attribute)
 
 
 class D:
@@ -80,30 +81,30 @@ class D:
 
     class Dimless(Dim):
         """1"""
-        _d = DimEls()
+        _d = DimCoords()
 
     class Angle(Dim):
         """rad"""
-        _d = DimEls()
+        _d = DimCoords()
 
         rad: ClassVar[float] = 1 # base
         deg: ClassVar[float] = np.pi / 180
 
     class AngularVelocity(Dim):
         """rad/s"""
-        _d = DimEls(time=-1)
+        _d = DimCoords(time=-1)
 
     class AngularAcc(Dim):
         """rad/s**2"""
-        _d = DimEls(time=-2)
+        _d = DimCoords(time=-2)
 
     class AngularJerk(Dim):
         """rad/s**2"""
-        _d = DimEls(time=-3)
+        _d = DimCoords(time=-3)
 
     class Length(Dim):
         """m"""
-        _d = DimEls(length=1)
+        _d = DimCoords(length=1)
 
         meter: ClassVar[float] = 1 # base
 
@@ -112,11 +113,11 @@ class D:
 
     class InvLength(Dim):
         """m**-1"""
-        _d = DimEls(length=-1)
+        _d = DimCoords(length=-1)
 
     class Time(Dim):
         """s"""
-        _d = DimEls(time=1)
+        _d = DimCoords(time=1)
 
         second: ClassVar[float] = 1 # base
 
@@ -129,7 +130,7 @@ class D:
 
     class Mass(Dim):
         """kg"""
-        _d = DimEls(mass=1)
+        _d = DimCoords(mass=1)
 
         kilo_gram: ClassVar[float] = 1 # base
 
@@ -139,7 +140,7 @@ class D:
 
     class Velocity(Dim):
         """m.s**-1"""
-        _d = DimEls(length=1, time=-1)
+        _d = DimCoords(length=1, time=-1)
 
         meter_per_second: ClassVar[float] = 1 # base
 
@@ -147,25 +148,34 @@ class D:
 
     class Acceleration(Dim):
         """m.s**-2"""
-        _d = DimEls(length=1, time=-2)
+        _d = DimCoords(length=1, time=-2)
 
     class Force(Dim):
         """kg.m.s**-2"""
-        _d = DimEls(mass=1, length=1, time=-2)
+        _d = DimCoords(mass=1, length=1, time=-2)
 
         newton: ClassVar[float] = 1 # base
 
     class GrativationnalParam(Dim):
         """m**3.s**-2"""
-        _d = DimEls(length=3, time=-2)
+        _d = DimCoords(length=3, time=-2)
 
     @staticmethod
-    def registered_dimensions() -> dict[DimEls, type[Dim]]:
-        return {
-            dim_cls._d: dim_cls
-            for dim_cls in D.__dict__.values()
-            if issubclass(dim_cls, Dim)
-        }
+    def get_dimension_from_coords(dim_coords: DimCoords) -> type[Dim]:
+        dim = registered_dimensions().get(dim_coords, None)
+        if dim is None:
+            raise ValueError(f"No dimension registered with coords '{dim_coords}'")
+        
+        return dim
+
+@cache
+def registered_dimensions() -> dict[DimCoords, type[Dim]]:
+    return {
+        dim_cls._d: dim_cls
+        for dim_cls in D.__dict__.values()
+        if issubclass(dim_cls, Dim)
+    }
+
 
 Number = float | int | np.floating
 SomeDim = TypeVar("SomeDim", bound=Dim)

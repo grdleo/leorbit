@@ -1,30 +1,22 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from functools import cached_property
-from math import pi, acos
+from math import pi
 from pyclbr import Class
 from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
-from leorbit2.mathematics.dimensions import Dim, DimEls, D, ProductDim, QuotientDim, SomeDim, SomeOtherDim
-from leorbit2.mathematics.functions import atan2
+from leorbit2.mathematics import sqrt
+from leorbit2.mathematics.dimensions import Dim, DimCoords, D, ProductDim, QuotientDim, SomeDim, SomeOtherDim
+from leorbit2.mathematics.functions import atan2, acos, cos, sin, square
 from leorbit2.mathematics.quantity import Quantity
-from leorbit2.mathematics.scalar import Scalar, scalar_class_factory
-from leorbit2.mathematics.tensor import Tensor, dimensional_tensor_class_factory, ensure_same_dimensions
+from leorbit2.mathematics.scalar import Scalar
+from leorbit2.mathematics.tensor import Tensor, ensure_same_dimensions
 
 Number = float | int | np.floating
 TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
-
-def vector3_class_factory(dim: DimEls) -> type[Vector3]:
-    return cast(
-        type[Vector3], 
-        dimensional_tensor_class_factory(
-            dim,
-            Vector3,
-        )
-    )
     
 NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
 
@@ -57,25 +49,25 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
         return cls(v)
 
     def cast(self, dim: type[SomeOtherDim]) -> Vector3[SomeOtherDim]:
-        if dim._d == self._dimension:
+        if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
     @cached_property
     def x(self) -> Scalar[SomeDim]:
-        return scalar_class_factory(self._dimension)(self._values[0])
+        return Scalar[self.dim](self._values[0])
     
     @cached_property
     def y(self) -> Scalar[SomeDim]:
-        return scalar_class_factory(self._dimension)(self._values[1])
+        return Scalar[self.dim](self._values[1])
     
     @cached_property
     def z(self) -> Scalar[SomeDim]:
-        return scalar_class_factory(self._dimension)(self._values[2])
+        return Scalar[self.dim](self._values[2])
     
     @cached_property
     def length(self) -> Scalar[SomeDim]:
-        return scalar_class_factory(self._dimension)(
+        return Scalar[self.dim](
             self._values.transpose().dot(self._values)**.5
         )
     
@@ -93,11 +85,7 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
         In [-π/2, π/2] range
         """
 
-        xy = cast(
-            Scalar[SomeDim], 
-            (self.x.sqr() + self.y.sqr()).sqrt()
-        )
-
+        xy = sqrt(square(self.x) + square(self.y))
         return atan2(self.z, xy)
     
     def angle(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Scalar[D.Angle]:
@@ -131,12 +119,12 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
         - `rho:` Radius (ρ) from given convention.
         """
 
-        cos_delta = delta.cos()
-        sin_delta = delta.sin()
-        cos_theta = theta.cos()
-        sin_theta = theta.sin()
+        cos_delta = cos(delta)
+        sin_delta = sin(delta)
+        cos_theta = cos(theta)
+        sin_theta = sin(theta)
 
-        return vector3_class_factory(rho._dimension).new(
+        return Vector3[rho.dim].new(
             x = rho * cos_theta * cos_delta,
             y = rho * sin_theta * cos_delta,
             z = rho * sin_delta
@@ -154,7 +142,7 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
 
         # Dot product: transpose first vector and matrix multiply
         result_values = self._values.transpose().dot(o._values)
-        return scalar_class_factory(self._dimension)(result_values)
+        return Scalar[self.dim](result_values)
     
     @overload
     def cross(self: Vector3[D.Dimless], o: Vector3[D.Dimless]) -> Vector3[D.Dimless]: ...
@@ -171,11 +159,11 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
 
         # Dot product: transpose first vector and matrix multiply
         result_values = np.cross(self._values, o._values, axis=0)
-        return vector3_class_factory(self._dimension)(result_values)
+        return Vector3[self.dim](result_values)
     
     def __repr__(self) -> str:
         return (
-            f"Vector3[D.{self._dimension.__class__.__name__}]("
+            f"Vector3[D.{self.dim.__class__.__name__}]("
             f"x={self._values[0]}, "
             f"y={self._values[1]}, "
             f"z={self._values[2]}"

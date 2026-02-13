@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from functools import singledispatchmethod
 from pyclbr import Class
-from typing import Any, Callable, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import Any, Callable, ClassVar, Generic, Literal, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 
-from leorbit2.mathematics.dimensions import Dim, DimEls, D
+from leorbit2.mathematics.dimensions import Dim, DimCoords, D
 
 Number = float | int | np.floating
 SomeDim = TypeVar("SomeDim", bound=Dim)
@@ -13,51 +14,85 @@ SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
 TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
+TensorDataTransformer: TypeAlias = Callable[[TensorData], TensorData]
+
 class Tensor[SomeDim = D.Dimless]():
-    _dimension: DimEls
+    _dim: type[Dim]
+    _base_tensor_class: type[Tensor]
 
     def __init__(self, values: Number | TensorData):
         """CAREFUL!! User should never instantiante any tensor using `__init__`.
         Always use the classmethod `new`."""
-        if not hasattr(self.__class__, "_dimension"):
-            raise RuntimeError("!!")
+        if not hasattr(self.__class__, "_dim"):
+            raise RuntimeError("...")
         
         self._values = np.array(values)
 
     @property
-    def dim(self) -> DimEls:
-        return self._dimension
+    def dim_coords(self) -> DimCoords:
+        return self._dim._d
+    
+    @property
+    def dim(self) -> type[SomeDim]:
+        return cast(
+            type[SomeDim],
+            self._dim
+        )
+    
+    @classmethod
+    def _is_base_tensor_class(cls) -> bool:
+        return hasattr(cls, "_base_tensor_class") and issubclass(cls._dim, Tensor)
 
     def __repr__(self) -> str:
-        return f"Tensor[D.{self._dimension.__class__.__name__}]({self._values})"
+        return f"Tensor[D.{self.dim.__class__.__name__}]({self._values})"
 
     @classmethod
     def __class_getitem__(cls, dim: type[SomeDim]) -> type[Tensor]:
-        dim_els: DimEls = getattr(dim, "_d")
+        if not issubclass(dim, Dim):
+            raise TypeError("...")
 
-        return dimensional_tensor_class_factory(
-            dim_els,
+        return _dimensional_tensor_class_factory(
+            dim,
             cast(type[Tensor], cls)
         )
     
     def cast(self, dim: type[SomeOtherDim]) -> Tensor[SomeOtherDim]:
-        if dim._d == self._dimension:
+        if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
     def copy(self) -> Self:
         return self.__class__(self._values)
 
-    def ensure_compatible_dimensions(self, o: Tensor) -> TypeIs[Tensor[SomeDim]]:
-        return isinstance(o, Tensor) and o._dimension == self._dimension
+    def ensure_compatible_dimensions(self: Tensor[SomeDim], o: Tensor[SomeOtherDim]) -> TypeIs[Tensor[SomeOtherDim]]:
+        return (
+            isinstance(o, Tensor) 
+            and o.dim_coords == self.dim_coords
+        )
     
     def check(self, dim: type[Dim]) -> bool:
         """Returns `True` if tensor is of dimension `dim`"""
-        return self._dimension == dim._d
+        return self.dim_coords == dim._d
     
-    def transform(self, new_dim: DimEls, function: Callable[[TensorData], TensorData]) -> Tensor[Any]: # type: ignore
-        return dimensional_tensor_class_factory(
-            new_dim,
+    @singledispatchmethod
+    def transform(self, dim, function) -> Tensor[Any]:
+        ...
+
+    @transform.register
+    def _(self, dim: DimCoords, function: TensorDataTransformer) -> Tensor[Any]:
+        d = D.get_dimension_from_coords(dim)
+
+        return _dimensional_tensor_class_factory(
+            d,
+            cast(type[Tensor], self.__class__)
+        )(
+            function(self._values)
+        )
+
+    @transform.register
+    def _(self, dim: type[Dim], function: TensorDataTransformer) -> Tensor[Any]:
+        return _dimensional_tensor_class_factory(
+            dim,
             cast(type[Tensor], self.__class__)
         )(
             function(self._values)
@@ -106,66 +141,60 @@ class Tensor[SomeDim = D.Dimless]():
     def __mul__(self, o: object) -> Tensor: # self * o
         o = ensure_tensor(o)
         try:
-            tensor_class = dimensional_tensor_class_factory(
-                self._dimension * o._dimension, 
-                cast(type[Tensor], self.__class__)
+            return self.transform(
+                self.dim_coords * o.dim_coords,
+                lambda values: values * o._values
             )
-            return tensor_class(self._values * o._values)
         except:
             raise RuntimeError("...")
 
     def __rmul__(self, o: object) -> Tensor: # o * self
         o = ensure_tensor(o)
         try:
-            tensor_class = dimensional_tensor_class_factory(
-                o._dimension * self._dimension, 
-                cast(type[Tensor], self.__class__)
+            return self.transform(
+                o.dim_coords * self.dim_coords,
+                lambda values: o._values * values
             )
-            return tensor_class(o._values * self._values)
         except:
             raise RuntimeError("...")
 
     def __truediv__(self, o: object) -> Tensor: # self / o
         o = ensure_tensor(o)
         try:
-            tensor_class = dimensional_tensor_class_factory(
-                self._dimension / o._dimension, 
-                cast(type[Tensor], self.__class__)
+            return self.transform(
+                self.dim_coords / o.dim_coords,
+                lambda values: values / o._values
             )
-            return tensor_class(self._values / o._values)
         except:
             raise RuntimeError("...")
 
     def __rtruediv__(self, o: object) -> Tensor: # o / self
         o = ensure_tensor(o)
         try:
-            tensor_class = dimensional_tensor_class_factory(
-                o._dimension / self._dimension, 
-                cast(type[Tensor], self.__class__)
+            return self.transform(
+                o.dim_coords / self.dim_coords,
+                lambda values: o._values / values
             )
-            return tensor_class(o._values / self._values)
         except:
             raise RuntimeError("...")
 
     def __matmul__(self, o: object) -> Tensor: # self @ o
         o = ensure_tensor(o)
         try:
-            tensor_class = dimensional_tensor_class_factory(
-                self._dimension * o._dimension, 
-                cast(type[Tensor], self.__class__)
+            return self.transform(
+                self.dim_coords * o.dim_coords,
+                lambda values: values @ o._values
             )
-            return tensor_class(self._values @ o._values)
         except:
             raise RuntimeError("...")
 
     def __rmatmul__(self, o: object) -> Tensor: # o @ self
         o = ensure_tensor(o)
         try:
-            tensor_class = dimensional_tensor_class_factory(
-                o._dimension * self._dimension, 
-                cast(type[Tensor], self.__class__)
+            return self.transform(
+                o.dim_coords * self.dim_coords,
+                lambda values: o._values @ values
             )
-            return tensor_class(o._values @ self._values)
         except:
             raise RuntimeError("...")
         
@@ -175,7 +204,7 @@ class Tensor[SomeDim = D.Dimless]():
             raise RuntimeError("Tensors dimensions are not compatible!")
         
         try:
-            return self.__class__(self._values % o._values)
+            return cast(type[Tensor], self.__class__)(self._values % o._values)
         except:
             raise RuntimeError("...")
 
@@ -185,7 +214,7 @@ class Tensor[SomeDim = D.Dimless]():
          raise RuntimeError("Tensors dimensions are not compatible!")
 
         try:
-            return self.__class__(o._values % self._values)
+            return cast(type[Tensor], self.__class__)(o._values % self._values)
         except:
             raise RuntimeError("...")
         
@@ -201,8 +230,11 @@ class Tensor[SomeDim = D.Dimless]():
 
         try:
             return self.transform(
-                D.Dimless._d,
-                np.equal
+                D.Dimless,
+                cast(
+                    TensorDataTransformer, 
+                    lambda values: np.int8(values == o._values)
+                )
             )
         except:
             raise RuntimeError("...")
@@ -213,8 +245,11 @@ class Tensor[SomeDim = D.Dimless]():
 
         try:
             return self.transform(
-                D.Dimless._d,
-                np.not_equal
+                D.Dimless,
+                cast(
+                    TensorDataTransformer, 
+                    lambda values: np.int8(values != o._values)
+                )
             )
         except:
             raise RuntimeError("...")
@@ -225,8 +260,11 @@ class Tensor[SomeDim = D.Dimless]():
 
         try:
             return self.transform(
-                D.Dimless._d,
-                lambda data: data < o._values
+                D.Dimless,
+                cast(
+                    TensorDataTransformer, 
+                    lambda values: np.int8(values < o._values)
+                )
             )
         except:
             raise RuntimeError("...")
@@ -237,8 +275,11 @@ class Tensor[SomeDim = D.Dimless]():
 
         try:
             return self.transform(
-                D.Dimless._d,
-                lambda data: data <= o._values
+                D.Dimless,
+                cast(
+                    TensorDataTransformer, 
+                    lambda values: np.int8(values <= o._values)
+                )
             )
         except:
             raise RuntimeError("...")
@@ -250,7 +291,10 @@ class Tensor[SomeDim = D.Dimless]():
         try:
             return self.transform(
                 D.Dimless._d,
-                lambda data: data > o._values
+                cast(
+                    TensorDataTransformer, 
+                    lambda values: np.int8(values > o._values)
+                )
             )
         except:
             raise RuntimeError("...")
@@ -262,7 +306,10 @@ class Tensor[SomeDim = D.Dimless]():
         try:
             return self.transform(
                 D.Dimless._d,
-                lambda data: data >= o._values
+                cast(
+                    TensorDataTransformer, 
+                    lambda values: np.int8(values >= o._values)
+                )
             )
         except:
             raise RuntimeError("...")
@@ -282,18 +329,22 @@ def ensure_same_dimensions(*tensors: Tensor[Any]) -> Literal[True]:
         return True
     
     t0, *_ = tensors
-    if all(t._dimension == t0._dimension for t in tensors):
+    if all(t.dim_coords == t0.dim_coords for t in tensors):
         return True
     
     raise RuntimeError("...")
 
-def dimensional_tensor_class_factory(
-    dim: DimEls, 
+def _dimensional_tensor_class_factory(
+    dim: type[Dim], 
     parent_class: type[Tensor] = Tensor
 ) -> type[Tensor]:
-    # FIXME
+    base_tensor_class = parent_class if parent_class._is_base_tensor_class() else parent_class._base_tensor_class
+
     return type(
-        "DimTensor",
-        (parent_class, ),
-        dict(_dimension=dim)
+        "TensorWithDimension",
+        (base_tensor_class, ),
+        dict(
+            _dimension=dim,
+            _base_tensor_class=base_tensor_class
+        )
     )
