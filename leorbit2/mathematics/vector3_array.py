@@ -182,7 +182,7 @@ class Vector3Array(Tensor[SomeDim], Generic[SomeDim]):
         return ScalarArray.dimensionalize(
             self.dim_coords * o.dim_coords
         )(
-            np.sum(self._values * o._values) ** .5
+            np.sum(self._values * o._values, axis=0)
         )
 
     @overload

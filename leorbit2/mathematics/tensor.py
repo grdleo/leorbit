@@ -103,8 +103,9 @@ class Tensor[SomeDim = D.Dimless]():
                 cast(type[Tensor], cls)
             )
 
-        # Support generic/type‑var usages like `Tensor[SomeDim]` during
-        # static typing and class declarations: fall back to the base class.
+        # Allow generic/type-var usage like `Tensor[SomeDim]` in annotations
+        # by returning the original class when `dim` is not a concrete
+        # Dimension subclass.
         return cls
     
     def cast(self, dim: type[SomeOtherDim]) -> Tensor[SomeOtherDim]:

@@ -137,7 +137,16 @@ def atan2(y: ScalarArray[SomeDim], x: ScalarArray[SomeDim]) -> ScalarArray[D.Ang
 def atan2(y: Scalar[SomeDim], x: Scalar[SomeDim]) -> Scalar[D.Angle]: ...
 
 def atan2(y: Scalar | ScalarArray, x: Scalar | ScalarArray) -> Scalar | ScalarArray:
-    return np.atan2(y.base_unit_value, x.base_unit_value) * Quantity.rad
+    """Elementwise two-argument arctangent that returns an angle-typed tensor.
+
+    Returns a ``Scalar[D.Angle]`` when both inputs are ``Scalar`` and a
+    ``ScalarArray[D.Angle]`` when at least one input is a ``ScalarArray``.
+    """
+    vals = np.atan2(y.base_unit_value, x.base_unit_value)
+
+    # preserve the caller's concrete tensor type (Scalar vs ScalarArray)
+    base = getattr(y, "_base_tensor_class", None) or getattr(x, "_base_tensor_class")
+    return base[D.Angle](vals)
 
 def normalize_angle(angle: Scalar[D.Angle]) -> Scalar[D.Angle]:
     """Returns the given angle in its [0, 2π] range."""

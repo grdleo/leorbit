@@ -37,10 +37,10 @@ class Quantity(metaclass=QuantityMeta):
 
     # DISTANCES
 
-    m: Scalar[D.Length]
+    meter: Scalar[D.Length]
     """meter"""
 
-    km: Scalar[D.Length]
+    kilo_meter: Scalar[D.Length]
     """kilometer"""
 
     radii_earth: Scalar[D.Length]
@@ -57,10 +57,10 @@ class Quantity(metaclass=QuantityMeta):
 
     # DURATIONS
 
-    s: Scalar[D.Time]
+    second: Scalar[D.Time]
     """second"""
 
-    min: Scalar[D.Time]
+    minute: Scalar[D.Time]
     """minute"""
 
     hour: Scalar[D.Time]

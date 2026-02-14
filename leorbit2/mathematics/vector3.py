@@ -21,8 +21,12 @@ SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
 
 def all_simple_numbers(els: list[object]) -> TypeGuard[list[Number]]:
-    """Return whether all elements are plain numeric scalars."""
-    return all(isinstance(el, Number) for el in els)
+    """Return whether all elements are plain numeric scalars (including numpy
+    scalar types)."""
+    return all(
+        isinstance(el, (int, float, np.floating, np.integer))
+        for el in els
+    )
 
 def all_scalars_numbers(els: list[object]) -> TypeGuard[list[Scalar]]:
     """Return whether all elements are ``Scalar`` instances."""
@@ -163,7 +167,7 @@ class Vector3(Tensor[SomeDim], Generic[SomeDim]):
         return Scalar.dimensionalize(
             self.dim_coords * o.dim_coords
         ).new(
-            np.sum(self._values * o._values) ** .5
+            np.sum(self._values * o._values)
         )
     
     @overload

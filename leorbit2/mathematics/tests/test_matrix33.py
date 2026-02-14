@@ -78,11 +78,13 @@ def test_matrix33_matmul_with_matrix_vector_and_vector_array():
     np.testing.assert_allclose(mva._values, np.array([[2, 4], [0, 2], [6, 8]], dtype=float))
 
 
-def test_matrix33_inverse_not_implemented():
+def test_matrix33_inverse_computes_inverse():
     m = Matrix33[D.Dimless].new(
         1, 0, 0,
         0, 1, 0,
         0, 0, 1,
     )
-    with pytest.raises(NotImplementedError):
-        _ = m.inverse()
+    inv = m.inverse()
+    # inverse of identity is identity
+    np.testing.assert_allclose(inv._values, np.linalg.inv(m._values))
+    assert inv.check(D.Dimless)

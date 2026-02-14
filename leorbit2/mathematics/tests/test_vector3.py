@@ -17,15 +17,15 @@ def test_vector3_named_constants():
 
 def test_vector3_new_properties_and_getters():
     v = Vector3[D.Length].new(1, 2, 2)
-    assert v.x.magnitude("m") == pytest.approx(1)
-    assert v.y.magnitude("m") == pytest.approx(2)
-    assert v.z.magnitude("m") == pytest.approx(2)
-    assert v.length.magnitude("m") == pytest.approx(3)
+    assert v.x.magnitude("meter") == pytest.approx(1)
+    assert v.y.magnitude("meter") == pytest.approx(2)
+    assert v.z.magnitude("meter") == pytest.approx(2)
+    assert v.length.magnitude("meter") == pytest.approx(3)
 
 
 def test_vector3_new_from_scalars_requires_same_dim():
     with pytest.raises(RuntimeError):
-        _ = Vector3.new(Quantity.m, Quantity.s, Quantity.m)
+        _ = Vector3.new(Quantity.meter, Quantity.second, Quantity.meter)
 
 
 def test_vector3_add_sub_mul_div_and_dimension_changes():

@@ -24,17 +24,17 @@ from leorbit2.mathematics.scalar_array import ScalarArray
 
 
 def test_square_and_sqrt_scalar_and_scalar_array():
-    s = 3 * Quantity.m
+    s = 3 * Quantity.meter
     ss = square(s)
     assert ss.dim_coords == (D.Length._d ** 2)
     assert ss.magnitude() == pytest.approx(9)
-    assert sqrt(ss).magnitude("m") == pytest.approx(3)
+    assert sqrt(ss).magnitude("meter") == pytest.approx(3)
 
     arr = ScalarArray[D.Length].new([1, 4, 9])
     arr_sq = square(arr)
     assert arr_sq.dim_coords == (D.Length._d ** 2)
     np.testing.assert_allclose(arr_sq.magnitude(), [1, 16, 81])
-    np.testing.assert_allclose(sqrt(arr_sq).magnitude("m"), [1, 4, 9])
+    np.testing.assert_allclose(sqrt(arr_sq).magnitude("meter"), [1, 4, 9])
 
 
 def test_trigonometric_functions_scalar():

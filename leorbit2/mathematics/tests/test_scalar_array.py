@@ -12,8 +12,8 @@ from leorbit2.mathematics.scalar_array import ScalarArray
 def test_scalar_array_new_size_getitem():
     arr = ScalarArray[D.Length].new([1, 2, 3])
     assert arr.size == 3
-    assert arr[0].magnitude("m") == pytest.approx(1)
-    assert arr[2].magnitude("m") == pytest.approx(3)
+    assert arr[0].magnitude("meter") == pytest.approx(1)
+    assert arr[2].magnitude("meter") == pytest.approx(3)
     with pytest.raises(KeyError):
         _ = arr[3]
 
@@ -50,7 +50,7 @@ def test_scalar_array_comparisons():
     np.testing.assert_array_equal(a > b, [False, False, True])
     np.testing.assert_array_equal(a >= b, [False, True, True])
     np.testing.assert_array_equal(a == a, [True, True, True])
-    np.testing.assert_array_equal(a != b, [True, False, True])
+    np.testing.assert_array_equal(a.__neq__(b), [True, False, True])
 
 
 def test_scalar_array_pow_updates_dimension_and_values():
@@ -76,4 +76,4 @@ def test_scalar_array_dimension_mismatch_raises():
     with pytest.raises(RuntimeError):
         _ = arr + Scalar[D.Time].new(1)
     with pytest.raises(RuntimeError):
-        _ = arr + Quantity.s
+        _ = arr + Quantity.second

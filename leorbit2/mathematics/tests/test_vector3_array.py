@@ -11,7 +11,7 @@ from leorbit2.mathematics.vector3_array import Vector3Array
 def test_vector3_array_builders_and_indexing():
     v1 = Vector3[D.Length].new(1, 0, 0)
     v2 = Vector3[D.Length].new(0, 1, 0)
-    arr = Vector3Array.new_from_vectors(v1, v2)
+    arr = Vector3Array[D.Length].new_from_vectors(v1, v2)
 
     assert arr.size == 2
     np.testing.assert_allclose(arr[0]._values.flatten(), [1, 0, 0])
@@ -19,7 +19,7 @@ def test_vector3_array_builders_and_indexing():
     with pytest.raises(KeyError):
         _ = arr[2]
 
-    repeated = Vector3Array.new_from_single_vector(v1, 3)
+    repeated = Vector3Array[D.Length].new_from_single_vector(v1, 3)
     assert repeated.size == 3
     np.testing.assert_allclose(repeated._values, np.array([[1, 1, 1], [0, 0, 0], [0, 0, 0]]))
 
@@ -61,7 +61,7 @@ def test_vector3_array_comparisons_and_invalid_comparators():
     b = Vector3Array[D.Dimless](np.array([[1, 3], [0, 1], [0, 0]], dtype=float))
 
     np.testing.assert_array_equal(a == b, [True, False])
-    np.testing.assert_array_equal(a != b, [False, True])
+    np.testing.assert_array_equal(a.__neq__(b), [False, True])
 
     with pytest.raises(RuntimeError):
         _ = a < b

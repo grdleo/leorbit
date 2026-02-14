@@ -9,7 +9,7 @@ from leorbit2.mathematics.scalar import Scalar
 
 def test_scalar_new_and_magnitude_and_cast():
     s = Scalar[D.Length].new(2000)
-    assert s.magnitude("m") == pytest.approx(2000)
+    assert s.magnitude("meter") == pytest.approx(2000)
     assert s.magnitude("kilo_meter") == pytest.approx(2)
 
     same = s.cast(D.Length)
@@ -20,21 +20,21 @@ def test_scalar_new_and_magnitude_and_cast():
 
 
 def test_scalar_add_sub_same_dimension():
-    a = 2 * Quantity.m
-    b = 500 * Quantity.m
-    assert (a + b).magnitude("m") == pytest.approx(502)
-    assert (a - b).magnitude("m") == pytest.approx(-498)
-    assert (b - a).magnitude("m") == pytest.approx(498)
+    a = 2 * Quantity.meter
+    b = 500 * Quantity.meter
+    assert (a + b).magnitude("meter") == pytest.approx(502)
+    assert (a - b).magnitude("meter") == pytest.approx(-498)
+    assert (b - a).magnitude("meter") == pytest.approx(498)
 
 
 def test_scalar_add_raises_on_dimension_mismatch():
     with pytest.raises(RuntimeError):
-        _ = Quantity.m + Quantity.s
+        _ = Quantity.meter + Quantity.second
 
 
 def test_scalar_mul_and_div_update_dimensions():
-    distance = 3 * Quantity.m
-    duration = 2 * Quantity.s
+    distance = 3 * Quantity.meter
+    duration = 2 * Quantity.second
 
     speed = distance / duration
     assert speed.dim_coords == (D.Length._d / D.Time._d)
@@ -55,23 +55,23 @@ def test_scalar_modulo_and_reverse_modulo_dimless():
 
 def test_scalar_modulo_raises_on_dimension_mismatch():
     with pytest.raises(RuntimeError):
-        _ = Quantity.m % Quantity.s
+        _ = Quantity.meter % Quantity.second
 
 
 def test_scalar_comparisons():
-    a = 2 * Quantity.s
-    b = 3 * Quantity.s
+    a = 2 * Quantity.second
+    b = 3 * Quantity.second
 
     assert a < b
     assert a <= b
     assert b > a
     assert b >= a
-    assert a == 2 * Quantity.s
+    assert a == 2 * Quantity.second
     assert a != b
 
 
 def test_scalar_pow_updates_dimension_and_values():
-    length = 3 * Quantity.m
+    length = 3 * Quantity.meter
     squared = length ** 2
     assert squared.dim_coords == (D.Length._d ** 2)
     assert squared.magnitude() == pytest.approx(9)

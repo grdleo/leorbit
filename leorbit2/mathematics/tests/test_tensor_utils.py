@@ -33,9 +33,9 @@ def test_ensure_same_dimensions_raises_for_incompatible_tensors():
 
 def test_tensor_unary_and_copy_behavior():
     s = Scalar[D.Length].new(3.0)
-    assert (+s).magnitude("m") == pytest.approx(3.0)
-    assert (-s).magnitude("m") == pytest.approx(-3.0)
+    assert (+s).magnitude("meter") == pytest.approx(3.0)
+    assert (-s).magnitude("meter") == pytest.approx(-3.0)
 
     c = s.copy()
     assert c is not s
-    assert c.magnitude("m") == pytest.approx(s.magnitude("m"))
+    assert c.magnitude("meter") == pytest.approx(s.magnitude("meter"))
