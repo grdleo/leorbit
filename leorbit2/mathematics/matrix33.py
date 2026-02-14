@@ -8,7 +8,7 @@ import numpy as np
 
 from leorbit2.mathematics.dimensions import Dim, D, DimCoords, ProductDim, QuotientDim, SomeDim, SomeOtherDim
 from leorbit2.mathematics.scalar import Scalar
-from leorbit2.mathematics.tensor import Tensor, ensure_same_dimensions
+from leorbit2.mathematics.tensor import Tensor, TensorType, ensure_same_dimensions
 from leorbit2.mathematics.vector3 import Vector3, all_scalars_numbers, all_simple_numbers
 from leorbit2.mathematics.vector3_array import Vector3Array
 
@@ -47,6 +47,10 @@ class Matrix33(Tensor[SomeDim], Generic[SomeDim]):
             raise RuntimeError("...")
 
         return cls(mat)
+    
+    @property
+    def tensor_type(self) -> TensorType:
+        return TensorType.MATRIX33
 
     def cast(self, dim: type[SomeOtherDim]) -> Matrix33[SomeOtherDim]:
         """Type-cast to another dimension when coordinates are identical."""

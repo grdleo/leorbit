@@ -4,13 +4,16 @@ from enum import Enum, IntEnum
 from fractions import Fraction
 from math import acos, asin, atan, cos, sin, tan
 from pyclbr import Class
-from typing import Annotated, Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Annotated, Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 from numpy._typing import _UFunc_Nin1_Nout1
 
 from leorbit2.mathematics.dimensions import Dim, DimCoords, D, PowerDim, ProductDim, QuotientDim, SomeDim, SomeOtherDim
-from leorbit2.mathematics.tensor import Tensor
+from leorbit2.mathematics.tensor import Tensor, TensorType
+
+if TYPE_CHECKING:
+    from leorbit2.mathematics.scalar_array import ScalarArray
 
 Number = float | int | np.floating
 TensorData = np.typing.NDArray[np.floating[Any]]
@@ -36,6 +39,10 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
             value = value.item()
         
         return cls(value)
+    
+    @property
+    def tensor_type(self) -> TensorType:
+        return TensorType.SCALAR
 
     def cast(self, dim: type[SomeOtherDim]) -> Scalar[SomeOtherDim]:
         """Type-cast to another dimension when coordinates are identical."""
@@ -61,13 +68,28 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     def __add__(self: Scalar[D.Dimless], o: Number | Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
 
     @overload
+    def __add__(self: Scalar[D.Dimless], o: "ScalarArray[D.Dimless]") -> "ScalarArray[D.Dimless]": ...
+
+    @overload
     def __add__(self: Scalar[SomeDim], o: Number) -> Never: ...
 
     @overload
     def __add__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> Scalar[SomeDim]: ...
 
-    def __add__(self, o: object) -> Scalar[Any]:
-        return cast(Scalar[Any], super().__add__(o))
+    @overload
+    def __add__(self: Scalar[SomeDim], o: "ScalarArray[SomeDim]") -> "ScalarArray[SomeDim]": ...
+
+    def __add__(self, o: object) -> Any:
+        if not isinstance(o, Tensor):
+            raise TypeError("...")
+        if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
+            raise TypeError("...")
+        
+        self.ensure_compatible_dimensions(o)
+        
+        return o.tensor_type.base_class()[self.dim]( # type: ignore
+            self._values + o._values
+        )
     
     @overload
     def __radd__(self: Scalar[D.Dimless], o: Number) -> Scalar[D.Dimless]: ...
@@ -84,13 +106,28 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     def __sub__(self: Scalar[D.Dimless], o: Number | Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
 
     @overload
+    def __sub__(self: Scalar[D.Dimless], o: "ScalarArray[D.Dimless]") -> "ScalarArray[D.Dimless]": ...
+
+    @overload
     def __sub__(self: Scalar[SomeDim], o: Number) -> Never: ...
 
     @overload
     def __sub__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> Scalar[SomeDim]: ...
 
-    def __sub__(self, o: object) -> Scalar[Any]:
-        return cast(Scalar[Any], super().__sub__(o))
+    @overload
+    def __sub__(self: Scalar[SomeDim], o: "ScalarArray[SomeDim]") -> "ScalarArray[SomeDim]": ...
+
+    def __sub__(self, o: object) -> Any:
+        if not isinstance(o, Tensor):
+            raise TypeError("...")
+        if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
+            raise TypeError("...")
+        
+        self.ensure_compatible_dimensions(o)
+        
+        return o.tensor_type.base_class()[self.dim]( # type: ignore
+            self._values - o._values
+        )
     
     @overload
     def __rsub__(self: Scalar[D.Dimless], o: Number) -> Scalar[D.Dimless]: ...
@@ -115,11 +152,33 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     @overload
     def __mul__(self: Scalar[SomeDim], o: Scalar[SomeOtherDim]) -> Scalar[ProductDim[SomeDim, SomeOtherDim]]: ...
 
+    # support Scalar * ScalarArray -> ScalarArray (preserve/compose dimensions)
+    @overload
+    def __mul__(self: Scalar[D.Dimless], o: "ScalarArray[D.Dimless]") -> "ScalarArray[D.Dimless]": ...
+
+    @overload
+    def __mul__(self: Scalar[D.Dimless], o: "ScalarArray[SomeOtherDim]") -> "ScalarArray[SomeOtherDim]": ...
+
+    @overload
+    def __mul__(self: Scalar[SomeDim], o: "ScalarArray[D.Dimless]") -> "ScalarArray[SomeDim]": ...
+
+    @overload
+    def __mul__(self: Scalar[SomeDim], o: "ScalarArray[SomeOtherDim]") -> "ScalarArray[ProductDim[SomeDim, SomeOtherDim]]": ...
+
     @overload
     def __mul__(self, o: Scalar) -> Scalar[Any]: ...
 
-    def __mul__(self, o: object) -> Scalar[Any]:
-        return cast(Scalar[Any], super().__mul__(o))
+    def __mul__(self, o: object) -> Any:
+        if not isinstance(o, Tensor):
+            raise TypeError("...")
+        if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
+            raise TypeError("...")
+        
+        return o.tensor_type.base_class().dimensionalize(
+            self.dim_coords * o.dim_coords
+        )(
+            self._values * o._values
+        )
 
     @overload
     def __rmul__(self: Scalar[D.Dimless], o: Number) -> Scalar[D.Dimless]: ...
@@ -136,10 +195,16 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     def __truediv__(self: Scalar[D.Dimless], o: Number | Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
 
     @overload
+    def __truediv__(self: Scalar[D.Dimless], o: "ScalarArray[SomeDim]") -> "ScalarArray[QuotientDim[D.Dimless, SomeDim]]": ...
+
+    @overload
     def __truediv__(self: Scalar[D.Dimless], o: Scalar[SomeDim]) -> Scalar[QuotientDim[D.Dimless, SomeDim]]: ...
 
     @overload
     def __truediv__(self: Scalar[SomeDim], o: Number | Scalar[D.Dimless]) -> Scalar[SomeDim]: ...
+
+    @overload
+    def __truediv__(self: Scalar[SomeDim], o: "ScalarArray[D.Dimless]") -> "ScalarArray[SomeDim]": ...
 
     @overload
     def __truediv__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> Scalar[D.Dimless]: ... # type: ignore
@@ -150,8 +215,17 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     @overload
     def __truediv__(self, o: Scalar) -> Scalar[Any]: ...
 
-    def __truediv__(self, o: object) -> Scalar[Any]:
-        return cast(Scalar[Any], super().__truediv__(o))
+    def __truediv__(self, o: object) -> Any:
+        if not isinstance(o, Tensor):
+            raise TypeError("...")
+        if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
+            raise TypeError("...")
+        
+        return o.tensor_type.base_class().dimensionalize(
+            self.dim_coords / o.dim_coords
+        )(
+            self._values / o._values
+        )
 
     @overload
     def __rtruediv__(self: Scalar[D.Dimless], o: Number) -> Scalar[D.Dimless]: ...
@@ -168,13 +242,28 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     def __mod__(self: Scalar[D.Dimless], o: Number | Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
 
     @overload
+    def __mod__(self: Scalar[D.Dimless], o: "ScalarArray[D.Dimless]") -> "ScalarArray[D.Dimless]": ...
+
+    @overload
     def __mod__(self: Scalar[SomeDim], o: Number) -> Never: ...
 
     @overload
     def __mod__(self: Scalar[SomeDim], o: Scalar[SomeDim]) -> Scalar[SomeDim]: ...
 
-    def __mod__(self, o: object) -> Scalar[Any]:
-        return cast(Scalar[Any], super().__mod__(o))
+    @overload
+    def __mod__(self: Scalar[SomeDim], o: "ScalarArray[SomeDim]") -> "ScalarArray[SomeDim]": ...
+
+    def __mod__(self, o: object) -> Any:
+        if not isinstance(o, Tensor):
+            raise TypeError("...")
+        if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
+            raise TypeError("...")
+        
+        self.ensure_compatible_dimensions(o)
+        
+        return o.tensor_type.base_class()[self.dim]( # type: ignore
+            self._values % o._values
+        )
     
     @overload
     def __rmod__(self: Scalar[D.Dimless], o: Number) -> Scalar[D.Dimless]: ...

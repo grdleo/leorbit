@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import copy
 from dataclasses import dataclass
+from enum import Enum
 from functools import singledispatchmethod
 import inspect
 from multiprocessing import Value
@@ -12,12 +13,54 @@ import numpy.typing as npt
 
 from leorbit2.mathematics.dimensions import Dim, DimCoords, D, registered_units, registered_dimensions
 
+if TYPE_CHECKING:
+    from leorbit2.mathematics import Scalar, ScalarArray, Vector3, Vector3Array, Matrix33
+
 Number = float | int | np.floating
 SomeDim = TypeVar("SomeDim", bound=Dim)
 SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
 TensorData = np.typing.NDArray[np.floating[Any]]
 
 TensorDataTransformer: TypeAlias = Callable[[TensorData], TensorData]
+
+class TensorType(Enum):
+    SCALAR = "Scalar"
+    SCALAR_ARRAY = "ScalarArray"
+    VECTOR3 = "Vector3"
+    VECTOR3_ARRAY = "Vector3Array"
+    MATRIX33 = "Matrix33"
+    
+    @overload
+    def base_class(self: Literal[TensorType.SCALAR]) -> type["Scalar"]: ...
+    
+    @overload
+    def base_class(self: Literal[TensorType.SCALAR_ARRAY]) -> type["ScalarArray"]: ...
+
+    @overload
+    def base_class(self: Literal[TensorType.VECTOR3]) -> type["Vector3"]: ...
+    
+    @overload
+    def base_class(self: Literal[TensorType.VECTOR3_ARRAY]) -> type["Vector3Array"]: ...
+
+    @overload
+    def base_class(self: Literal[TensorType.MATRIX33]) -> type["Matrix33"]: ...
+
+    def base_class(self) -> type[Tensor]:
+        from leorbit2.mathematics import Scalar, ScalarArray, Vector3, Vector3Array, Matrix33
+
+        if self == TensorType.SCALAR:
+            return Scalar
+        elif self == TensorType.SCALAR_ARRAY:
+            return ScalarArray
+        elif self == TensorType.VECTOR3:
+            return Vector3
+        elif self == TensorType.VECTOR3_ARRAY:
+            return Vector3Array
+        elif self == TensorType.MATRIX33:
+            return Matrix33
+        
+        raise RuntimeError("Unrecheable code")
+
 
 class Tensor[SomeDim = D.Dimless]():
     """Generic n-dimensional tensor carrying a physical dimension.
@@ -53,6 +96,10 @@ class Tensor[SomeDim = D.Dimless]():
             type[SomeDim],
             self._dim
         )
+    
+    @property
+    def tensor_type(self) -> TensorType:
+        raise NotImplementedError()
     
     @classmethod
     def _is_base_tensor_class(cls) -> bool:

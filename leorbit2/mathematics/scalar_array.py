@@ -11,7 +11,7 @@ import numpy.typing as npt
 from numpy._typing import _UFunc_Nin1_Nout1
 
 from leorbit2.mathematics.dimensions import Dim, DimCoords, D, PowerDim, ProductDim, QuotientDim, SomeDim, SomeOtherDim
-from leorbit2.mathematics.tensor import Tensor
+from leorbit2.mathematics.tensor import Tensor, TensorType
 from leorbit2.mathematics.scalar import Scalar
 
 Number = float | int | np.floating
@@ -35,6 +35,10 @@ class ScalarArray(Tensor[SomeDim], Generic[SomeDim]):
         return cls(
             np.array(values).flatten()
         )
+    
+    @property
+    def tensor_type(self) -> TensorType:
+        return TensorType.SCALAR_ARRAY
 
     def cast(self, dim: type[SomeOtherDim]) -> ScalarArray[SomeOtherDim]:
         """Type-cast to another dimension when coordinates are identical."""

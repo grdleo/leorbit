@@ -1,6 +1,8 @@
 from leorbit2.mathematics.dimensions import Dim, D, Number
 from leorbit2.mathematics.scalar import Scalar
+from leorbit2.mathematics.scalar_array import ScalarArray
 from leorbit2.mathematics.vector3 import Vector3
+from leorbit2.mathematics.vector3_array import Vector3Array
 from leorbit2.mathematics.matrix33 import Matrix33
 from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.transform import (

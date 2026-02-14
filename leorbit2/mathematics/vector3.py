@@ -12,7 +12,7 @@ from leorbit2.mathematics.dimensions import Dim, DimCoords, D, ProductDim, Quoti
 from leorbit2.mathematics.functions import atan2, acos, cos, sin, square
 from leorbit2.mathematics.quantity import Quantity
 from leorbit2.mathematics.scalar import Scalar
-from leorbit2.mathematics.tensor import Tensor, ensure_same_dimensions
+from leorbit2.mathematics.tensor import Tensor, TensorType, ensure_same_dimensions
 
 Number = float | int | np.floating
 TensorData = np.typing.NDArray[np.floating[Any]]
@@ -64,6 +64,10 @@ class Vector3(Tensor[SomeDim], Generic[SomeDim]):
             raise RuntimeError("...")
 
         return cls(v)
+    
+    @property
+    def tensor_type(self) -> TensorType:
+        return TensorType.VECTOR3
 
     def cast(self, dim: type[SomeOtherDim]) -> Vector3[SomeOtherDim]:
         """Type-cast to another dimension when coordinates are identical."""

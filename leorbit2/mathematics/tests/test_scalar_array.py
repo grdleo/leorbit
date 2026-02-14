@@ -77,3 +77,30 @@ def test_scalar_array_dimension_mismatch_raises():
         _ = arr + Scalar[D.Time].new(1)
     with pytest.raises(RuntimeError):
         _ = arr + Quantity.second
+
+
+def test_mixed_scalar_and_scalararray_operations():
+    s_dimless = Scalar[D.Dimless].new(2)
+    s_len = Scalar[D.Length].new(3)
+    arr_len = ScalarArray[D.Length].new([1, 2, 3])
+
+    # Scalar (dimless) * ScalarArray -> ScalarArray (same dim)
+    r1 = s_dimless * arr_len
+    assert isinstance(r1, ScalarArray)
+    np.testing.assert_allclose(r1.magnitude(), [2, 4, 6])
+
+    # ScalarArray * Scalar (dimless)
+    r2 = arr_len * s_dimless
+    assert isinstance(r2, ScalarArray)
+    np.testing.assert_allclose(r2.magnitude(), [2, 4, 6])
+
+    # Scalar (length) * ScalarArray (dimless) -> ScalarArray (length)
+    arr_dimless = ScalarArray[D.Dimless].new([10, 20, 30])
+    r3 = s_len * arr_dimless
+    assert isinstance(r3, ScalarArray)
+    np.testing.assert_allclose(r3.magnitude("meter"), [30, 60, 90])
+
+    # ScalarArray * Scalar (length)
+    r4 = arr_dimless * s_len
+    assert isinstance(r4, ScalarArray)
+    np.testing.assert_allclose(r4.magnitude("meter"), [30, 60, 90])

@@ -13,7 +13,7 @@ from leorbit2.mathematics.dimensions import Dim, DimCoords, D, ProductDim, Quoti
 from leorbit2.mathematics.functions import atan2, acos, cos, sin, square
 from leorbit2.mathematics.scalar import Scalar
 from leorbit2.mathematics.scalar_array import ScalarArray
-from leorbit2.mathematics.tensor import Tensor, ensure_same_dimensions
+from leorbit2.mathematics.tensor import Tensor, TensorType, ensure_same_dimensions
 from leorbit2.mathematics.vector3 import Vector3
 
 Number = float | int | np.floating
@@ -65,6 +65,10 @@ class Vector3Array(Tensor[SomeDim], Generic[SomeDim]):
     def new_from_single_vector(cls, vector: Vector3[SomeDim], size: int):
         """Create an array by repeating one vector ``size`` times."""
         return cls.new_from_vectors(*repeat(vector, size))
+    
+    @property
+    def tensor_type(self) -> TensorType:
+        return TensorType.VECTOR3_ARRAY
         
 
     def cast(self, dim: type[SomeOtherDim]) -> Vector3[SomeOtherDim]:

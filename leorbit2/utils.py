@@ -3,16 +3,23 @@
 
 import math
 from leorbit2.mathematics import D, Scalar, Quantity, Vector3
-from leorbit2.mathematics.dimensions import DimCoords
+from leorbit2.mathematics.tensor import Tensor
+from leorbit2.mathematics.dimensions import P3, P2, P1, OO, N1, N2, N3, DimCoords, PowerDim
 from leorbit2.mathematics.functions import atan2, cos, sin, square, sqrt
 import numpy as np
 from numpy.typing import NDArray
 
-from typing import TYPE_CHECKING, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeAlias, TypeVar, cast, overload
 
-from leorbit2.mathematics.scalar import scalar_class_factory
+from leorbit2.mathematics.matrix33 import ProductDim
+from leorbit2.mathematics.scalar_array import ScalarArray
 
-MU_EARTH = scalar_class_factory(
+GravParam: TypeAlias = ProductDim[
+    PowerDim[D.Length, P3, P1],
+    PowerDim[D.Time, N2, P1]
+]
+
+MU_EARTH: Scalar[GravParam] = Scalar.dimensionalize(
     DimCoords(
         length=3, 
         time=-2
@@ -130,8 +137,13 @@ def eccentric2true_anomaly(e: Scalar[D.Dimless], E: Scalar[D.Angle]) -> Scalar[D
         cos(E) - e
     )
 
+@overload
+def true2eccentric_anomaly(e: Scalar[D.Dimless], nu: Scalar[D.Angle]) -> Scalar[D.Angle]: ...
 
-def true2eccentric_anomaly(e: Scalar[D.Dimless], nu: Scalar[D.Angle]) -> Scalar[D.Angle]:
+@overload
+def true2eccentric_anomaly(e: Scalar[D.Dimless], nu: ScalarArray[D.Angle]) -> ScalarArray[D.Angle]: ...
+
+def true2eccentric_anomaly(e: Scalar[D.Dimless], nu: Scalar[D.Angle] | ScalarArray[D.Angle]) -> Scalar[D.Angle] | ScalarArray[D.Angle]:
     """Returns the eccentric anomaly from the true anomaly and the excentricity.
     Parameters
     ----------
@@ -146,6 +158,54 @@ def true2eccentric_anomaly(e: Scalar[D.Dimless], nu: Scalar[D.Angle]) -> Scalar[
 
     E = atan2(
         sqrt(1 - square(e)) * sin(nu),
-        e + cos(nu)
+        cos(nu) + e
     )
     return E
+
+
+STD_GRAV_PARAM_TERRA_FLOAT = SQRT_MU_EARTH_PINT.m_as("m**1.5/s")
+
+def elements2orthogonal_gcrf(
+    υ: Scalar[D.Angle] | ScalarArray[D.Angle], 
+    e: Scalar[D.Dimless], 
+    a: Scalar[D.Length], 
+    Ω: Scalar[D.Angle], 
+    ω: Scalar[D.Angle], 
+    i: Scalar[D.Angle]
+) -> Any:
+	"""Returns the position and velocity of a satellite in GCRF coordinates (meters, meters/second)
+	All parameters are in radians, except `e` dimensionless and `a` in meters."""
+
+	# position of satellite in orbit plane (with z = 0)
+	
+	ee = e**2
+	one_ee = (1 - ee)
+	E = true2eccentric_anomaly(e, υ)
+	esinE = e * sin(E)
+	r = a * one_ee / (1 + e * cos(υ))
+	rd = (STD_GRAV_PARAM_TERRA_FLOAT * sqrt(a) * esinE / r).cast(D.Velocity)
+	rυd = rd * one_ee / esinE
+
+	c_raan, s_raan = np.cos(Ω), np.sin(Ω)
+	c_i, s_i = np.cos(i), np.sin(i)
+	υpω = υ + ω
+	c_theta, s_theta = np.cos(υpω), np.sin(υpω)
+
+	def unitvec_gcrf(x: np.float64 | NDArray, y: np.float64 | NDArray) -> tuple[NDArray, NDArray, NDArray]:
+		return (
+			c_raan * x - s_raan * c_i * y, # X
+			s_raan * x + c_raan * c_i * y, # Y
+			s_i * y                        # Z
+		)
+
+	ur_x, ur_y, ur_z = unitvec_gcrf(c_theta, s_theta)
+	ut_x, ut_y, ut_z = unitvec_gcrf(-s_theta, c_theta)
+
+	return PosVelGCRF(
+		ur_x * r, 
+		ur_y * r, 
+		ur_z * r,
+		ur_x * rd + ut_x * rυd,
+		ur_y * rd + ut_y * rυd,
+		ur_z * rd + ut_z * rυd
+	)
