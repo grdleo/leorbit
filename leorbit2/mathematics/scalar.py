@@ -223,9 +223,6 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     @overload
     def __truediv__(self: Scalar[SomeDim], o: Scalar[SomeOtherDim]) -> Scalar[QuotientDim[SomeDim, SomeOtherDim]]: ...
 
-    @overload
-    def __truediv__(self, o: Scalar) -> Scalar[Any]: ...
-
     def __truediv__(self, o: object) -> Any:
         if isinstance(o, Number):
             return super().__truediv__(o)

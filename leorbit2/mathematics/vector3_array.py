@@ -62,6 +62,16 @@ class Vector3Array(Tensor[SomeDim], Generic[SomeDim]):
         )
     
     @classmethod
+    def new_from_components(cls, x: ScalarArray[SomeDim], y: ScalarArray[SomeDim], z: ScalarArray[SomeDim]):
+        """Create an array from x, y and z components."""
+        if not (x.dim == y.dim == z.dim):
+            raise ValueError("...")
+        
+        return cls(
+            np.stack([x._values, y._values, z._values])
+        )
+    
+    @classmethod
     def new_from_single_vector(cls, vector: Vector3[SomeDim], size: int):
         """Create an array by repeating one vector ``size`` times."""
         return cls.new_from_vectors(*repeat(vector, size))
