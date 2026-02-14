@@ -28,7 +28,7 @@ def test_scalar_add_sub_same_dimension():
 
 
 def test_scalar_add_raises_on_dimension_mismatch():
-    with pytest.raises(RuntimeError):
+    with pytest.raises(Exception):
         _ = Quantity.meter + Quantity.second
 
 

@@ -80,12 +80,16 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     def __add__(self: Scalar[SomeDim], o: "ScalarArray[SomeDim]") -> "ScalarArray[SomeDim]": ...
 
     def __add__(self, o: object) -> Any:
+        if isinstance(o, Number):
+            return super().__add__(o)
+        
         if not isinstance(o, Tensor):
             raise TypeError("...")
         if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
             raise TypeError("...")
         
-        self.ensure_compatible_dimensions(o)
+        if not self.ensure_compatible_dimensions(o):
+            raise RuntimeError("Tensors dimensions are not compatible!")
         
         return o.tensor_type.base_class()[self.dim]( # type: ignore
             self._values + o._values
@@ -118,12 +122,16 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     def __sub__(self: Scalar[SomeDim], o: "ScalarArray[SomeDim]") -> "ScalarArray[SomeDim]": ...
 
     def __sub__(self, o: object) -> Any:
+        if isinstance(o, Number):
+            return super().__sub__(o)
+        
         if not isinstance(o, Tensor):
             raise TypeError("...")
         if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
             raise TypeError("...")
         
-        self.ensure_compatible_dimensions(o)
+        if not self.ensure_compatible_dimensions(o):
+            raise RuntimeError("Tensors dimensions are not compatible!")
         
         return o.tensor_type.base_class()[self.dim]( # type: ignore
             self._values - o._values
@@ -169,6 +177,9 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     def __mul__(self, o: Scalar) -> Scalar[Any]: ...
 
     def __mul__(self, o: object) -> Any:
+        if isinstance(o, Number):
+            return super().__mul__(o)
+        
         if not isinstance(o, Tensor):
             raise TypeError("...")
         if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
@@ -216,6 +227,9 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     def __truediv__(self, o: Scalar) -> Scalar[Any]: ...
 
     def __truediv__(self, o: object) -> Any:
+        if isinstance(o, Number):
+            return super().__truediv__(o)
+        
         if not isinstance(o, Tensor):
             raise TypeError("...")
         if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
@@ -254,12 +268,16 @@ class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     def __mod__(self: Scalar[SomeDim], o: "ScalarArray[SomeDim]") -> "ScalarArray[SomeDim]": ...
 
     def __mod__(self, o: object) -> Any:
+        if isinstance(o, Number):
+            return super().__mod__(o)
+        
         if not isinstance(o, Tensor):
             raise TypeError("...")
         if o.tensor_type not in (TensorType.SCALAR, TensorType.SCALAR_ARRAY):
             raise TypeError("...")
         
-        self.ensure_compatible_dimensions(o)
+        if not self.ensure_compatible_dimensions(o):
+            raise RuntimeError("Tensors dimensions are not compatible!")
         
         return o.tensor_type.base_class()[self.dim]( # type: ignore
             self._values % o._values

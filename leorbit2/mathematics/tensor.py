@@ -304,7 +304,7 @@ class Tensor[SomeDim = D.Dimless]():
     def __rmod__(self, o: object) -> Tensor: # o % self
         o = ensure_tensor(o)
         if not self.ensure_compatible_dimensions(o):
-         raise RuntimeError("Tensors dimensions are not compatible!")
+            raise RuntimeError("Tensors dimensions are not compatible!")
 
         try:
             return cast(type[Tensor], self.__class__)(o._values % self._values)
