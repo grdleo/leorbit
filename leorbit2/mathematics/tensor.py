@@ -74,6 +74,9 @@ class Tensor[SomeDim = D.Dimless]():
         """Returns `True` if tensor is of dimension `dim`"""
         return self.dim_coords == dim._d
     
+    def get_numpy_array(self) -> np.ndarray:
+        return np.copy(self._values)
+    
     @singledispatchmethod
     def transform(self, dim, function) -> Tensor[Any]:
         ...

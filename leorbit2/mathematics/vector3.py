@@ -68,7 +68,7 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
     @cached_property
     def length(self) -> Scalar[SomeDim]:
         return Scalar[self.dim](
-            self._values.transpose().dot(self._values)**.5
+            np.sum(self._values ** 2) ** .5
         )
     
     @cached_property

@@ -30,10 +30,23 @@ class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
         raise RuntimeError("Cannot cast")
     
     @property
-    def base_unit_values(self) -> np.ndarray:
+    def base_unit_value(self) -> np.ndarray:
         return cast(
             np.ndarray,
             np.float64(self._values)
+        )
+    
+    @property
+    def size(self) -> int:
+        s, = self._values.shape
+        return s
+    
+    def __getitem__(self, index: int) -> Scalar[SomeDim]:
+        if index < 0 or index >= self.size:
+            raise KeyError("...")
+        
+        return Scalar[self.dim].new(
+            self._values[index]
         )
     
     def magnitude(self, units: str = "1") -> list[Number]:
