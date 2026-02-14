@@ -1,10 +1,13 @@
 {
     "python.analysis.typeCheckingMode": "basic",
+    "python.defaultInterpreterPath": "/Users/lg/Code/leorbit/leorbit/.venv/bin/python",
+    "python.pythonPath": "/Users/lg/Code/leorbit/leorbit/.venv/bin/python",
     "python.testing.pytestArgs": [
-        "."
+        "leorbit2/mathematics/tests"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,
+    "python.testing.pytestPath": "/Users/lg/Code/leorbit/leorbit/.venv/bin/pytest",
     "python.testing.unittestArgs": [
         "-v",
         "-s",
