@@ -33,7 +33,7 @@ def _scalar_from_values(dim: type, values: np.ndarray) -> TensorScalar[Any]:
     flat = np.asarray(values).reshape(-1)
     if flat.size == 1:
         return Scalar[dim].new(flat.item())
-    return ScalarArray[dim].new(flat)
+    return ScalarArray[dim].new(flat) # type: ignore
 
 
 class TensorVector3(Tensor[SomeDim], Generic[SomeDim]):
@@ -42,18 +42,6 @@ class TensorVector3(Tensor[SomeDim], Generic[SomeDim]):
     @classmethod
     def dimensionalize(cls, dim_coords: DimCoords) -> type[TensorVector3]:
         return cast(type[TensorVector3], super().dimensionalize(dim_coords))
-
-    @classmethod
-    def new_from_vectors(cls, *vectors: TensorVector3[SomeDim]) -> TensorVector3[SomeDim]:
-        if not vectors:
-            raise ValueError("...")
-        v0 = vectors[0]
-        try:
-            for vector in vectors[1:]:
-                ensure_same_dimensions(v0, vector)
-        except RuntimeError as exc:
-            raise ValueError("...") from exc
-        return cls(np.concatenate([v._values for v in vectors], axis=1))
 
     @classmethod
     def new_from_components(
@@ -69,10 +57,6 @@ class TensorVector3(Tensor[SomeDim], Generic[SomeDim]):
         if not (x_vals.size == y_vals.size == z_vals.size):
             raise ValueError("...")
         return cls(np.stack([x_vals, y_vals, z_vals]))
-
-    @classmethod
-    def new_from_single_vector(cls, vector: TensorVector3[SomeDim], size: int) -> TensorVector3[SomeDim]:
-        return cls.new_from_vectors(*repeat(vector, size))
 
     @property
     def size(self) -> int:
@@ -99,15 +83,6 @@ class TensorVector3(Tensor[SomeDim], Generic[SomeDim]):
     @cached_property
     def length(self) -> TensorScalar[SomeDim]:
         return _scalar_from_values(self.dim, np.sum(self._values ** 2, axis=0) ** 0.5)
-
-    def __getitem__(self, index: int) -> Vector3[SomeDim]:
-        if index < 0 or index >= self.size:
-            raise KeyError("...")
-        return Vector3[self.dim].new(
-            x=self._values[0, index],
-            y=self._values[1, index],
-            z=self._values[2, index],
-        )
 
     @cached_property
     def theta(self) -> TensorScalar[D.Angle]:
@@ -178,7 +153,7 @@ class TensorVector3(Tensor[SomeDim], Generic[SomeDim]):
         )
 
     @overload
-    def __add__(self: TensorVector3[SomeDim], o: TensorVector3[SomeDim] | TensorScalar[SomeDim]) -> TensorVector3[SomeDim]: ...
+    def __add__(self: TensorVector3[SomeDim], o: TensorVector3[SomeDim] | TensorScalar[SomeDim]) -> TensorVector3[SomeDim]: ... # type: ignore
 
     def __add__(self, o: object) -> TensorVector3[Any]:
         return cast(TensorVector3[Any], super().__add__(o))
@@ -193,7 +168,7 @@ class TensorVector3(Tensor[SomeDim], Generic[SomeDim]):
         return cast(TensorVector3[Any], super().__radd__(o))
 
     @overload
-    def __sub__(self: TensorVector3[SomeDim], o: TensorVector3[SomeDim] | TensorScalar[SomeDim]) -> TensorVector3[SomeDim]: ...
+    def __sub__(self: TensorVector3[SomeDim], o: TensorVector3[SomeDim] | TensorScalar[SomeDim]) -> TensorVector3[SomeDim]: ... # type: ignore
 
     def __sub__(self, o: object) -> TensorVector3[Any]:
         return cast(TensorVector3[Any], super().__sub__(o))
@@ -295,6 +270,15 @@ class Vector3(TensorVector3[SomeDim], Generic[SomeDim]):
     ONE: ClassVar[Vector3[D.Dimless]]
 
     @classmethod
+    def new_from_components(
+        cls,
+        x: Scalar[SomeDim],
+        y: Scalar[SomeDim],
+        z: Scalar[SomeDim],
+    ) -> Vector3[SomeDim]:
+        return cast(Vector3[SomeDim], super().new_from_components(x, y, z))
+
+    @classmethod
     def new(cls, x: Number | TensorScalar[Any], y: Number | TensorScalar[Any], z: Number | TensorScalar[Any]) -> Vector3:
         xyz = [x, y, z]
         if all(_is_simple_number(v) for v in xyz):
@@ -309,6 +293,40 @@ class Vector3(TensorVector3[SomeDim], Generic[SomeDim]):
 
 class Vector3Array(TensorVector3[SomeDim], Generic[SomeDim]):
     """End-user convenience vector-array class."""
+
+    @classmethod
+    def new_from_components(
+        cls,
+        x: ScalarArray[SomeDim],
+        y: ScalarArray[SomeDim],
+        z: ScalarArray[SomeDim],
+    ) -> Vector3Array[SomeDim]:
+        return cast(Vector3Array[SomeDim], super().new_from_components(x, y, z))
+
+    @classmethod
+    def new_from_vectors(cls, *vectors: TensorVector3[SomeDim]) -> Vector3Array[SomeDim]:
+        if not vectors:
+            raise ValueError("...")
+        v0 = vectors[0]
+        try:
+            for vector in vectors[1:]:
+                ensure_same_dimensions(v0, vector)
+        except RuntimeError as exc:
+            raise ValueError("...") from exc
+        return cls(np.concatenate([v._values for v in vectors], axis=1))
+
+    @classmethod
+    def new_from_single_vector(cls, vector: TensorVector3[SomeDim], size: int) -> Vector3Array[SomeDim]:
+        return cls.new_from_vectors(*repeat(vector, size))
+
+    def __getitem__(self, index: int) -> Vector3[SomeDim]:
+        if index < 0 or index >= self.size:
+            raise KeyError("...")
+        return Vector3[self.dim].new(
+            x=self._values[0, index],
+            y=self._values[1, index],
+            z=self._values[2, index],
+        )
 
 
 _vector3_dimless = Vector3[D.Dimless]

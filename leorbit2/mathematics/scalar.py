@@ -81,7 +81,7 @@ class TensorScalar(Tensor[SomeDim], Generic[SomeDim]):
     def __radd__(self: TensorScalar[SomeDim], o: Number) -> Never: ...
 
     def __radd__(self, o: object) -> TensorScalar[Any]:
-        return self.__add__(o)
+        return self.__add__(o) # type: ignore
 
     @overload
     def __sub__(self: TensorScalar[D.Dimless], o: Number | TensorScalar[D.Dimless]) -> TensorScalar[D.Dimless]: ...
@@ -109,7 +109,7 @@ class TensorScalar(Tensor[SomeDim], Generic[SomeDim]):
     def __rsub__(self: TensorScalar[SomeDim], o: Number) -> Never: ...
 
     def __rsub__(self, o: object) -> TensorScalar[Any]:
-        return cast(TensorScalar[Any], super().__rsub__(o))
+        return TensorScalar[D.Dimless].new(o).__sub__(self) # type: ignore
 
     @overload
     def __mul__(self: TensorScalar[D.Dimless], o: Number | TensorScalar[D.Dimless]) -> TensorScalar[D.Dimless]: ...
@@ -138,7 +138,7 @@ class TensorScalar(Tensor[SomeDim], Generic[SomeDim]):
     def __rmul__(self: TensorScalar[SomeDim], o: Number) -> TensorScalar[SomeDim]: ...
 
     def __rmul__(self, o: object) -> TensorScalar[Any]:
-        return cast(TensorScalar[Any], self.__mul__(o))
+        return self.__mul__(o) # type: ignore
 
     @overload
     def __truediv__(self: TensorScalar[D.Dimless], o: Number | TensorScalar[D.Dimless]) -> TensorScalar[D.Dimless]: ...
@@ -167,7 +167,7 @@ class TensorScalar(Tensor[SomeDim], Generic[SomeDim]):
     def __rtruediv__(self: TensorScalar[SomeDim], o: Number) -> TensorScalar[QuotientDim[D.Dimless, SomeDim]]: ...
 
     def __rtruediv__(self, o: object) -> TensorScalar[Any]:
-        return cast(TensorScalar[Any], super().__rtruediv__(o))
+        return TensorScalar[D.Dimless].new(o).__truediv__(self) # type: ignore
 
     @overload
     def __mod__(self: TensorScalar[D.Dimless], o: Number | TensorScalar[D.Dimless]) -> TensorScalar[D.Dimless]: ...
@@ -195,7 +195,7 @@ class TensorScalar(Tensor[SomeDim], Generic[SomeDim]):
     def __rmod__(self: TensorScalar[SomeDim], o: Number) -> Never: ...
 
     def __rmod__(self, o: object) -> TensorScalar[Any]:
-        return cast(TensorScalar[Any], super().__rmod__(o))
+        return TensorScalar[D.Dimless].new(o).__mod__(self) # type: ignore
 
     def __matmul__(self, o: Never) -> Never:
         raise RuntimeError("@ operation not defined for scalar")
@@ -239,7 +239,7 @@ class Scalar(TensorScalar[SomeDim], Generic[SomeDim]):
     """End-user convenience scalar class."""
 
     @classmethod
-    def new(cls, value: Number | TensorData) -> Scalar:
+    def new(cls, value: Number) -> Scalar:
         if isinstance(value, np.ndarray):
             value = value.item()
         return cast(Scalar, super().new(value))
@@ -274,7 +274,7 @@ class ScalarArray(TensorScalar[SomeDim], Generic[SomeDim]):
     """End-user convenience scalar-array class."""
 
     @classmethod
-    def new(cls, values: list[Number] | TensorData) -> ScalarArray:
+    def new(cls, values: list[Number]) -> ScalarArray:
         return cast(ScalarArray, super().new(np.array(values).flatten()))
 
     @property
