@@ -64,29 +64,12 @@ class Tensor[SomeDim = D.Dimless]():
         """Create a tensor subclass bound to ``dim_coords``."""
         if not cls._is_base_tensor_class():
             raise RuntimeError("Cannot call `dimensionalize` on a dimensionalized tensor class.")
+
+        class DimensionalizedTensor(cls):
+            _dim=dim_coords.to_dimension()
+            _base_tensor_class=cast(type[Tensor], cls)
         
-        try:
-            dim = D.get_dimension_from_coords(dim_coords)
-        except ValueError:
-            dim = type(
-                f"DynamicDim : {dim_coords.representation}",
-                (Dim, ),
-                dict(
-                    _d=copy.copy(dim_coords)
-                )
-            )
-        
-        return cast(
-            type[Tensor],
-            type(
-                "DimensionalizedTensor",
-                (cls, ),
-                dict(
-                    _dim=dim,
-                    _base_tensor_class=cls
-                )
-            )
-        )
+        return cast(type[Tensor], DimensionalizedTensor)
 
     def __repr__(self) -> str:
         return f"Tensor[D.{self.dim.__class__.__name__}]({self._values})"

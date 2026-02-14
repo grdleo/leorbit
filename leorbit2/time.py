@@ -95,7 +95,7 @@ class Time:
 
     def __add__(self: "Time", other: Scalar[D.Time]) -> "Time":
         try:
-            assert other._dimension == D.Time._d
+            assert other.check(D.Time)
             delta_seconds = other.magnitude("s")
             return self.__class__(self._unixepoch + delta_seconds)
         except Exception as ex:
@@ -105,7 +105,7 @@ class Time:
 
     def __iadd__(self: "Time", other: Scalar[D.Time]) -> None:
         try:
-            assert other._dimension == D.Time._d
+            assert other.check(D.Time)
             delta_seconds = other.magnitude("s")
             self._unixepoch += float(delta_seconds)
         except Exception as ex:
@@ -115,7 +115,7 @@ class Time:
         
     def __sub__(self: "Time", other: Scalar[D.Time]) -> "Time":
         try:
-            assert other._dimension == D.Time._d
+            assert other.check(D.Time)
             delta_seconds = other.magnitude("s")
             return self.__class__(self._unixepoch - delta_seconds)
         except Exception as ex:
@@ -125,7 +125,7 @@ class Time:
 
     def __isub__(self: "Time", other: Scalar[D.Time]) -> None:
         try:
-            assert other._dimension == D.Time._d
+            assert other.check(D.Time)
             delta_seconds = other.magnitude("s")
             self._unixepoch -= float(delta_seconds)
         except Exception as ex:

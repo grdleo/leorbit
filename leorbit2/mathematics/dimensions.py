@@ -4,6 +4,7 @@ from fractions import Fraction
 from functools import cache, cached_property
 from pyclbr import Class
 from typing import Any, ClassVar, Generic, Literal, NamedTuple, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
+from copy import copy
 
 import numpy as np
 
@@ -13,6 +14,8 @@ class DimCoords:
     Coordinates are stored as rational exponents on the base axes:
     length (L), time (T), and mass (M).
     """
+
+    _DYNAMIC_DIM_REGISTRY: dict[DimCoords, type[Dim]] = dict()
 
     def __init__(self,
         length: Fraction | int = 0,
@@ -113,6 +116,19 @@ class DimCoords:
             time=self.time * p,
             mass=self.mass * p
         )
+    
+    def to_dimension(self) -> type[Dim]:
+        """Return the registered dimension class matching these coordinates.
+        If no registered class matches, return a dynamic class with these coordinates."""
+        try:
+            return D.get_dimension_from_coords(self)
+        except ValueError:
+            pass
+        
+        class DynamicDim(Dim):
+            _d = self
+
+        return self.__class__._DYNAMIC_DIM_REGISTRY.setdefault(self, DynamicDim)
 
 class Dim:
     """Base class for dimensions"""
