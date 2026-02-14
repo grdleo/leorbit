@@ -33,10 +33,10 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     
     @property
     def base_unit_value(self) -> Number:
-        return np.floating(self._values)
+        return np.float64(self._values)
     
-    def magnitude(self, units: str = "1") -> Number:
-        raise NotImplementedError()
+    def magnitude(self, units: str = "1") -> np.float64:
+        return np.float64(self.get_raw_array(units))
     
     def __repr__(self) -> str:
         return f"Scalar[D.{self.dim.__class__.__name__}]({self._values})"

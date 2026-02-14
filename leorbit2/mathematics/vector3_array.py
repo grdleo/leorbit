@@ -22,12 +22,6 @@ SomeTensor = TypeVar("SomeTensor", bound=Tensor)
     
 NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
 
-def all_simple_numbers(els: list[object]) -> TypeGuard[list[Number]]:
-    return all(isinstance(el, Number) for el in els)
-
-def all_scalars_numbers(els: list[object]) -> TypeGuard[list[Scalar]]:
-    return all(isinstance(el, Scalar) for el in els)
-
 def all_vector3_same_dim(els: list[object]) -> TypeGuard[list[Vector3]]:
     v0, *others = els
     if not isinstance(v0, Vector3):

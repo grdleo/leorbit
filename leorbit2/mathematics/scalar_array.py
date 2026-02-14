@@ -7,6 +7,7 @@ from pyclbr import Class
 from typing import Annotated, Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
+import numpy.typing as npt
 from numpy._typing import _UFunc_Nin1_Nout1
 
 from leorbit2.mathematics.dimensions import Dim, DimCoords, D, PowerDim, ProductDim, QuotientDim, SomeDim, SomeOtherDim
@@ -49,8 +50,8 @@ class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
             self._values[index]
         )
     
-    def magnitude(self, units: str = "1") -> list[Number]:
-        raise NotImplementedError()
+    def magnitude(self, units: str = "1") -> Annotated[npt.NDArray[np.float64], Literal["N"]]:
+        return self.get_raw_array(units)
     
     def __repr__(self) -> str:
         return f"Scalar[D.{self.dim.__class__.__name__}]({self._values})"

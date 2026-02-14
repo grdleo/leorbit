@@ -5,8 +5,9 @@ from pyclbr import Class
 from typing import Any, Callable, ClassVar, Generic, Literal, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
+import numpy.typing as npt
 
-from leorbit2.mathematics.dimensions import Dim, DimCoords, D
+from leorbit2.mathematics.dimensions import Dim, DimCoords, D, registered_units
 
 Number = float | int | np.floating
 SomeDim = TypeVar("SomeDim", bound=Dim)
@@ -41,7 +42,7 @@ class Tensor[SomeDim = D.Dimless]():
     
     @classmethod
     def _is_base_tensor_class(cls) -> bool:
-        return hasattr(cls, "_base_tensor_class") and issubclass(cls._dim, Tensor)
+        return not hasattr(cls, "_base_tensor_class")
 
     def __repr__(self) -> str:
         return f"Tensor[D.{self.dim.__class__.__name__}]({self._values})"
@@ -74,8 +75,20 @@ class Tensor[SomeDim = D.Dimless]():
         """Returns `True` if tensor is of dimension `dim`"""
         return self.dim_coords == dim._d
     
-    def get_numpy_array(self) -> np.ndarray:
-        return np.copy(self._values)
+    def get_raw_array(self, units: str = "1") -> npt.NDArray[np.float64]:
+        a = np.copy(self._values)
+        if units == "1":
+            return a
+        
+        try:
+            dim, factor = registered_units()[units]
+        except KeyError:
+            raise ValueError(f"No unit named '{units}'")
+
+        if dim._d != self.dim_coords:
+            raise ValueError("Units ... has dimension ... which is incompatible with tensor dimension ...")
+        
+        return a / factor
     
     @singledispatchmethod
     def transform(self, dim, function) -> Tensor[Any]:

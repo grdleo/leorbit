@@ -111,6 +111,9 @@ class D:
         milli_meter: ClassVar[float] = 1e-3 * meter
         kilo_meter: ClassVar[float] = 1e3 * meter
 
+        radii_earth: ClassVar[float] = 6378135 * meter
+        radii_sun: ClassVar[float] = 6.957e8 * meter
+
     class InvLength(Dim):
         """m**-1"""
         _d = DimCoords(length=-1)
@@ -174,6 +177,15 @@ def registered_dimensions() -> dict[DimCoords, type[Dim]]:
         dim_cls._d: dim_cls
         for dim_cls in D.__dict__.values()
         if issubclass(dim_cls, Dim)
+    }
+
+@cache
+def registered_units() -> dict[str, tuple[type[Dim], Number]]:
+    return {
+        u: (d, f)
+        for d in registered_dimensions().values()
+        for u, f in d.__dict__.items()
+        if u != "_d" and isinstance(f, (float, int))
     }
 
 
