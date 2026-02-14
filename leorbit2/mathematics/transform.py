@@ -4,10 +4,10 @@ from typing import Any, Generic, Self, TypeVar, cast
 
 import numpy as np
 
-from leorbit2.mathematics.matrix33 import Matrix33
+from leorbit2.mathematics.matrix33 import TensorMatrix33
 from leorbit2.mathematics.dimensions import D, Dim, D, Number
-from leorbit2.mathematics.scalar import Scalar
-from leorbit2.mathematics.vector3 import Vector3
+from leorbit2.mathematics.scalar import TensorScalar
+from leorbit2.mathematics.vector3 import TensorVector3
 
 
 T1 = TypeVar("T1")
@@ -56,18 +56,18 @@ class TransformIdentify(Generic[T1], Transform[T1, T1]):
         t = TransformIdentify[T1]()
         return cast(Self, t)
     
-class TransformVector3Linear(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
+class TransformVector3Linear(Generic[SomeDim], Transform[TensorVector3[SomeDim], TensorVector3[SomeDim]]):
     """Linear transform for vectors using a dimensionless 3×3 matrix."""
 
-    def __init__(self, matrix: Matrix33[D.Dimless]):
+    def __init__(self, matrix: TensorMatrix33[D.Dimless]):
         """Initialize with the transformation matrix."""
         self.matrix = matrix
     
-    def do(self, tensor: Vector3[SomeDim]) -> Vector3[SomeDim]:
+    def do(self, tensor: TensorVector3[SomeDim]) -> TensorVector3[SomeDim]:
         """Apply the linear transformation."""
         return self.matrix @ tensor
     
-    def undo(self, tensor: Vector3[SomeDim]) -> Vector3[SomeDim]:
+    def undo(self, tensor: TensorVector3[SomeDim]) -> TensorVector3[SomeDim]:
         """Apply the inverse linear transformation."""
         return self.matrix.inverse() @ tensor
     
@@ -78,19 +78,19 @@ class TransformVector3Linear(Generic[SomeDim], Transform[Vector3[SomeDim], Vecto
         )
         return cast(Self, t)
 
-class TransformVector3Affine(Generic[SomeDim], Transform[Vector3[SomeDim], Vector3[SomeDim]]):
+class TransformVector3Affine(Generic[SomeDim], Transform[TensorVector3[SomeDim], TensorVector3[SomeDim]]):
     """Affine transform combining linear map and translation."""
 
-    def __init__(self, matrix: Matrix33[D.Dimless], translation: Vector3[SomeDim]):
+    def __init__(self, matrix: TensorMatrix33[D.Dimless], translation: TensorVector3[SomeDim]):
         """Initialize with matrix and translation components."""
         self.matrix = matrix
         self.translation = translation
     
-    def do(self, tensor: Vector3[SomeDim]) -> Vector3[SomeDim]:
+    def do(self, tensor: TensorVector3[SomeDim]) -> TensorVector3[SomeDim]:
         """Apply affine transform ``M @ v + t``."""
         return self.matrix @ tensor + self.translation
     
-    def undo(self, tensor: Vector3[SomeDim]) -> Vector3[SomeDim]:
+    def undo(self, tensor: TensorVector3[SomeDim]) -> TensorVector3[SomeDim]:
         """Apply inverse affine transform ``M⁻¹ @ (v - t)``."""
         return self.matrix.inverse() @ (tensor - self.translation)
     
@@ -105,13 +105,13 @@ class TransformVector3Affine(Generic[SomeDim], Transform[Vector3[SomeDim], Vecto
 class TransformVector3RotationZ(Generic[SomeDim], TransformVector3Linear[SomeDim]):
     """Specialized linear transform: rotation around the Z axis."""
 
-    def __init__(self, angle_rad: Number | Scalar[D.Angle]):
+    def __init__(self, angle_rad: Number | TensorScalar[D.Angle]):
         """Build the Z-rotation matrix from an angle in radians or angle scalar."""
-        if isinstance(angle_rad, Scalar):
+        if isinstance(angle_rad, TensorScalar):
             angle_rad = angle_rad.magnitude("rad")
         
         c, s = np.cos(angle_rad), np.sin(angle_rad)
-        rot_mat = Matrix33[D.Dimless].new(
+        rot_mat = TensorMatrix33[D.Dimless].new(
             c, -s, 0,
             s, c, 0,
             0, 0, 1

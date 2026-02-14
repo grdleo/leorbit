@@ -269,6 +269,9 @@ class Vector3(TensorVector3[SomeDim], Generic[SomeDim]):
     Z: ClassVar[Vector3[D.Dimless]]
     ONE: ClassVar[Vector3[D.Dimless]]
 
+    def __init__(self, *args: Never, **kwargs: Never) -> None:
+        raise RuntimeError("Vector3 cannot be instantiated directly. Use Vector3.new() instead.")
+
     @classmethod
     def new_from_components(
         cls,
@@ -293,6 +296,9 @@ class Vector3(TensorVector3[SomeDim], Generic[SomeDim]):
 
 class Vector3Array(TensorVector3[SomeDim], Generic[SomeDim]):
     """End-user convenience vector-array class."""
+
+    def __init__(self, *args: Never, **kwargs: Never) -> None:
+        raise RuntimeError("Vector3Array cannot be instantiated directly. Use Vector3Array.new() instead.")
 
     @classmethod
     def new_from_components(

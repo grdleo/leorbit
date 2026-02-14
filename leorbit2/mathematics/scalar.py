@@ -36,6 +36,16 @@ class TensorScalar(Tensor[SomeDim], Generic[SomeDim]):
         if dim._d == self.dim_coords:
             return self  # type: ignore
         raise RuntimeError("Cannot cast")
+    
+    @property
+    def size(self) -> int:
+        s, = np.array(self._values).shape
+        return int(s)
+
+    def __getitem__(self, index: int) -> Scalar[SomeDim]:
+        if index < 0 or index >= self.size:
+            raise KeyError("...")
+        return Scalar[self.dim].new(np.array(self._values)[index])
 
     @property
     def base_unit_value(self) -> Number | np.ndarray:
@@ -238,14 +248,14 @@ class TensorScalar(Tensor[SomeDim], Generic[SomeDim]):
 class Scalar(TensorScalar[SomeDim], Generic[SomeDim]):
     """End-user convenience scalar class."""
 
+    def __init__(self, *args: Never, **kwargs: Never) -> None:
+        raise RuntimeError("Scalar cannot be instantiated directly. Use Scalar.new() instead.")
+
     @classmethod
     def new(cls, value: Number) -> Scalar:
         if isinstance(value, np.ndarray):
             value = value.item()
         return cast(Scalar, super().new(value))
-
-    def magnitude(self, units: str = "1") -> np.float64:
-        return np.float64(self.get_raw_array(units))
 
     @staticmethod
     def _cmp_bool(value: object) -> bool:
@@ -273,19 +283,9 @@ class Scalar(TensorScalar[SomeDim], Generic[SomeDim]):
 class ScalarArray(TensorScalar[SomeDim], Generic[SomeDim]):
     """End-user convenience scalar-array class."""
 
+    def __init__(self, *args: Never, **kwargs: Never) -> None:
+        raise RuntimeError("ScalarArray cannot be instantiated directly. Use ScalarArray.new() instead.")
+
     @classmethod
     def new(cls, values: list[Number]) -> ScalarArray:
         return cast(ScalarArray, super().new(np.array(values).flatten()))
-
-    @property
-    def size(self) -> int:
-        s, = np.array(self._values).shape
-        return int(s)
-
-    def __getitem__(self, index: int) -> Scalar[SomeDim]:
-        if index < 0 or index >= self.size:
-            raise KeyError("...")
-        return Scalar[self.dim].new(np.array(self._values)[index])
-
-    def magnitude(self, units: str = "1") -> npt.NDArray[np.float64]:
-        return cast(npt.NDArray[np.float64], self.get_raw_array(units))
