@@ -5,7 +5,7 @@ from functools import singledispatchmethod
 import inspect
 from multiprocessing import Value
 from pyclbr import Class
-from typing import Any, Callable, ClassVar, Generic, Literal, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
 
 import numpy as np
 import numpy.typing as npt
@@ -106,7 +106,7 @@ class Tensor[SomeDim = D.Dimless]():
         # Allow generic/type-var usage like `Tensor[SomeDim]` in annotations
         # by returning the original class when `dim` is not a concrete
         # Dimension subclass.
-        return cls
+        return cls # type: ignore
     
     def cast(self, dim: type[SomeOtherDim]) -> Tensor[SomeOtherDim]:
         """Type-cast to another dimension if coordinates are identical."""
