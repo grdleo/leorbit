@@ -5,7 +5,7 @@ from leorbit2.mathematics.dimensions import D
 from leorbit2.mathematics.matrix33 import Matrix33
 from leorbit2.mathematics.scalar import Scalar
 from leorbit2.mathematics.vector3 import Vector3
-from leorbit2.mathematics.vector3_array import Vector3Array
+from leorbit2.mathematics.vector3 import Vector3Array
 
 
 def test_matrix33_new_from_numbers_and_scalars():

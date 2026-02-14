@@ -1,48 +1,293 @@
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from __future__ import annotations
+
 from functools import cached_property
+from itertools import repeat
 from math import pi
-from pyclbr import Class
-from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import Any, ClassVar, Generic, Literal, Never, TypeVar, cast, overload
 
 import numpy as np
 
-from leorbit2.mathematics.functions import sqrt
-from leorbit2.mathematics.dimensions import Dim, DimCoords, D, ProductDim, QuotientDim, SomeDim, SomeOtherDim
-from leorbit2.mathematics.functions import atan2, acos, cos, sin, square
+from leorbit2.mathematics.dimensions import D, DimCoords, ProductDim, QuotientDim, SomeDim, SomeOtherDim
+from leorbit2.mathematics.functions import acos, atan2, cos, sin, sqrt, square
 from leorbit2.mathematics.quantity import Quantity
-from leorbit2.mathematics.scalar import Scalar
-from leorbit2.mathematics.tensor import Tensor, TensorType, ensure_same_dimensions
+from leorbit2.mathematics.scalar import Scalar, ScalarArray, TensorScalar
+from leorbit2.mathematics.tensor import Tensor, ensure_same_dimensions
 
 Number = float | int | np.floating
 TensorData = np.typing.NDArray[np.floating[Any]]
-SomeTensor = TypeVar("SomeTensor", bound=Tensor)
-    
-NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
 
-def all_simple_numbers(els: list[object]) -> TypeGuard[list[Number]]:
-    """Return whether all elements are plain numeric scalars (including numpy
-    scalar types)."""
-    return all(
-        isinstance(el, (int, float, np.floating, np.integer))
-        for el in els
-    )
 
-def all_scalars_numbers(els: list[object]) -> TypeGuard[list[Scalar]]:
-    """Return whether all elements are ``Scalar`` instances."""
-    return all(isinstance(el, Scalar) for el in els)
+def _is_simple_number(value: object) -> bool:
+    return isinstance(value, (int, float, np.floating, np.integer))
 
-class Vector3(Tensor[SomeDim], Generic[SomeDim]):
-    """Three-dimensional vector carrying a physical dimension."""
+
+def all_simple_numbers(els: list[object]) -> bool:
+    return all(_is_simple_number(el) for el in els)
+
+
+def all_scalars_numbers(els: list[object]) -> bool:
+    return all(isinstance(el, TensorScalar) for el in els)
+
+
+def _scalar_from_values(dim: type, values: np.ndarray) -> TensorScalar[Any]:
+    flat = np.asarray(values).reshape(-1)
+    if flat.size == 1:
+        return Scalar[dim].new(flat.item())
+    return ScalarArray[dim].new(flat)
+
+
+class TensorVector3(Tensor[SomeDim], Generic[SomeDim]):
+    """Core vector tensor type supporting one or many 3D vectors."""
 
     @classmethod
-    def dimensionalize(cls, dim_coords: DimCoords) -> type[Vector3]:
-        """Return a vector class bound to ``dim_coords``."""
-        return cast(
-            type[Vector3],
-            super().dimensionalize(dim_coords)
+    def dimensionalize(cls, dim_coords: DimCoords) -> type[TensorVector3]:
+        return cast(type[TensorVector3], super().dimensionalize(dim_coords))
+
+    @classmethod
+    def new_from_vectors(cls, *vectors: TensorVector3[SomeDim]) -> TensorVector3[SomeDim]:
+        if not vectors:
+            raise ValueError("...")
+        v0 = vectors[0]
+        try:
+            for vector in vectors[1:]:
+                ensure_same_dimensions(v0, vector)
+        except RuntimeError as exc:
+            raise ValueError("...") from exc
+        return cls(np.concatenate([v._values for v in vectors], axis=1))
+
+    @classmethod
+    def new_from_components(
+        cls,
+        x: TensorScalar[SomeDim],
+        y: TensorScalar[SomeDim],
+        z: TensorScalar[SomeDim],
+    ) -> TensorVector3[SomeDim]:
+        ensure_same_dimensions(x, y, z)
+        x_vals = np.asarray(x.base_unit_value).reshape(-1)
+        y_vals = np.asarray(y.base_unit_value).reshape(-1)
+        z_vals = np.asarray(z.base_unit_value).reshape(-1)
+        if not (x_vals.size == y_vals.size == z_vals.size):
+            raise ValueError("...")
+        return cls(np.stack([x_vals, y_vals, z_vals]))
+
+    @classmethod
+    def new_from_single_vector(cls, vector: TensorVector3[SomeDim], size: int) -> TensorVector3[SomeDim]:
+        return cls.new_from_vectors(*repeat(vector, size))
+
+    @property
+    def size(self) -> int:
+        _, s = self._values.shape
+        return int(s)
+
+    def cast(self, dim: type[SomeOtherDim]) -> TensorVector3[SomeOtherDim]:
+        if dim._d == self.dim_coords:
+            return self  # type: ignore
+        raise RuntimeError("Cannot cast")
+
+    @cached_property
+    def x(self) -> TensorScalar[SomeDim]:
+        return _scalar_from_values(self.dim, self._values[0, :])
+
+    @cached_property
+    def y(self) -> TensorScalar[SomeDim]:
+        return _scalar_from_values(self.dim, self._values[1, :])
+
+    @cached_property
+    def z(self) -> TensorScalar[SomeDim]:
+        return _scalar_from_values(self.dim, self._values[2, :])
+
+    @cached_property
+    def length(self) -> TensorScalar[SomeDim]:
+        return _scalar_from_values(self.dim, np.sum(self._values ** 2, axis=0) ** 0.5)
+
+    def __getitem__(self, index: int) -> Vector3[SomeDim]:
+        if index < 0 or index >= self.size:
+            raise KeyError("...")
+        return Vector3[self.dim].new(
+            x=self._values[0, index],
+            y=self._values[1, index],
+            z=self._values[2, index],
         )
-    
+
+    @cached_property
+    def theta(self) -> TensorScalar[D.Angle]:
+        return cast(TensorScalar[D.Angle], atan2(self.y, self.x))
+
+    @cached_property
+    def delta(self) -> TensorScalar[D.Angle]:
+        xy = sqrt(square(self.x) + square(self.y))
+        return cast(TensorScalar[D.Angle], atan2(self.z, xy))
+
+    def angle(self, o: TensorVector3[SomeDim]) -> TensorScalar[D.Angle]:
+        cos_angle = cast(TensorScalar[D.Dimless], self.dot(o) / (self.length * o.length))
+        if self.size == 1:
+            if cast(Scalar[D.Dimless], cos_angle) >= 1:
+                return cast(TensorScalar[D.Angle], 0 * Quantity.rad)
+            if cast(Scalar[D.Dimless], cos_angle) <= -1:
+                return cast(TensorScalar[D.Angle], pi * Quantity.rad)
+        return cast(TensorScalar[D.Angle], acos(cos_angle))
+
+    def normalized(self) -> TensorVector3[D.Dimless]:
+        return cast(TensorVector3[D.Dimless], self / self.length)
+
+    @staticmethod
+    def from_spherical(
+        theta: TensorScalar[D.Angle],
+        delta: TensorScalar[D.Angle],
+        rho: TensorScalar[SomeOtherDim],
+    ) -> TensorVector3[SomeOtherDim]:
+        cos_delta = cos(delta)
+        sin_delta = sin(delta)
+        cos_theta = cos(theta)
+        sin_theta = sin(theta)
+        x = rho * cos_theta * cos_delta
+        y = rho * sin_theta * cos_delta
+        z = rho * sin_delta
+        return TensorVector3[rho.dim].new_from_components(
+            cast(TensorScalar[SomeOtherDim], x),
+            cast(TensorScalar[SomeOtherDim], y),
+            cast(TensorScalar[SomeOtherDim], z),
+        )
+
+    @overload
+    def dot(self: TensorVector3[SomeDim], o: TensorVector3[SomeDim]) -> TensorScalar[ProductDim[SomeDim, SomeDim]]: ...
+
+    @overload
+    def dot(self: TensorVector3[SomeDim], o: TensorVector3[SomeOtherDim]) -> TensorScalar[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+    def dot(self, o: object) -> TensorScalar[Any]:
+        if not isinstance(o, TensorVector3):
+            raise TypeError("dot product requires two TensorVector3 instances")
+        vals = np.sum(self._values * o._values, axis=0)
+        return _scalar_from_values((self.dim_coords * o.dim_coords).to_dimension(), vals)
+
+    @overload
+    def cross(self: TensorVector3[D.Dimless], o: TensorVector3[D.Dimless]) -> TensorVector3[D.Dimless]: ...
+
+    @overload
+    def cross(self: TensorVector3[D.Dimless], o: TensorVector3[SomeOtherDim]) -> TensorVector3[SomeOtherDim]: ...
+
+    @overload
+    def cross(self: TensorVector3[SomeDim], o: TensorVector3[SomeOtherDim]) -> TensorVector3[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+    def cross(self, o: object) -> TensorVector3[Any]:
+        if not isinstance(o, TensorVector3):
+            raise TypeError("cross product requires two TensorVector3 instances")
+        return TensorVector3.dimensionalize(self.dim_coords * o.dim_coords)(
+            np.cross(self._values, o._values, axis=0)
+        )
+
+    @overload
+    def __add__(self: TensorVector3[SomeDim], o: TensorVector3[SomeDim] | TensorScalar[SomeDim]) -> TensorVector3[SomeDim]: ...
+
+    def __add__(self, o: object) -> TensorVector3[Any]:
+        return cast(TensorVector3[Any], super().__add__(o))
+
+    @overload
+    def __radd__(self: TensorVector3[D.Dimless], o: Number) -> TensorVector3[D.Dimless]: ...
+
+    @overload
+    def __radd__(self: TensorVector3[SomeDim], o: Number) -> Never: ...
+
+    def __radd__(self, o: object) -> TensorVector3[Any]:
+        return cast(TensorVector3[Any], super().__radd__(o))
+
+    @overload
+    def __sub__(self: TensorVector3[SomeDim], o: TensorVector3[SomeDim] | TensorScalar[SomeDim]) -> TensorVector3[SomeDim]: ...
+
+    def __sub__(self, o: object) -> TensorVector3[Any]:
+        return cast(TensorVector3[Any], super().__sub__(o))
+
+    @overload
+    def __rsub__(self: TensorVector3[D.Dimless], o: Number) -> TensorVector3[D.Dimless]: ...
+
+    @overload
+    def __rsub__(self: TensorVector3[SomeDim], o: Number) -> Never: ...
+
+    def __rsub__(self, o: object) -> TensorVector3[Any]:
+        return cast(TensorVector3[Any], super().__rsub__(o))
+
+    @overload
+    def __mul__(self: TensorVector3[D.Dimless], o: Number | TensorScalar[D.Dimless]) -> TensorVector3[D.Dimless]: ...
+
+    @overload
+    def __mul__(self: TensorVector3[D.Dimless], o: TensorScalar[SomeOtherDim]) -> TensorVector3[SomeOtherDim]: ...
+
+    @overload
+    def __mul__(self: TensorVector3[SomeDim], o: Number | TensorScalar[D.Dimless]) -> TensorVector3[SomeDim]: ...
+
+    @overload
+    def __mul__(self: TensorVector3[SomeDim], o: TensorScalar[SomeOtherDim]) -> TensorVector3[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+    def __mul__(self, o: object) -> TensorVector3[Any]:
+        return cast(TensorVector3[Any], super().__mul__(o))
+
+    @overload
+    def __rmul__(self: TensorVector3[D.Dimless], o: Number) -> TensorVector3[D.Dimless]: ...
+
+    @overload
+    def __rmul__(self: TensorVector3[SomeDim], o: Number) -> TensorVector3[SomeDim]: ...
+
+    def __rmul__(self, o: object) -> TensorVector3[Any]:
+        return cast(TensorVector3[Any], super().__rmul__(o))
+
+    @overload
+    def __truediv__(self: TensorVector3[D.Dimless], o: Number | TensorScalar[D.Dimless]) -> TensorVector3[D.Dimless]: ...
+
+    @overload
+    def __truediv__(self: TensorVector3[D.Dimless], o: TensorScalar[SomeDim]) -> TensorVector3[QuotientDim[D.Dimless, SomeDim]]: ...
+
+    @overload
+    def __truediv__(self: TensorVector3[SomeDim], o: Number | TensorScalar[D.Dimless]) -> TensorVector3[SomeDim]: ...
+
+    @overload
+    def __truediv__(self: TensorVector3[SomeDim], o: TensorScalar[SomeOtherDim]) -> TensorVector3[QuotientDim[SomeDim, SomeOtherDim]]: ...
+
+    def __truediv__(self, o: object) -> TensorVector3[Any]:
+        return cast(TensorVector3[Any], super().__truediv__(o))
+
+    @overload
+    def __rtruediv__(self: TensorVector3[D.Dimless], o: Number) -> TensorVector3[D.Dimless]: ...
+
+    @overload
+    def __rtruediv__(self: TensorVector3[SomeDim], o: Number) -> TensorVector3[QuotientDim[D.Dimless, SomeDim]]: ...
+
+    def __rtruediv__(self, o: object) -> TensorVector3[Any]:
+        return cast(TensorVector3[Any], super().__rtruediv__(o))
+
+    @overload
+    def __matmul__(self: TensorVector3[D.Dimless], o: TensorVector3[D.Dimless]) -> TensorScalar[D.Dimless]: ...
+
+    @overload
+    def __matmul__(self: TensorVector3[SomeDim], o: TensorVector3[SomeOtherDim]) -> TensorScalar[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+    def __matmul__(self, o: object) -> TensorScalar[Any]:
+        if not isinstance(o, TensorVector3):
+            raise TypeError("...")
+        return self.dot(o)
+
+    def __eq__(self, o: object) -> np.ndarray:
+        return np.all(super().__eq__(o)._values, axis=0)
+
+    def __neq__(self, o: object) -> np.ndarray:
+        return ~self.__eq__(o)
+
+    def __le__(self, o: Never) -> Never:
+        raise RuntimeError("Comparisons operations not defined for vectors")
+
+    def __lt__(self, o: Never) -> Never:
+        raise RuntimeError("Comparisons operations not defined for vectors")
+
+    def __ge__(self, o: Never) -> Never:
+        raise RuntimeError("Comparisons operations not defined for vectors")
+
+    def __gt__(self, o: Never) -> Never:
+        raise RuntimeError("Comparisons operations not defined for vectors")
+
+
+class Vector3(TensorVector3[SomeDim], Generic[SomeDim]):
+    """End-user convenience single-vector class."""
+
     O: ClassVar[Vector3[D.Dimless]]
     X: ClassVar[Vector3[D.Dimless]]
     Y: ClassVar[Vector3[D.Dimless]]
@@ -50,309 +295,20 @@ class Vector3(Tensor[SomeDim], Generic[SomeDim]):
     ONE: ClassVar[Vector3[D.Dimless]]
 
     @classmethod
-    def new(cls, x: NumberOrScalarT, y: NumberOrScalarT, z: NumberOrScalarT):
-        """Create a vector from three numbers or three same-dimension scalars."""
-        v: TensorData
-        xyz = cast(list[object], [x, y, z])
+    def new(cls, x: Number | TensorScalar[Any], y: Number | TensorScalar[Any], z: Number | TensorScalar[Any]) -> Vector3:
+        xyz = [x, y, z]
+        if all(_is_simple_number(v) for v in xyz):
+            return cls(np.array(xyz).reshape((3, 1)))
+        if all(isinstance(v, TensorScalar) for v in xyz):
+            ensure_same_dimensions(cast(TensorScalar[Any], x), cast(TensorScalar[Any], y), cast(TensorScalar[Any], z))
+            vals = [cast(TensorScalar[Any], v).base_unit_value for v in xyz]
+            vals = [np.asarray(v).item() for v in vals]
+            return cls(np.array(vals).reshape((3, 1)))
+        raise RuntimeError("...")
 
-        if all_simple_numbers(xyz):
-            v = np.array(xyz).reshape((3,1))
-        elif all_scalars_numbers(xyz):
-            ensure_same_dimensions(*xyz)
-            v = np.array([el.base_unit_value for el in xyz]).reshape((3,1))
-        else:
-            raise RuntimeError("...")
 
-        return cls(v)
-    
-    @property
-    def tensor_type(self) -> TensorType:
-        return TensorType.VECTOR3
-
-    def cast(self, dim: type[SomeOtherDim]) -> Vector3[SomeOtherDim]:
-        """Type-cast to another dimension when coordinates are identical."""
-        if dim._d == self.dim_coords:
-            return self # type: ignore
-        raise RuntimeError("Cannot cast")
-    
-    @cached_property
-    def x(self) -> Scalar[SomeDim]:
-        """X coordinate as a scalar."""
-        return Scalar[self.dim](self._values[0])
-    
-    @cached_property
-    def y(self) -> Scalar[SomeDim]:
-        """Y coordinate as a scalar."""
-        return Scalar[self.dim](self._values[1])
-    
-    @cached_property
-    def z(self) -> Scalar[SomeDim]:
-        """Z coordinate as a scalar."""
-        return Scalar[self.dim](self._values[2])
-    
-    @cached_property
-    def length(self) -> Scalar[SomeDim]:
-        """Euclidean norm of the vector."""
-        return Scalar[self.dim](
-            np.sum(self._values ** 2) ** .5
-        )
-    
-    @cached_property
-    def theta(self) -> Scalar[D.Angle]:
-        """Angle between the projection of `self` on the (xy) plane, and the x axis.
-        In [-π, π] range
-        """
-
-        return atan2(self.y, self.x)
-    
-    @cached_property
-    def delta(self) -> Scalar[D.Angle]:
-        """The complementary angle between `self` and z axis.
-        In [-π/2, π/2] range
-        """
-
-        xy = sqrt(square(self.x) + square(self.y))
-        return atan2(self.z, xy)
-    
-    def angle(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Scalar[D.Angle]:
-        """Returns the angle between the two given vectors.
-        Returned angle is in `[0;π]` range.
-        """
-        if self == o:
-            return 0 * Quantity.rad
-        cos_angle = cast(Scalar[D.Dimless], self.dot(o) / (self.length * o.length))
-        if cos_angle >= 1:
-            return 0 * Quantity.rad
-        elif cos_angle <= -1:
-            return pi * Quantity.rad
-        return acos(cos_angle)
-    
-    def normalized(self) -> Vector3[D.Dimless]:
-        """Return vector scaled to unit norm (dimensionless)."""
-        l = self.length
-        return self / l
-    
-    @staticmethod
-    def from_spherical(theta: Scalar[D.Angle], delta: Scalar[D.Angle], rho: Scalar[SomeOtherDim]) -> Vector3[SomeOtherDim]:
-        """
-        Create a 3D vector from spherical coordinates.
-
-        Uses "radius-longitude-latitude" convention, [see in Wikipedia.](https://fr.wikipedia.org/wiki/Coordonn%C3%A9es_sph%C3%A9riques#Convention_rayon-longitude-latitude))
-
-        Arguments
-        ---------
-        - `theta:` Longitude angle (θ), as ``Scalar[D.Angle]``.
-        - `delta:` Latitude angle (δ), as ``Scalar[D.Angle]``.
-        - `rho:` Radius (ρ) from given convention.
-        """
-
-        cos_delta = cos(delta)
-        sin_delta = sin(delta)
-        cos_theta = cos(theta)
-        sin_theta = sin(theta)
-
-        return Vector3[rho.dim].new(
-            x = rho * cos_theta * cos_delta,
-            y = rho * sin_theta * cos_delta,
-            z = rho * sin_delta
-        )
-    
-    @overload
-    def dot(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Scalar[ProductDim[SomeDim, SomeDim]]: ...
-
-    @overload
-    def dot(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Scalar[ProductDim[SomeDim, SomeOtherDim]]: ...
-    
-    def dot(self, o: object) -> Scalar[Any]:
-        """Return dot product with another vector."""
-        if not isinstance(o, Vector3):
-            raise TypeError("dot product requires two Vector3 instances")
-
-        return Scalar.dimensionalize(
-            self.dim_coords * o.dim_coords
-        ).new(
-            np.sum(self._values * o._values)
-        )
-    
-    @overload
-    def cross(self: Vector3[D.Dimless], o: Vector3[D.Dimless]) -> Vector3[D.Dimless]: ...
-    
-    @overload
-    def cross(self: Vector3[D.Dimless], o: Vector3[SomeOtherDim]) -> Vector3[SomeOtherDim]: ...
-    
-    @overload
-    def cross(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]: ...
-    
-    def cross(self, o: object) -> Vector3[Any]:
-        """Return cross product with another vector."""
-        if not isinstance(o, Vector3):
-            raise TypeError("cross product requires two Vector3 instances")
-
-        return Vector3.dimensionalize(
-            self.dim_coords * o.dim_coords
-        )(
-            np.cross(self._values, o._values, axis=0)
-        )
-    
-    def __repr__(self) -> str:
-        return (
-            f"Vector3[D.{self.dim.__class__.__name__}]("
-            f"x={self._values[0]}, "
-            f"y={self._values[1]}, "
-            f"z={self._values[2]}"
-            ")"
-        )
-
-    ### + OPERATOR ###
-
-    @overload
-    def __add__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
-
-    @overload
-    def __add__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[SomeDim]: ...
-
-    def __add__(self, o: object) -> Vector3[Any]:
-        return cast(Vector3[Any], super().__add__(o))
-
-    @overload
-    def __radd__(self: Vector3[D.Dimless], o: Vector3[D.Dimless]) -> Vector3[D.Dimless]: ...
-
-    @overload
-    def __radd__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
-
-    @overload
-    def __radd__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[SomeDim]: ...
-
-    def __radd__(self, o: object) -> Vector3[Any]:
-        return cast(Vector3[Any], super().__radd__(o))
-
-    ### - OPERATOR ###
-
-    @overload
-    def __sub__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
-
-    @overload
-    def __sub__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[SomeDim]: ...
-
-    def __sub__(self, o: object) -> Vector3[Any]:
-        return cast(Vector3[Any], super().__sub__(o))
-
-    @overload
-    def __rsub__(self: Vector3[D.Dimless], o: Vector3[D.Dimless]) -> Vector3[D.Dimless]: ...
-
-    @overload
-    def __rsub__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
-
-    @overload
-    def __rsub__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[SomeDim]: ...
-
-    def __rsub__(self, o: object) -> Vector3[Any]:
-        return cast(Vector3[Any], super().__rsub__(o))
-
-    ### * OPERATOR ###
-
-    @overload
-    def __mul__(self: Vector3[D.Dimless], o: Number | Scalar[D.Dimless]) -> Vector3[D.Dimless]: ...
-
-    @overload
-    def __mul__(self: Vector3[D.Dimless], o: Scalar[SomeOtherDim]) -> Vector3[SomeOtherDim]: ...
-
-    @overload
-    def __mul__(self: Vector3[SomeDim], o: Number | Scalar[D.Dimless]) -> Vector3[SomeDim]: ...
-
-    @overload
-    def __mul__(self: Vector3[SomeDim], o: Scalar[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]: ...
-
-    @overload
-    def __mul__(self, o: Scalar) -> Vector3[Any]: ...
-
-    def __mul__(self, o: object) -> Vector3[Any]:
-        return cast(Vector3[Any], super().__mul__(o))
-
-    @overload
-    def __rmul__(self: Vector3[D.Dimless], o: Number | Scalar[D.Dimless]) -> Vector3[D.Dimless]: ...
-
-    @overload
-    def __rmul__(self: Vector3[D.Dimless], o: Scalar[SomeOtherDim]) -> Vector3[SomeOtherDim]: ...
-
-    @overload
-    def __rmul__(self: Vector3[SomeDim], o: Number | Scalar[D.Dimless]) -> Vector3[SomeDim]: ...
-
-    @overload
-    def __rmul__(self: Vector3[SomeDim], o: Scalar[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]: ...
-
-    @overload
-    def __rmul__(self, o: Scalar) -> Vector3[Any]: ...
-
-    def __rmul__(self, o: object) -> Vector3[Any]:
-        return cast(Vector3[Any], super().__rmul__(o))
-
-    ### / OPERATOR ###
-
-    @overload
-    def __truediv__(self: Vector3[D.Dimless], o: Number | Scalar[D.Dimless]) -> Vector3[D.Dimless]: ...
-
-    @overload
-    def __truediv__(self: Vector3[D.Dimless], o: Scalar[SomeDim]) -> Vector3[QuotientDim[D.Dimless, SomeDim]]: ...
-
-    @overload
-    def __truediv__(self: Vector3[SomeDim], o: Number | Scalar[D.Dimless]) -> Vector3[SomeDim]: ...
-
-    @overload
-    def __truediv__(self: Vector3[SomeDim], o: Scalar[SomeDim]) -> Vector3[D.Dimless]: ... # type: ignore
-
-    @overload
-    def __truediv__(self: Vector3[SomeDim], o: Scalar[SomeOtherDim]) -> Vector3[QuotientDim[SomeDim, SomeOtherDim]]: ...
-
-    @overload
-    def __truediv__(self, o: Scalar) -> Vector3[Any]: ...
-
-    def __truediv__(self, o: object) -> Vector3[Any]:
-        return cast(Vector3[Any], super().__truediv__(o))
-
-    @overload
-    def __rtruediv__(self: Vector3[D.Dimless], o: Number | Scalar[D.Dimless]) -> Vector3[D.Dimless]: ...
-
-    @overload
-    def __rtruediv__(self: Vector3[SomeDim], o: Number | Scalar[D.Dimless]) -> Vector3[QuotientDim[D.Dimless, SomeDim]]: ...
-
-    def __rtruediv__(self, o: object) -> Vector3[Any]:
-        return cast(Vector3[Any], super().__rtruediv__(o))
-    
-    ### @ OPERATOR (dot product) ###
-
-    @overload
-    def __matmul__(self: Vector3[D.Dimless], o: Vector3[D.Dimless]) -> Scalar[D.Dimless]: ...
-
-    @overload
-    def __matmul__(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Scalar[ProductDim[SomeDim, SomeOtherDim]]: ...
-
-    def __matmul__(self, o: object) -> Scalar[Any]:
-        if isinstance(o, Vector3):
-            return self.dot(o)
-        
-        raise TypeError("...")
-    
-    ################
-
-    def __eq__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> bool:
-        return bool(np.all(super().__eq__(o)._values))
-    
-    def __neq__(self: Vector3[SomeDim], o: Vector3[SomeDim]) -> bool:
-        return not self.__eq__(o)
-    
-    def __le__(self, o: Never) -> Never:
-        raise RuntimeError("Comparisons operations not defined for Vector3")
-    
-    def __lt__(self, o: Never) -> Never:
-        raise RuntimeError("Comparisons operations not defined for Vector3")
-    
-    def __ge__(self, o: Never) -> Never:
-        raise RuntimeError("Comparisons operations not defined for Vector3")
-    
-    def __gt__(self, o: Never) -> Never:
-        raise RuntimeError("Comparisons operations not defined for Vector3")
-    
+class Vector3Array(TensorVector3[SomeDim], Generic[SomeDim]):
+    """End-user convenience vector-array class."""
 
 
 _vector3_dimless = Vector3[D.Dimless]

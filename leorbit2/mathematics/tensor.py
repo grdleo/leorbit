@@ -97,10 +97,6 @@ class Tensor[SomeDim = D.Dimless]():
             self._dim
         )
     
-    @property
-    def tensor_type(self) -> TensorType:
-        raise NotImplementedError()
-    
     @classmethod
     def _is_base_tensor_class(cls) -> bool:
         """Whether ``cls`` is the undimensionalized root tensor class."""

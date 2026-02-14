@@ -7,10 +7,9 @@ from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, Type
 import numpy as np
 
 from leorbit2.mathematics.dimensions import Dim, D, DimCoords, ProductDim, QuotientDim, SomeDim, SomeOtherDim
-from leorbit2.mathematics.scalar import Scalar
-from leorbit2.mathematics.tensor import Tensor, TensorType, ensure_same_dimensions
-from leorbit2.mathematics.vector3 import Vector3, all_scalars_numbers, all_simple_numbers
-from leorbit2.mathematics.vector3_array import Vector3Array
+from leorbit2.mathematics.scalar import Scalar, TensorScalar
+from leorbit2.mathematics.tensor import Tensor, ensure_same_dimensions
+from leorbit2.mathematics.vector3 import Vector3, Vector3Array, TensorVector3, all_scalars_numbers, all_simple_numbers
 
 Number = float | int | np.floating
 TensorData = np.typing.NDArray[np.floating[Any]]
@@ -48,10 +47,6 @@ class Matrix33(Tensor[SomeDim], Generic[SomeDim]):
 
         return cls(mat)
     
-    @property
-    def tensor_type(self) -> TensorType:
-        return TensorType.MATRIX33
-
     def cast(self, dim: type[SomeOtherDim]) -> Matrix33[SomeOtherDim]:
         """Type-cast to another dimension when coordinates are identical."""
         if dim._d == self.dim_coords:
@@ -95,13 +90,10 @@ class Matrix33(Tensor[SomeDim], Generic[SomeDim]):
         return cast(Matrix33[Any], super().__add__(o))
 
     @overload
-    def __radd__(self: Matrix33[D.Dimless], o: Matrix33[D.Dimless]) -> Matrix33[D.Dimless]: ...
+    def __radd__(self: Matrix33[D.Dimless], o: Number) -> Matrix33[D.Dimless]: ...
 
     @overload
-    def __radd__(self: Matrix33[SomeDim], o: Matrix33[SomeDim]) -> Matrix33[SomeDim]: ...
-
-    @overload
-    def __radd__(self: Matrix33[SomeDim], o: Scalar[SomeDim]) -> Matrix33[SomeDim]: ...
+    def __radd__(self: Matrix33[SomeDim], o: Number) -> Never: ...
 
     def __radd__(self, o: object) -> Matrix33[Any]:
         return cast(Matrix33[Any], super().__radd__(o))
@@ -121,13 +113,10 @@ class Matrix33(Tensor[SomeDim], Generic[SomeDim]):
         return cast(Matrix33[Any], super().__sub__(o))
 
     @overload
-    def __rsub__(self: Matrix33[D.Dimless], o: Matrix33[D.Dimless]) -> Matrix33[D.Dimless]: ...
+    def __rsub__(self: Matrix33[D.Dimless], o: Number) -> Matrix33[D.Dimless]: ...
 
     @overload
-    def __rsub__(self: Matrix33[SomeDim], o: Matrix33[SomeDim]) -> Matrix33[SomeDim]: ...
-
-    @overload
-    def __rsub__(self: Matrix33[SomeDim], o: Scalar[SomeDim]) -> Matrix33[SomeDim]: ...
+    def __rsub__(self: Matrix33[SomeDim], o: Number) -> Never: ...
 
     def __rsub__(self, o: object) -> Matrix33[Any]:
         return cast(Matrix33[Any], super().__rsub__(o))
@@ -153,19 +142,10 @@ class Matrix33(Tensor[SomeDim], Generic[SomeDim]):
         return cast(Matrix33[Any], super().__mul__(o))
 
     @overload
-    def __rmul__(self: Matrix33[D.Dimless], o: Number | Scalar[D.Dimless]) -> Matrix33[D.Dimless]: ...
+    def __rmul__(self: Matrix33[D.Dimless], o: Number) -> Matrix33[D.Dimless]: ...
 
     @overload
-    def __rmul__(self: Matrix33[D.Dimless], o: Scalar[SomeOtherDim]) -> Matrix33[SomeOtherDim]: ...
-
-    @overload
-    def __rmul__(self: Matrix33[SomeDim], o: Number | Scalar[D.Dimless]) -> Matrix33[SomeDim]: ...
-
-    @overload
-    def __rmul__(self: Matrix33[SomeDim], o: Scalar[SomeOtherDim]) -> Matrix33[ProductDim[SomeDim, SomeOtherDim]]: ...
-
-    @overload
-    def __rmul__(self, o: Scalar) -> Matrix33[Any]: ...
+    def __rmul__(self: Matrix33[SomeDim], o: Number) -> Matrix33[SomeDim]: ...
 
     def __rmul__(self, o: object) -> Matrix33[Any]:
         return cast(Matrix33[Any], super().__rmul__(o))
@@ -194,10 +174,10 @@ class Matrix33(Tensor[SomeDim], Generic[SomeDim]):
         return cast(Matrix33[Any], super().__truediv__(o))
 
     @overload
-    def __rtruediv__(self: Matrix33[D.Dimless], o: Number | Scalar[D.Dimless]) -> Matrix33[D.Dimless]: ...
+    def __rtruediv__(self: Matrix33[D.Dimless], o: Number) -> Matrix33[D.Dimless]: ...
 
     @overload
-    def __rtruediv__(self: Matrix33[SomeDim], o: Number | Scalar[D.Dimless]) -> Matrix33[QuotientDim[D.Dimless, SomeDim]]: ...
+    def __rtruediv__(self: Matrix33[SomeDim], o: Number) -> Matrix33[QuotientDim[D.Dimless, SomeDim]]: ...
 
     def __rtruediv__(self, o: object) -> Matrix33[Any]:
         return cast(Matrix33[Any], super().__rtruediv__(o))
@@ -253,3 +233,6 @@ class Matrix33(Tensor[SomeDim], Generic[SomeDim]):
             )
 
         raise TypeError("@ operation requires Matrix33 or Vector3 or Vector3Array")
+
+
+TensorMatrix33 = Matrix33

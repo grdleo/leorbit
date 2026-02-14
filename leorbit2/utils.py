@@ -4,7 +4,7 @@
 import math
 from multiprocessing import Value
 from leorbit2.mathematics import D, Scalar, Quantity, Vector3
-from leorbit2.mathematics.tensor import Tensor, TensorType
+from leorbit2.mathematics.tensor import Tensor
 from leorbit2.mathematics.dimensions import P3, P2, P1, OO, N1, N2, N3, DimCoords, PowerDim
 from leorbit2.mathematics.functions import atan2, cos, sin, square, sqrt
 import numpy as np
@@ -13,8 +13,8 @@ from numpy.typing import NDArray
 from typing import TYPE_CHECKING, Any, Type, TypeAlias, TypeVar, cast, overload
 
 from leorbit2.mathematics.matrix33 import ProductDim
-from leorbit2.mathematics.scalar_array import ScalarArray
-from leorbit2.mathematics.vector3_array import Vector3Array
+from leorbit2.mathematics.scalar import ScalarArray
+from leorbit2.mathematics.vector3 import Vector3Array
 
 GravParam: TypeAlias = ProductDim[
     PowerDim[D.Length, P3, P1],
@@ -197,11 +197,11 @@ def elements2orthogonal_gcrf(
 ) -> Any:
     if not isinstance(υ, Tensor):
         raise ValueError("True anomaly must be a tensor")
-    
-    if υ.tensor_type == TensorType.SCALAR:
+
+    if isinstance(υ, Scalar):
         υ = cast(Scalar[D.Angle], υ)
         return _elements2orthogonal_gcrf_scalar(υ, e, a, Ω, ω, i)
-    elif υ.tensor_type == TensorType.SCALAR_ARRAY:
+    elif isinstance(υ, ScalarArray):
         υ = cast(ScalarArray[D.Angle], υ)
         return _elements2orthogonal_gcrf_array(υ, e, a, Ω, ω, i)
     

@@ -2,10 +2,8 @@ import numpy as np
 import pytest
 
 from leorbit2.mathematics.dimensions import D
-from leorbit2.mathematics.scalar import Scalar
-from leorbit2.mathematics.scalar_array import ScalarArray
-from leorbit2.mathematics.vector3 import Vector3
-from leorbit2.mathematics.vector3_array import Vector3Array
+from leorbit2.mathematics.scalar import Scalar, ScalarArray
+from leorbit2.mathematics.vector3 import Vector3, Vector3Array
 
 
 def test_vector3_array_builders_and_indexing():

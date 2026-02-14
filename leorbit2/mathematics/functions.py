@@ -4,8 +4,7 @@ from typing import Any, TypeVar, overload, Literal
 import numpy as np
 from leorbit2.mathematics.dimensions import D, Dim, Number, SomeDim, PowerDim, P1, P2
 from leorbit2.mathematics.quantity import Quantity
-from leorbit2.mathematics.scalar import Scalar
-from leorbit2.mathematics.scalar_array import ScalarArray
+from leorbit2.mathematics.scalar import Scalar, TensorScalar
 from leorbit2.mathematics.tensor import Tensor
 
 TWELF_PI = math.pi / 12
@@ -15,22 +14,13 @@ FULL_REV = (2 * math.pi) * Quantity.rad
 HALF_REV = FULL_REV / 2
 
 @overload
-def square(tensor: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ... # type: ignore
+def square(tensor: TensorScalar[D.Dimless]) -> TensorScalar[D.Dimless]: ... # type: ignore
 
 @overload
-def square(tensor: Scalar[PowerDim[SomeDim, P1, P2]]) -> Scalar[SomeDim]: ... # type: ignore
+def square(tensor: TensorScalar[PowerDim[SomeDim, P1, P2]]) -> TensorScalar[SomeDim]: ... # type: ignore
 
 @overload
-def square(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P2, P1]]: ... # type: ignore
-
-@overload
-def square(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Dimless]: ... # type: ignore
-
-@overload
-def square(tensor: ScalarArray[PowerDim[SomeDim, P1, P2]]) -> ScalarArray[SomeDim]: ... # type: ignore
-
-@overload
-def square(tensor: ScalarArray[SomeDim]) -> ScalarArray[PowerDim[SomeDim, P2, P1]]: ... # type: ignore
+def square(tensor: TensorScalar[SomeDim]) -> TensorScalar[PowerDim[SomeDim, P2, P1]]: ... # type: ignore
 
 def square(tensor: Tensor[Any]) -> Tensor[Any]:
     return tensor._base_tensor_class.dimensionalize(
@@ -40,22 +30,13 @@ def square(tensor: Tensor[Any]) -> Tensor[Any]:
     )
 
 @overload
-def sqrt(tensor: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ... # type: ignore
+def sqrt(tensor: TensorScalar[D.Dimless]) -> TensorScalar[D.Dimless]: ... # type: ignore
 
 @overload
-def sqrt(tensor: Scalar[PowerDim[SomeDim, P2, P1]]) -> Scalar[SomeDim]: ... # type: ignore
+def sqrt(tensor: TensorScalar[PowerDim[SomeDim, P2, P1]]) -> TensorScalar[SomeDim]: ... # type: ignore
 
 @overload
-def sqrt(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P1, P2]]: ... # type: ignore
-
-@overload
-def sqrt(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Dimless]: ... # type: ignore
-
-@overload
-def sqrt(tensor: ScalarArray[PowerDim[SomeDim, P2, P1]]) -> ScalarArray[SomeDim]: ... # type: ignore
-
-@overload
-def sqrt(tensor: ScalarArray[SomeDim]) -> ScalarArray[PowerDim[SomeDim, P1, P2]]: ... # type: ignore
+def sqrt(tensor: TensorScalar[SomeDim]) -> TensorScalar[PowerDim[SomeDim, P1, P2]]: ... # type: ignore
 
 def sqrt(tensor: Tensor[Any]) -> Tensor[Any]:
     return tensor._base_tensor_class.dimensionalize(
@@ -65,10 +46,7 @@ def sqrt(tensor: Tensor[Any]) -> Tensor[Any]:
     )
 
 @overload
-def cos(tensor: Scalar[D.Angle]) -> Scalar[D.Dimless]: ... # type: ignore
-
-@overload
-def cos(tensor: ScalarArray[D.Angle]) -> ScalarArray[D.Dimless]: ... # type: ignore
+def cos(tensor: TensorScalar[D.Angle]) -> TensorScalar[D.Dimless]: ... # type: ignore
 
 def cos(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
     return tensor._base_tensor_class[D.Dimless]( # type: ignore
@@ -76,10 +54,7 @@ def cos(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
     )
 
 @overload
-def sin(tensor: Scalar[D.Angle]) -> Scalar[D.Dimless]: ... # type: ignore
-
-@overload
-def sin(tensor: ScalarArray[D.Angle]) -> ScalarArray[D.Dimless]: ... # type: ignore
+def sin(tensor: TensorScalar[D.Angle]) -> TensorScalar[D.Dimless]: ... # type: ignore
 
 def sin(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
     return tensor._base_tensor_class[D.Dimless]( # type: ignore
@@ -87,10 +62,7 @@ def sin(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
     )
 
 @overload
-def tan(tensor: Scalar[D.Angle]) -> Scalar[D.Dimless]: ... # type: ignore
-
-@overload
-def tan(tensor: ScalarArray[D.Angle]) -> ScalarArray[D.Dimless]: ... # type: ignore
+def tan(tensor: TensorScalar[D.Angle]) -> TensorScalar[D.Dimless]: ... # type: ignore
 
 def tan(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
     return tensor._base_tensor_class[D.Dimless]( # type: ignore
@@ -98,10 +70,7 @@ def tan(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
     )
 
 @overload
-def acos(tensor: Scalar[D.Dimless]) -> Scalar[D.Angle]: ... # type: ignore
-
-@overload
-def acos(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Angle]: ... # type: ignore
+def acos(tensor: TensorScalar[D.Dimless]) -> TensorScalar[D.Angle]: ... # type: ignore
 
 def acos(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
     return tensor._base_tensor_class[D.Angle]( # type: ignore
@@ -109,10 +78,7 @@ def acos(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
     )
 
 @overload
-def asin(tensor: Scalar[D.Dimless]) -> Scalar[D.Angle]: ... # type: ignore
-
-@overload
-def asin(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Angle]: ... # type: ignore
+def asin(tensor: TensorScalar[D.Dimless]) -> TensorScalar[D.Angle]: ... # type: ignore
 
 def asin(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
     return tensor._base_tensor_class[D.Angle]( # type: ignore
@@ -120,10 +86,7 @@ def asin(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
     )
 
 @overload
-def atan(tensor: Scalar[D.Dimless]) -> Scalar[D.Angle]: ... # type: ignore
-
-@overload
-def atan(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Angle]: ... # type: ignore
+def atan(tensor: TensorScalar[D.Dimless]) -> TensorScalar[D.Angle]: ... # type: ignore
 
 def atan(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
     return tensor._base_tensor_class[D.Angle]( # type: ignore
@@ -131,16 +94,13 @@ def atan(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
     )
 
 @overload
-def atan2(y: ScalarArray[SomeDim], x: ScalarArray[SomeDim]) -> ScalarArray[D.Angle]: ...
+def atan2(y: TensorScalar[SomeDim], x: TensorScalar[SomeDim]) -> TensorScalar[D.Angle]: ... # type: ignore
 
-@overload
-def atan2(y: Scalar[SomeDim], x: Scalar[SomeDim]) -> Scalar[D.Angle]: ...
-
-def atan2(y: Scalar | ScalarArray, x: Scalar | ScalarArray) -> Scalar | ScalarArray:
+def atan2(y: TensorScalar, x: TensorScalar) -> TensorScalar:
     """Elementwise two-argument arctangent that returns an angle-typed tensor.
 
-    Returns a ``Scalar[D.Angle]`` when both inputs are ``Scalar`` and a
-    ``ScalarArray[D.Angle]`` when at least one input is a ``ScalarArray``.
+    Returns a ``Scalar[D.Angle]`` when both inputs are scalar-like and a
+    ``ScalarArray[D.Angle]`` when at least one input has array semantics.
     """
     vals = np.atan2(y.base_unit_value, x.base_unit_value)
 
@@ -148,11 +108,11 @@ def atan2(y: Scalar | ScalarArray, x: Scalar | ScalarArray) -> Scalar | ScalarAr
     base = getattr(y, "_base_tensor_class", None) or getattr(x, "_base_tensor_class")
     return base[D.Angle](vals)
 
-def normalize_angle(angle: Scalar[D.Angle]) -> Scalar[D.Angle]:
+def normalize_angle(angle: TensorScalar[D.Angle]) -> TensorScalar[D.Angle]:
     """Returns the given angle in its [0, 2π] range."""
     return angle % FULL_REV
 
-def normalize_angle_symmetric(angle: Scalar[D.Angle]) -> Scalar[D.Angle]:
+def normalize_angle_symmetric(angle: TensorScalar[D.Angle]) -> TensorScalar[D.Angle]:
     """Returns the given angle in its [-π, π] range."""
     normalized = normalize_angle(angle)
     return normalized if normalized <= HALF_REV else normalized - FULL_REV

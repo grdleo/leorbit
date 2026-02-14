@@ -19,8 +19,7 @@ from leorbit2.mathematics.functions import (
     tan,
 )
 from leorbit2.mathematics.quantity import Quantity
-from leorbit2.mathematics.scalar import Scalar
-from leorbit2.mathematics.scalar_array import ScalarArray
+from leorbit2.mathematics.scalar import Scalar, ScalarArray
 
 
 def test_square_and_sqrt_scalar_and_scalar_array():

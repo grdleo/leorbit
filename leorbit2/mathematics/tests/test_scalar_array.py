@@ -5,8 +5,7 @@ import pytest
 
 from leorbit2.mathematics.dimensions import D
 from leorbit2.mathematics.quantity import Quantity
-from leorbit2.mathematics.scalar import Scalar
-from leorbit2.mathematics.scalar_array import ScalarArray
+from leorbit2.mathematics.scalar import Scalar, ScalarArray
 
 
 def test_scalar_array_new_size_getitem():
