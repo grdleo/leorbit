@@ -21,14 +21,19 @@ SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
 
 def all_simple_numbers(els: list[object]) -> TypeGuard[list[Number]]:
+    """Return whether all elements are plain numeric scalars."""
     return all(isinstance(el, Number) for el in els)
 
 def all_scalars_numbers(els: list[object]) -> TypeGuard[list[Scalar]]:
+    """Return whether all elements are ``Scalar`` instances."""
     return all(isinstance(el, Scalar) for el in els)
 
 class Vector3(Generic[SomeDim], Tensor[SomeDim]):
+    """Three-dimensional vector carrying a physical dimension."""
+
     @classmethod
     def dimensionalize(cls, dim_coords: DimCoords) -> type[Vector3]:
+        """Return a vector class bound to ``dim_coords``."""
         return cast(
             type[Vector3],
             super().dimensionalize(dim_coords)
@@ -42,6 +47,7 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
 
     @classmethod
     def new(cls, x: NumberOrScalarT, y: NumberOrScalarT, z: NumberOrScalarT):
+        """Create a vector from three numbers or three same-dimension scalars."""
         v: TensorData
         xyz = cast(list[object], [x, y, z])
 
@@ -56,24 +62,29 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
         return cls(v)
 
     def cast(self, dim: type[SomeOtherDim]) -> Vector3[SomeOtherDim]:
+        """Type-cast to another dimension when coordinates are identical."""
         if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
     @cached_property
     def x(self) -> Scalar[SomeDim]:
+        """X coordinate as a scalar."""
         return Scalar[self.dim](self._values[0])
     
     @cached_property
     def y(self) -> Scalar[SomeDim]:
+        """Y coordinate as a scalar."""
         return Scalar[self.dim](self._values[1])
     
     @cached_property
     def z(self) -> Scalar[SomeDim]:
+        """Z coordinate as a scalar."""
         return Scalar[self.dim](self._values[2])
     
     @cached_property
     def length(self) -> Scalar[SomeDim]:
+        """Euclidean norm of the vector."""
         return Scalar[self.dim](
             np.sum(self._values ** 2) ** .5
         )
@@ -109,20 +120,21 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
         return acos(cos_angle)
     
     def normalized(self) -> Vector3[D.Dimless]:
+        """Return vector scaled to unit norm (dimensionless)."""
         l = self.length
         return self / l
     
     @staticmethod
     def from_spherical(theta: Scalar[D.Angle], delta: Scalar[D.Angle], rho: Scalar[SomeOtherDim]) -> Vector3[SomeOtherDim]:
         """
-        Creates and returns a 3D vector from spherical coordinates. 
+        Create a 3D vector from spherical coordinates.
 
         Uses "radius-longitude-latitude" convention, [see in Wikipedia.](https://fr.wikipedia.org/wiki/Coordonn%C3%A9es_sph%C3%A9riques#Convention_rayon-longitude-latitude))
 
         Arguments
         ---------
-        - `theta:` Longitude angle (θ) from given convention. If is a `pint.Quantity`, must have angle dimension.
-        - `delta:` Latitude angle (δ) from given convention. If is a `pint.Quantity`, must have angle dimension.
+        - `theta:` Longitude angle (θ), as ``Scalar[D.Angle]``.
+        - `delta:` Latitude angle (δ), as ``Scalar[D.Angle]``.
         - `rho:` Radius (ρ) from given convention.
         """
 
@@ -144,6 +156,7 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
     def dot(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Scalar[ProductDim[SomeDim, SomeOtherDim]]: ...
     
     def dot(self, o: object) -> Scalar[Any]:
+        """Return dot product with another vector."""
         if not isinstance(o, Vector3):
             raise TypeError("dot product requires two Vector3 instances")
 
@@ -163,6 +176,7 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
     def cross(self: Vector3[SomeDim], o: Vector3[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]: ...
     
     def cross(self, o: object) -> Vector3[Any]:
+        """Return cross product with another vector."""
         if not isinstance(o, Vector3):
             raise TypeError("cross product requires two Vector3 instances")
 

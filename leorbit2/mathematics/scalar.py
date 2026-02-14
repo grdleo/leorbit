@@ -17,8 +17,11 @@ TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
 class Scalar(Generic[SomeDim], Tensor[SomeDim]):
+    """Dimension-aware scalar value."""
+
     @classmethod
     def dimensionalize(cls, dim_coords: DimCoords) -> type[Scalar]:
+        """Return a scalar class bound to ``dim_coords``."""
         return cast(
             type[Scalar],
             super().dimensionalize(dim_coords)
@@ -26,6 +29,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
 
     @classmethod
     def new(cls, value: Number | TensorData):
+        """Create a scalar from a number or 0-d/1-element numpy array."""
         if isinstance(value, Number):
             pass
         elif isinstance(value, np.ndarray):
@@ -34,15 +38,18 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
         return cls(value)
 
     def cast(self, dim: type[SomeOtherDim]) -> Scalar[SomeOtherDim]:
+        """Type-cast to another dimension when coordinates are identical."""
         if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
     @property
     def base_unit_value(self) -> Number:
+        """Scalar value expressed in base units."""
         return np.float64(self._values)
     
     def magnitude(self, units: str = "1") -> np.float64:
+        """Return scalar magnitude in requested units."""
         return np.float64(self.get_raw_array(units))
     
     def __repr__(self) -> str:
@@ -181,6 +188,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     ### @ OPERATOR ###
 
     def __matmul__(self, o: Never) -> Never:
+        """Disallow matrix product for scalar values."""
         raise RuntimeError("@ operation not defined for scalar")
     
     ### COMPARISONS
@@ -250,6 +258,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     def __pow__(self: Scalar[D.Dimless], o: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
 
     def __pow__(self, o: object) -> Tensor[Any]:
+        """Raise scalar to a numeric or dimensionless-scalar power."""
         if isinstance(o, Scalar) and o.check(D.Dimless):
             o = o.base_unit_value
 

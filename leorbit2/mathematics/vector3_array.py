@@ -23,6 +23,7 @@ SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
 
 def all_vector3_same_dim(els: list[object]) -> TypeGuard[list[Vector3]]:
+    """Return whether all elements are vectors sharing the same dimension."""
     v0, *others = els
     if not isinstance(v0, Vector3):
         return False
@@ -33,8 +34,11 @@ def all_vector3_same_dim(els: list[object]) -> TypeGuard[list[Vector3]]:
     )
 
 class Vector3Array(Generic[SomeDim], Tensor[SomeDim]):
+    """Array of 3D vectors sharing the same dimension."""
+
     @classmethod
     def dimensionalize(cls, dim_coords: DimCoords) -> type[Vector3Array]:
+        """Return a vector-array class bound to ``dim_coords``."""
         return cast(
             type[Vector3Array],
             super().dimensionalize(dim_coords)
@@ -42,6 +46,7 @@ class Vector3Array(Generic[SomeDim], Tensor[SomeDim]):
     
     @classmethod
     def new_from_vectors(cls, *vectors: Vector3[SomeDim]):
+        """Create an array by concatenating vectors column-wise."""
         if not vectors:
             raise ValueError("...")
         list_vectors = cast(list[object], list(vectors))
@@ -58,38 +63,46 @@ class Vector3Array(Generic[SomeDim], Tensor[SomeDim]):
     
     @classmethod
     def new_from_single_vector(cls, vector: Vector3[SomeDim], size: int):
+        """Create an array by repeating one vector ``size`` times."""
         return cls.new_from_vectors(*repeat(vector, size))
         
 
     def cast(self, dim: type[SomeOtherDim]) -> Vector3[SomeOtherDim]:
+        """Type-cast to another dimension when coordinates are identical."""
         if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
     @cached_property
     def x(self) -> ScalarArray[SomeDim]:
+        """X components as a scalar array."""
         return ScalarArray[self.dim](self._values[0,:])
     
     @cached_property
     def y(self) -> ScalarArray[SomeDim]:
+        """Y components as a scalar array."""
         return ScalarArray[self.dim](self._values[1,:])
     
     @cached_property
     def z(self) -> ScalarArray[SomeDim]:
+        """Z components as a scalar array."""
         return ScalarArray[self.dim](self._values[2,:])
     
     @cached_property
     def length(self) -> ScalarArray[SomeDim]:
+        """Euclidean norm for each vector in the array."""
         return ScalarArray[self.dim](
             np.sum(self._values ** 2, axis=0) ** .5
         )
     
     @property
     def size(self) -> int:
+        """Number of vectors stored in the array."""
         _, s = self._values.shape
         return s
     
     def __getitem__(self, index: int) -> Vector3[SomeDim]:
+        """Return vector at ``index``."""
         if index < 0 or index >= self.size:
             raise KeyError("...")
         
@@ -124,20 +137,21 @@ class Vector3Array(Generic[SomeDim], Tensor[SomeDim]):
         return acos(cos_angle)
 
     def normalized(self) -> Vector3Array[D.Dimless]:
+        """Return vectors scaled to unit norm (dimensionless)."""
         l = self.length
         return self / l
 
     @staticmethod
     def from_spherical(theta: ScalarArray[D.Angle], delta: ScalarArray[D.Angle], rho: ScalarArray[SomeOtherDim]) -> Vector3Array[SomeOtherDim]:
         """
-        Creates and returns a 3D vector array from spherical coordinates.
+        Create a vector array from spherical coordinates.
 
         Uses "radius-longitude-latitude" convention, [see in Wikipedia.](https://fr.wikipedia.org/wiki/Coordonn%C3%A9es_sph%C3%A9riques#Convention_rayon-longitude-latitude))
 
         Arguments
         ---------
-        - `theta:` Longitude angle (θ) from given convention. If is a `pint.Quantity`, must have angle dimension.
-        - `delta:` Latitude angle (δ) from given convention. If is a `pint.Quantity`, must have angle dimension.
+        - `theta:` Longitude angles (θ), as ``ScalarArray[D.Angle]``.
+        - `delta:` Latitude angles (δ), as ``ScalarArray[D.Angle]``.
         - `rho:` Radius (ρ) from given convention.
         """
 
@@ -161,6 +175,7 @@ class Vector3Array(Generic[SomeDim], Tensor[SomeDim]):
     def dot(self: Vector3Array[SomeDim], o: Vector3[SomeOtherDim] | Vector3Array[SomeOtherDim]) -> ScalarArray[ProductDim[SomeDim, SomeOtherDim]]: ...
 
     def dot(self, o: object) -> ScalarArray[Any]:
+        """Return dot product with a vector or vector array."""
         if not isinstance(o, (Vector3, Vector3Array)):
             raise TypeError("dot product requires two Vector3/Vector3Array instances")
 
@@ -180,6 +195,7 @@ class Vector3Array(Generic[SomeDim], Tensor[SomeDim]):
     def cross(self: Vector3Array[SomeDim], o: Vector3[SomeOtherDim] | Vector3Array[SomeOtherDim]) -> Vector3Array[ProductDim[SomeDim, SomeOtherDim]]: ...
 
     def cross(self, o: object) -> Vector3Array[Any]:
+        """Return cross product with a vector or vector array."""
         if not isinstance(o, (Vector3, Vector3Array)):
             raise TypeError("cross product requires two Vector3/Vector3Array instances")
 

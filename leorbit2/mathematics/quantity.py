@@ -5,7 +5,14 @@ from leorbit2.mathematics.scalar import Scalar
 
 
 class QuantityMeta(type):
+    """Metaclass exposing registered units as class attributes.
+
+    Example:
+        ``Quantity.km`` returns a ``Scalar[D.Length]`` with value ``1000``.
+    """
+
     def __getattr__(cls, name: str) -> Scalar:
+        """Resolve a unit name into its corresponding scalar quantity."""
         try:
             dim, factor = registered_units()[name]
             return Scalar[dim].new(factor)
@@ -13,8 +20,11 @@ class QuantityMeta(type):
             raise ValueError(f"No unit named '{name}'")   
 
 class Quantity(metaclass=QuantityMeta):
+    """Convenience namespace for creating unit-scaled scalar values."""
+
     @classmethod
     def get(cls, value: str) -> Scalar:
+        """Return the scalar unit associated with ``value``."""
         return cls.__getattr__(value)
 
     # ANGLES

@@ -17,8 +17,11 @@ SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
     
 class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
+    """3×3 matrix carrying a physical dimension."""
+
     @classmethod
     def dimensionalize(cls, dim_coords: DimCoords) -> type[Matrix33]:
+        """Return a matrix class bound to ``dim_coords``."""
         return cast(
             type[Matrix33],
             super().dimensionalize(dim_coords)
@@ -30,7 +33,7 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
         d: NumberOrScalarT, e: NumberOrScalarT, f: NumberOrScalarT,
         g: NumberOrScalarT, h: NumberOrScalarT, i: NumberOrScalarT,
     ):
-        """order: by lines"""
+        """Create a matrix from row-major coefficients."""
         mat: TensorData
         mat_els = cast(list[object], [a, b, c, d, e, f, g, h, i])
 
@@ -45,6 +48,7 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
         return cls(mat)
 
     def cast(self, dim: type[SomeOtherDim]) -> Matrix33[SomeOtherDim]:
+        """Type-cast to another dimension when coordinates are identical."""
         if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
@@ -56,6 +60,11 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
     def inverse(self: Matrix33[SomeDim]) -> Matrix33[QuotientDim[D.Dimless, SomeDim]]: ...
     
     def inverse(self) -> Matrix33:
+        """Return matrix inverse.
+
+        Notes:
+            Inverse computation is not implemented yet.
+        """
         raise NotImplementedError()
     
     def __repr__(self) -> str:
@@ -213,6 +222,7 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
     def __matmul__(self: Matrix33[SomeDim], o: Vector3Array[SomeOtherDim]) -> Vector3Array[ProductDim[SomeDim, SomeOtherDim]]: ...
 
     def __matmul__(self, o: object) -> Matrix33[Any] | Vector3[Any] | Vector3Array[Any]:
+        """Apply matrix product with matrix, vector, or vector array."""
         if isinstance(o, Matrix33):
             return Matrix33.dimensionalize(
                 self.dim_coords * o.dim_coords

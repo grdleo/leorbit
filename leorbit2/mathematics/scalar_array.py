@@ -19,8 +19,11 @@ TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
 class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
+    """One-dimensional array of dimension-aware scalar values."""
+
     @classmethod
     def dimensionalize(cls, dim_coords: DimCoords) -> type[ScalarArray]:
+        """Return a scalar-array class bound to ``dim_coords``."""
         return cast(
             type[ScalarArray],
             super().dimensionalize(dim_coords)
@@ -28,17 +31,20 @@ class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
     
     @classmethod
     def new(cls, values: list[Number] | TensorData):
+        """Create a flattened scalar array from list-like input."""
         return cls(
             np.array(values).flatten()
         )
 
     def cast(self, dim: type[SomeOtherDim]) -> ScalarArray[SomeOtherDim]:
+        """Type-cast to another dimension when coordinates are identical."""
         if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
     @property
     def base_unit_value(self) -> np.ndarray:
+        """Array values expressed in base units."""
         return cast(
             np.ndarray,
             np.float64(self._values)
@@ -46,10 +52,12 @@ class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
     
     @property
     def size(self) -> int:
+        """Number of scalar entries."""
         s, = self._values.shape
         return s
     
     def __getitem__(self, index: int) -> Scalar[SomeDim]:
+        """Return a scalar entry at ``index``."""
         if index < 0 or index >= self.size:
             raise KeyError("...")
         
@@ -58,6 +66,7 @@ class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
         )
     
     def magnitude(self, units: str = "1") -> Annotated[npt.NDArray[np.float64], Literal["N"]]:
+        """Return array magnitudes in requested units."""
         return self.get_raw_array(units)
     
     def __repr__(self) -> str:
@@ -196,6 +205,7 @@ class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
     ### @ OPERATOR ###
 
     def __matmul__(self, o: Never) -> Never:
+        """Disallow matrix product for scalar arrays."""
         raise RuntimeError("@ operation not defined for scalar array")
 
     ### COMPARISONS
@@ -277,6 +287,7 @@ class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
     def __pow__(self: ScalarArray[D.Dimless], o: Scalar[D.Dimless]) -> ScalarArray[D.Dimless]: ...
 
     def __pow__(self, o: object) -> Tensor[Any]:
+        """Raise each entry to a numeric or dimensionless-scalar power."""
         if isinstance(o, Scalar) and o.check(D.Dimless):
             o = o.base_unit_value
 

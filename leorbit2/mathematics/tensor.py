@@ -21,12 +21,22 @@ SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 TensorDataTransformer: TypeAlias = Callable[[TensorData], TensorData]
 
 class Tensor[SomeDim = D.Dimless]():
+    """Generic n-dimensional tensor carrying a physical dimension.
+
+    Concrete subclasses specialize tensor shape and semantics while reusing
+    dimension-aware arithmetic from this base class.
+    """
+
     _dim: type[Dim]
     _base_tensor_class: type[Tensor]
 
     def __init__(self, values: Number | TensorData):
-        """CAREFUL!! User should never instantiante any tensor using `__init__`.
-        Always use the classmethod `new`."""
+        """Initialize raw tensor values.
+
+        Notes:
+            End-users are expected to construct concrete tensors through
+            subclass constructors/helpers such as ``new``.
+        """
         if self._is_base_tensor_class():
             raise RuntimeError("...")
         
@@ -34,10 +44,12 @@ class Tensor[SomeDim = D.Dimless]():
 
     @property
     def dim_coords(self) -> DimCoords:
+        """Dimension coordinates associated with this tensor."""
         return self._dim._d
     
     @property
     def dim(self) -> type[SomeDim]:
+        """Dimension class associated with this tensor."""
         return cast(
             type[SomeDim],
             self._dim
@@ -45,10 +57,12 @@ class Tensor[SomeDim = D.Dimless]():
     
     @classmethod
     def _is_base_tensor_class(cls) -> bool:
+        """Whether ``cls`` is the undimensionalized root tensor class."""
         return not hasattr(cls, "_base_tensor_class")
     
     @classmethod
     def dimensionalize(cls, dim_coords: DimCoords) -> type[Tensor]:
+        """Create a tensor subclass bound to ``dim_coords``."""
         if not cls._is_base_tensor_class():
             raise RuntimeError("Cannot call `dimensionalize` on a dimensionalized tensor class.")
         
@@ -80,6 +94,7 @@ class Tensor[SomeDim = D.Dimless]():
 
     @classmethod
     def __class_getitem__(cls, dim: type[SomeDim]) -> type[Tensor]:
+        """Return a view of this tensor class specialized for a dimension type."""
         if inspect.isclass(dim) and issubclass(dim, Dim):
             return _dimensional_tensor_class_factory(
                 dim,
@@ -89,24 +104,33 @@ class Tensor[SomeDim = D.Dimless]():
         raise ValueError("...")
     
     def cast(self, dim: type[SomeOtherDim]) -> Tensor[SomeOtherDim]:
+        """Type-cast to another dimension if coordinates are identical."""
         if dim._d == self.dim_coords:
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
     def copy(self) -> Self:
+        """Return a value copy with the same tensor class and dimension."""
         return self.__class__(self._values)
 
     def ensure_compatible_dimensions(self: Tensor[SomeDim], o: Tensor[SomeOtherDim]) -> TypeIs[Tensor[SomeOtherDim]]:
+        """Return whether two tensors have identical dimension coordinates."""
         return (
             isinstance(o, Tensor) 
             and o.dim_coords == self.dim_coords
         )
     
     def check(self, dim: type[Dim]) -> bool:
-        """Returns `True` if tensor is of dimension `dim`"""
+        """Return ``True`` if tensor dimension matches ``dim``."""
         return self.dim_coords == dim._d
     
     def get_raw_array(self, units: str = "1") -> npt.NDArray[np.float64]:
+        """Return values converted to requested units.
+
+        Args:
+            units: Unit symbol registered in ``dimensions.registered_units``.
+                Use ``"1"`` to retrieve base-unit values.
+        """
         a = np.copy(self._values)
         if units == "1":
             return a
@@ -325,7 +349,7 @@ class Tensor[SomeDim = D.Dimless]():
             raise RuntimeError("...")
     
 def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[SomeDim] | Tensor[D.Dimless]:
-    """ensure tensor. if not a tensor object, creates a dimless tensor"""
+    """Return ``o`` as a tensor, wrapping numbers/arrays as dimensionless tensors."""
 
     if isinstance(o, Tensor):
         return o
@@ -335,6 +359,7 @@ def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[SomeDim] | Tensor[D.Dimles
     raise RuntimeError("...")
 
 def ensure_same_dimensions(*tensors: Tensor[Any]) -> Literal[True]:
+    """Validate that all tensors share the same dimension coordinates."""
     if len(tensors) == 0:
         return True
     
@@ -348,6 +373,7 @@ def _dimensional_tensor_class_factory(
     dim: type[Dim], 
     parent_class: type[Tensor] = Tensor
 ) -> type[Tensor]:
+    """Build a runtime tensor subclass bound to ``dim``."""
     base_tensor_class = parent_class if parent_class._is_base_tensor_class() else parent_class._base_tensor_class
 
     return type(

@@ -8,16 +8,24 @@ from typing import Any, ClassVar, Generic, Literal, NamedTuple, Never, Self, Typ
 import numpy as np
 
 class DimCoords:
+    """Exponent triplet describing a physical dimension.
+
+    Coordinates are stored as rational exponents on the base axes:
+    length (L), time (T), and mass (M).
+    """
+
     def __init__(self,
         length: Fraction | int = 0,
         time: Fraction | int = 0,
         mass: Fraction | int = 0,
     ):
+        """Build dimension coordinates from base-axis exponents."""
         self.__length = Fraction(length)
         self.__time = Fraction(time)
         self.__mass = Fraction(mass)
 
     def __copy__(self) -> DimCoords:
+        """Return a shallow copy of this coordinate object."""
         return DimCoords(
             length=self.__length,
             time=self.__time,
@@ -26,6 +34,7 @@ class DimCoords:
     
     @cached_property
     def representation(self) -> str:
+        """Return a stable human-readable representation, e.g. ``L 1 × T -2 × M 0``."""
         l, t, m = self.__length, self.__time, self.__mass
 
         sl = f"L {l.numerator}" + ("" if l.denominator == 1 else f"/{l.denominator}")
@@ -39,18 +48,22 @@ class DimCoords:
 
     @property
     def length(self) -> Fraction:
+        """Exponent of length axis ``L``."""
         return self.__length
     
     @property
     def time(self) -> Fraction:
+        """Exponent of time axis ``T``."""
         return self.__time
     
     @property
     def mass(self) -> Fraction:
+        """Exponent of mass axis ``M``."""
         return self.__mass
 
     @property
     def dimensionless(self) -> bool:
+        """Whether all exponents are zero."""
         return (
             0
             == self.length
@@ -59,6 +72,7 @@ class DimCoords:
         )
     
     def __eq__(self, o: object) -> bool:
+        """Compare two coordinate triplets component-wise."""
         if not isinstance(o, DimCoords):
             return False
         
@@ -69,6 +83,7 @@ class DimCoords:
         )
     
     def __mul__(self, o: DimCoords) -> DimCoords:
+        """Compose dimensions by multiplying quantities (adds exponents)."""
         return DimCoords(
             length=self.length + o.length,
             time=self.time + o.time,
@@ -76,6 +91,7 @@ class DimCoords:
         )
     
     def __truediv__(self, o: DimCoords) -> DimCoords:
+        """Compose dimensions by dividing quantities (subtracts exponents)."""
         return DimCoords(
             length=self.length - o.length,
             time=self.time - o.time,
@@ -83,6 +99,7 @@ class DimCoords:
         )
     
     def __pow__(self, p: Fraction | int | float) -> DimCoords:
+        """Raise a dimension to a scalar power."""
         p = Fraction(p)
 
         return DimCoords(
@@ -97,7 +114,7 @@ class Dim:
 
 
 class D:
-    """Dimensions registry."""
+    """Registry namespace for built-in dimensions and canonical unit factors."""
 
     class Dimless(Dim):
         """1"""
@@ -185,6 +202,11 @@ class D:
 
     @staticmethod
     def get_dimension_from_coords(dim_coords: DimCoords) -> type[Dim]:
+        """Return the registered dimension class matching ``dim_coords``.
+
+        Raises:
+            ValueError: If no registered class matches.
+        """
         dim = registered_dimensions().get(dim_coords, None)
         if dim is None:
             raise ValueError(f"No dimension registered with coords '{dim_coords}'")
@@ -193,6 +215,7 @@ class D:
 
 @cache
 def registered_dimensions() -> dict[DimCoords, type[Dim]]:
+    """Return a cached mapping from dimension coordinates to dimension classes."""
     return {
         dim_cls._d: dim_cls
         for dim_cls in D.__dict__.values()
@@ -201,6 +224,7 @@ def registered_dimensions() -> dict[DimCoords, type[Dim]]:
 
 @cache
 def registered_units() -> dict[str, tuple[type[Dim], Number]]:
+    """Return a cached mapping from unit names to ``(dimension, factor)`` tuples."""
     return {
         u: (d, f)
         for d in registered_dimensions().values()
@@ -216,12 +240,15 @@ SomeDimFull = TypeVar("SomeDimFull", bound=D.Length | D.Time | D.Velocity)
 TensorData = np.typing.NDArray[np.floating[Any]]
 
 class ProductDim[SomeDim, SomeOtherDim](Dim):
+    """Type-level marker representing a product of two dimensions."""
     ...
 
 class QuotientDim[SomeDim, SomeOtherDim](Dim):
+    """Type-level marker representing a quotient of two dimensions."""
     ...
     
 class PowerDim[SomeDim, Numerator, Denominator](Dim):
+    """Type-level marker representing a powered dimension."""
     ...
 
 
