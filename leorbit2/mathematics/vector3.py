@@ -27,6 +27,13 @@ def all_scalars_numbers(els: list[object]) -> TypeGuard[list[Scalar]]:
     return all(isinstance(el, Scalar) for el in els)
 
 class Vector3(Generic[SomeDim], Tensor[SomeDim]):
+    @classmethod
+    def dimensionalize(cls, dim_coords: DimCoords) -> type[Vector3]:
+        return cast(
+            type[Vector3],
+            super().dimensionalize(dim_coords)
+        )
+    
     O: ClassVar[Vector3[D.Dimless]]
     X: ClassVar[Vector3[D.Dimless]]
     Y: ClassVar[Vector3[D.Dimless]]
@@ -140,9 +147,11 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
         if not isinstance(o, Vector3):
             raise TypeError("dot product requires two Vector3 instances")
 
-        # Dot product: transpose first vector and matrix multiply
-        result_values = self._values.transpose().dot(o._values)
-        return Scalar[self.dim](result_values)
+        return Scalar.dimensionalize(
+            self.dim_coords * o.dim_coords
+        ).new(
+            np.sum(self._values * o._values) ** .5
+        )
     
     @overload
     def cross(self: Vector3[D.Dimless], o: Vector3[D.Dimless]) -> Vector3[D.Dimless]: ...
@@ -157,9 +166,11 @@ class Vector3(Generic[SomeDim], Tensor[SomeDim]):
         if not isinstance(o, Vector3):
             raise TypeError("cross product requires two Vector3 instances")
 
-        # Dot product: transpose first vector and matrix multiply
-        result_values = np.cross(self._values, o._values, axis=0)
-        return Vector3[self.dim](result_values)
+        return Vector3.dimensionalize(
+            self.dim_coords * o.dim_coords
+        )(
+            np.cross(self._values, o._values, axis=0)
+        )
     
     def __repr__(self) -> str:
         return (

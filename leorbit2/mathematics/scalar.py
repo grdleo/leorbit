@@ -18,6 +18,13 @@ SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
 class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     @classmethod
+    def dimensionalize(cls, dim_coords: DimCoords) -> type[Scalar]:
+        return cast(
+            type[Scalar],
+            super().dimensionalize(dim_coords)
+        )
+
+    @classmethod
     def new(cls, value: Number | TensorData):
         if isinstance(value, Number):
             pass

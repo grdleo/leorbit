@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from fractions import Fraction
-from functools import cache
+from functools import cache, cached_property
 from pyclbr import Class
 from typing import Any, ClassVar, Generic, Literal, NamedTuple, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
 
@@ -16,6 +16,26 @@ class DimCoords:
         self.__length = Fraction(length)
         self.__time = Fraction(time)
         self.__mass = Fraction(mass)
+
+    def __copy__(self) -> DimCoords:
+        return DimCoords(
+            length=self.__length,
+            time=self.__time,
+            mass=self.__mass
+        )
+    
+    @cached_property
+    def representation(self) -> str:
+        l, t, m = self.__length, self.__time, self.__mass
+
+        sl = f"L {l.numerator}" + ("" if l.denominator == 1 else f"/{l.denominator}")
+        st = f"T {t.numerator}" + ("" if t.denominator == 1 else f"/{t.denominator}")
+        sm = f"M {m.numerator}" + ("" if m.denominator == 1 else f"/{m.denominator}")
+
+        return " × ".join((sl, st, sm))
+    
+    def __repr__(self) -> str:
+        return f"<DimCoords : {self.representation}>"
 
     @property
     def length(self) -> Fraction:

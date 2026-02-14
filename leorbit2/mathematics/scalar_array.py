@@ -20,6 +20,13 @@ SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
 class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
     @classmethod
+    def dimensionalize(cls, dim_coords: DimCoords) -> type[ScalarArray]:
+        return cast(
+            type[ScalarArray],
+            super().dimensionalize(dim_coords)
+        )
+    
+    @classmethod
     def new(cls, values: list[Number] | TensorData):
         return cls(
             np.array(values).flatten()

@@ -5,10 +5,11 @@ from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, Type
 
 import numpy as np
 
-from leorbit2.mathematics.dimensions import Dim, D, ProductDim, QuotientDim, SomeDim, SomeOtherDim
+from leorbit2.mathematics.dimensions import Dim, D, DimCoords, ProductDim, QuotientDim, SomeDim, SomeOtherDim
 from leorbit2.mathematics.scalar import Scalar
 from leorbit2.mathematics.tensor import Tensor, ensure_same_dimensions
 from leorbit2.mathematics.vector3 import Vector3, all_scalars_numbers, all_simple_numbers
+from leorbit2.mathematics.vector3_array import Vector3Array
 
 Number = float | int | np.floating
 TensorData = np.typing.NDArray[np.floating[Any]]
@@ -16,6 +17,13 @@ SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
     
 class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
+    @classmethod
+    def dimensionalize(cls, dim_coords: DimCoords) -> type[Matrix33]:
+        return cast(
+            type[Matrix33],
+            super().dimensionalize(dim_coords)
+        )
+    
     @classmethod
     def new(cls,
         a: NumberOrScalarT, b: NumberOrScalarT, c: NumberOrScalarT,
@@ -195,10 +203,31 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
     @overload
     def __matmul__(self: Matrix33[SomeDim], o: Vector3[SomeOtherDim]) -> Vector3[ProductDim[SomeDim, SomeOtherDim]]: ...
 
-    def __matmul__(self, o: object) -> Matrix33[Any] | Vector3[Any]:
-        if isinstance(o, Matrix33):
-            return cast(Matrix33[Any], super().__matmul__(o))
-        elif isinstance(o, Vector3):
-            return cast(Vector3[Any], super().__matmul__(o))
+    @overload
+    def __matmul__(self: Matrix33[D.Dimless], o: Vector3Array[D.Dimless]) -> Vector3Array[D.Dimless]: ...
 
-        raise TypeError("@ operation requires Matrix33 or Vector3")
+    @overload
+    def __matmul__(self: Matrix33[D.Dimless], o: Vector3Array[SomeOtherDim]) -> Vector3Array[SomeOtherDim]: ...
+
+    @overload
+    def __matmul__(self: Matrix33[SomeDim], o: Vector3Array[SomeOtherDim]) -> Vector3Array[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+    def __matmul__(self, o: object) -> Matrix33[Any] | Vector3[Any] | Vector3Array[Any]:
+        if isinstance(o, Matrix33):
+            return cast(
+                Matrix33,
+                self.transform(
+                    self.dim_coords * o.dim_coords,
+                    lambda values: values @ o._values
+                )
+            )
+        elif isinstance(o, (Vector3, Vector3Array)):
+            return cast(
+                Vector3Array | Vector3, 
+                o.transform(
+                    self.dim_coords * o.dim_coords,
+                    lambda values: self._values @ values
+                )
+            )
+
+        raise TypeError("@ operation requires Matrix33 or Vector3 or Vector3Array")
