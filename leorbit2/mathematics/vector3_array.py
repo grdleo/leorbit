@@ -8,7 +8,7 @@ from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, Type
 
 import numpy as np
 
-from leorbit2.mathematics import sqrt
+from leorbit2.mathematics.functions import sqrt
 from leorbit2.mathematics.dimensions import Dim, DimCoords, D, ProductDim, QuotientDim, SomeDim, SomeOtherDim
 from leorbit2.mathematics.functions import atan2, acos, cos, sin, square
 from leorbit2.mathematics.scalar import Scalar
@@ -33,7 +33,7 @@ def all_vector3_same_dim(els: list[object]) -> TypeGuard[list[Vector3]]:
         for el in others
     )
 
-class Vector3Array(Generic[SomeDim], Tensor[SomeDim]):
+class Vector3Array(Tensor[SomeDim], Generic[SomeDim]):
     """Array of 3D vectors sharing the same dimension."""
 
     @classmethod

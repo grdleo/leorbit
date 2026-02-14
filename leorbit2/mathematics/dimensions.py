@@ -46,6 +46,12 @@ class DimCoords:
     def __repr__(self) -> str:
         return f"<DimCoords : {self.representation}>"
 
+    def __hash__(self) -> int:
+        """Hash based on the three exponent values so instances can be used as
+        dictionary keys (registered_dimensions uses DimCoords as keys).
+        """
+        return hash((self.__length, self.__time, self.__mass))
+
     @property
     def length(self) -> Fraction:
         """Exponent of length axis ``L``."""
@@ -219,7 +225,7 @@ def registered_dimensions() -> dict[DimCoords, type[Dim]]:
     return {
         dim_cls._d: dim_cls
         for dim_cls in D.__dict__.values()
-        if issubclass(dim_cls, Dim)
+        if isinstance(dim_cls, type) and issubclass(dim_cls, Dim)
     }
 
 @cache

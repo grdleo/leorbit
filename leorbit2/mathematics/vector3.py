@@ -7,7 +7,7 @@ from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, Type
 
 import numpy as np
 
-from leorbit2.mathematics import sqrt
+from leorbit2.mathematics.functions import sqrt
 from leorbit2.mathematics.dimensions import Dim, DimCoords, D, ProductDim, QuotientDim, SomeDim, SomeOtherDim
 from leorbit2.mathematics.functions import atan2, acos, cos, sin, square
 from leorbit2.mathematics.quantity import Quantity
@@ -28,7 +28,7 @@ def all_scalars_numbers(els: list[object]) -> TypeGuard[list[Scalar]]:
     """Return whether all elements are ``Scalar`` instances."""
     return all(isinstance(el, Scalar) for el in els)
 
-class Vector3(Generic[SomeDim], Tensor[SomeDim]):
+class Vector3(Tensor[SomeDim], Generic[SomeDim]):
     """Three-dimensional vector carrying a physical dimension."""
 
     @classmethod

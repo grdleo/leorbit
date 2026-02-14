@@ -17,7 +17,7 @@ TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 NumberOrScalarT = TypeVar("NumberOrScalarT", bound=Number | Scalar)
     
-class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
+class Matrix33(Tensor[SomeDim], Generic[SomeDim]):
     """3×3 matrix carrying a physical dimension."""
 
     @classmethod

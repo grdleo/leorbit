@@ -16,7 +16,6 @@ Number = float | int | np.floating
 SomeDim = TypeVar("SomeDim", bound=Dim)
 SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
 TensorData = np.typing.NDArray[np.floating[Any]]
-SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
 TensorDataTransformer: TypeAlias = Callable[[TensorData], TensorData]
 
@@ -83,7 +82,7 @@ class Tensor[SomeDim = D.Dimless]():
                 "DimensionalizedTensor",
                 (cls, ),
                 dict(
-                    _dimension=dim,
+                    _dim=dim,
                     _base_tensor_class=cls
                 )
             )
@@ -94,14 +93,19 @@ class Tensor[SomeDim = D.Dimless]():
 
     @classmethod
     def __class_getitem__(cls, dim: type[SomeDim]) -> type[Tensor]:
-        """Return a view of this tensor class specialized for a dimension type."""
+        """Return a dimensionalized tensor class when given a concrete
+        Dimension subclass; otherwise (type-checking / generics) return the
+        original class so `Tensor[SomeDim]` works in annotations.
+        """
         if inspect.isclass(dim) and issubclass(dim, Dim):
             return _dimensional_tensor_class_factory(
                 dim,
                 cast(type[Tensor], cls)
             )
-        
-        raise ValueError("...")
+
+        # Support generic/type‑var usages like `Tensor[SomeDim]` during
+        # static typing and class declarations: fall back to the base class.
+        return cls
     
     def cast(self, dim: type[SomeOtherDim]) -> Tensor[SomeOtherDim]:
         """Type-cast to another dimension if coordinates are identical."""
@@ -348,6 +352,8 @@ class Tensor[SomeDim = D.Dimless]():
         except:
             raise RuntimeError("...")
     
+SomeTensor = TypeVar("SomeTensor", bound=Tensor)
+
 def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[SomeDim] | Tensor[D.Dimless]:
     """Return ``o`` as a tensor, wrapping numbers/arrays as dimensionless tensors."""
 
@@ -380,7 +386,7 @@ def _dimensional_tensor_class_factory(
         "TensorWithDimension",
         (base_tensor_class, ),
         dict(
-            _dimension=dim,
+            _dim=dim,
             _base_tensor_class=base_tensor_class
         )
     )

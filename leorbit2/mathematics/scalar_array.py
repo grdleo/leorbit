@@ -18,7 +18,7 @@ Number = float | int | np.floating
 TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
-class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
+class ScalarArray(Tensor[SomeDim], Generic[SomeDim]):
     """One-dimensional array of dimension-aware scalar values."""
 
     @classmethod

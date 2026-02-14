@@ -16,7 +16,7 @@ Number = float | int | np.floating
 TensorData = np.typing.NDArray[np.floating[Any]]
 SomeTensor = TypeVar("SomeTensor", bound=Tensor)
 
-class Scalar(Generic[SomeDim], Tensor[SomeDim]):
+class Scalar(Tensor[SomeDim], Generic[SomeDim]):
     """Dimension-aware scalar value."""
 
     @classmethod
@@ -183,7 +183,7 @@ class Scalar(Generic[SomeDim], Tensor[SomeDim]):
     def __rmod__(self: Scalar[SomeDim], o: Number) -> Never: ...
 
     def __rmod__(self, o: object) -> Scalar[Any]:
-        return cast(Scalar[Any], super().__radd__(o))
+        return cast(Scalar[Any], super().__rmod__(o))
     
     ### @ OPERATOR ###
 
