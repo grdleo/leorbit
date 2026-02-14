@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
+from functools import cached_property
 from pyclbr import Class
 from typing import Any, ClassVar, Generic, Literal, Never, Self, TypeGuard, TypeIs, TypeVar, cast, overload
 
@@ -53,6 +54,10 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
+    @cached_property
+    def det(self) -> Number:
+        return np.linalg.det(self._values)
+    
     @overload
     def inverse(self: Matrix33[D.Dimless]) -> Matrix33[D.Dimless]: ...
 
@@ -61,11 +66,12 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
     
     def inverse(self) -> Matrix33:
         """Return matrix inverse.
-
-        Notes:
-            Inverse computation is not implemented yet.
         """
-        raise NotImplementedError()
+        return Matrix33.dimensionalize(
+            self.dim_coords ** -1
+        )(
+            np.linalg.inv(self._values)
+        )
     
     def __repr__(self) -> str:
         return f"Matrix33[D.{self.dim.__class__.__name__}]({self._values})"
