@@ -121,30 +121,6 @@ class Tensor[SomeDim = D.Dimless]():
         
         return a / factor
     
-    @singledispatchmethod
-    def transform(self, dim, function) -> Tensor[Any]:
-        ...
-
-    @transform.register
-    def _(self, dim: DimCoords, function: TensorDataTransformer) -> Tensor[Any]:
-        d = D.get_dimension_from_coords(dim)
-
-        return _dimensional_tensor_class_factory(
-            d,
-            cast(type[Tensor], self.__class__)
-        )(
-            function(self._values)
-        )
-
-    @transform.register
-    def _(self, dim: type[Dim], function: TensorDataTransformer) -> Tensor[Any]:
-        return _dimensional_tensor_class_factory(
-            dim,
-            cast(type[Tensor], self.__class__)
-        )(
-            function(self._values)
-        )
-    
     ### TENSOR OPERATIONS
     # Base operations rules
     # Addition : result is same dimension and same tensor type

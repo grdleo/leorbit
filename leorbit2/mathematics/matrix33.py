@@ -214,20 +214,22 @@ class Matrix33(Generic[SomeDim], Tensor[SomeDim]):
 
     def __matmul__(self, o: object) -> Matrix33[Any] | Vector3[Any] | Vector3Array[Any]:
         if isinstance(o, Matrix33):
-            return cast(
-                Matrix33,
-                self.transform(
-                    self.dim_coords * o.dim_coords,
-                    lambda values: values @ o._values
-                )
+            return Matrix33.dimensionalize(
+                self.dim_coords * o.dim_coords
+            )(
+                self._values @ o._values
             )
-        elif isinstance(o, (Vector3, Vector3Array)):
-            return cast(
-                Vector3Array | Vector3, 
-                o.transform(
-                    self.dim_coords * o.dim_coords,
-                    lambda values: self._values @ values
-                )
+        elif isinstance(o, Vector3):
+            return Vector3.dimensionalize(
+                self.dim_coords * o.dim_coords
+            )(
+                self._values @ o._values
+            )
+        elif isinstance(o, Vector3Array):
+            return Vector3Array.dimensionalize(
+                self.dim_coords * o.dim_coords
+            )(
+                self._values @ o._values
             )
 
         raise TypeError("@ operation requires Matrix33 or Vector3 or Vector3Array")

@@ -283,9 +283,10 @@ class ScalarArray(Generic[SomeDim], Tensor[SomeDim]):
         if not isinstance(o, Fraction | Number):
             raise ValueError()
 
-        return self.transform(
-            self.dim_coords ** Fraction(o),
-            lambda data: np.power(data, float(o))
+        return ScalarArray.dimensionalize(
+            self.dim_coords ** Fraction(o)
+        )(
+            np.power(self._values, float(o))
         )
 
     #############################################

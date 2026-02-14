@@ -33,9 +33,10 @@ def square(tensor: ScalarArray[PowerDim[SomeDim, P1, P2]]) -> ScalarArray[SomeDi
 def square(tensor: ScalarArray[SomeDim]) -> ScalarArray[PowerDim[SomeDim, P2, P1]]: ... # type: ignore
 
 def square(tensor: Tensor[Any]) -> Tensor[Any]:
-    return tensor.transform(
-        tensor.dim_coords ** 2,
-        np.square
+    return tensor._base_tensor_class.dimensionalize(
+        tensor.dim_coords ** 2
+    )(
+        np.square(tensor._values)
     )
 
 @overload
@@ -57,9 +58,10 @@ def sqrt(tensor: ScalarArray[PowerDim[SomeDim, P2, P1]]) -> ScalarArray[SomeDim]
 def sqrt(tensor: ScalarArray[SomeDim]) -> ScalarArray[PowerDim[SomeDim, P1, P2]]: ... # type: ignore
 
 def sqrt(tensor: Tensor[Any]) -> Tensor[Any]:
-    return tensor.transform(
-        tensor.dim_coords ** .5,
-        np.sqrt
+    return tensor._base_tensor_class.dimensionalize(
+        tensor.dim_coords ** .5
+    )(
+        np.sqrt(tensor._values)
     )
 
 @overload
@@ -69,9 +71,8 @@ def cos(tensor: Scalar[D.Angle]) -> Scalar[D.Dimless]: ... # type: ignore
 def cos(tensor: ScalarArray[D.Angle]) -> ScalarArray[D.Dimless]: ... # type: ignore
 
 def cos(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
-    return tensor.transform(
-        D.Angle._d, # type: ignore
-        np.cos
+    return tensor._base_tensor_class[D.Dimless]( # type: ignore
+        np.cos(tensor._values)
     )
 
 @overload
@@ -81,9 +82,8 @@ def sin(tensor: Scalar[D.Angle]) -> Scalar[D.Dimless]: ... # type: ignore
 def sin(tensor: ScalarArray[D.Angle]) -> ScalarArray[D.Dimless]: ... # type: ignore
 
 def sin(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
-    return tensor.transform(
-        D.Angle._d, # type: ignore
-        np.sin
+    return tensor._base_tensor_class[D.Dimless]( # type: ignore
+        np.sin(tensor._values)
     )
 
 @overload
@@ -93,9 +93,8 @@ def tan(tensor: Scalar[D.Angle]) -> Scalar[D.Dimless]: ... # type: ignore
 def tan(tensor: ScalarArray[D.Angle]) -> ScalarArray[D.Dimless]: ... # type: ignore
 
 def tan(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
-    return tensor.transform(
-        D.Angle._d, # type: ignore
-        np.tan
+    return tensor._base_tensor_class[D.Dimless]( # type: ignore
+        np.tan(tensor._values)
     )
 
 @overload
@@ -105,9 +104,8 @@ def acos(tensor: Scalar[D.Dimless]) -> Scalar[D.Angle]: ... # type: ignore
 def acos(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Angle]: ... # type: ignore
 
 def acos(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
-    return tensor.transform(
-        D.Dimless._d, # type: ignore
-        np.arccos
+    return tensor._base_tensor_class[D.Angle]( # type: ignore
+        np.acos(tensor._values)
     )
 
 @overload
@@ -117,9 +115,8 @@ def asin(tensor: Scalar[D.Dimless]) -> Scalar[D.Angle]: ... # type: ignore
 def asin(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Angle]: ... # type: ignore
 
 def asin(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
-    return tensor.transform(
-        D.Dimless._d, # type: ignore
-        np.arcsin
+    return tensor._base_tensor_class[D.Angle]( # type: ignore
+        np.asin(tensor._values)
     )
 
 @overload
@@ -129,9 +126,8 @@ def atan(tensor: Scalar[D.Dimless]) -> Scalar[D.Angle]: ... # type: ignore
 def atan(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Angle]: ... # type: ignore
 
 def atan(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
-    return tensor.transform(
-        D.Dimless._d, # type: ignore
-        np.arctan
+    return tensor._base_tensor_class[D.Angle]( # type: ignore
+        np.atan(tensor._values)
     )
 
 @overload
