@@ -26,8 +26,8 @@ class Tensor[SomeDim = D.Dimless]():
     dimension-aware arithmetic from this base class.
     """
 
-    _dim: type[Dim]
-    _base_tensor_class: type[Tensor]
+    _dim: ClassVar[type[Dim]]
+    _base_tensor_class: ClassVar[type[Tensor]]
 
     def __init__(self, values: Number | TensorData):
         """Initialize raw tensor values.
