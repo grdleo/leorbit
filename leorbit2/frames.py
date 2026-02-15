@@ -2,11 +2,8 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING, ParamSpec, Callable, TypeVar, cast
 
-from leorbit2.mathematics import D, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify
-from leorbit2.mathematics.functions import cos
-from leorbit2.mathematics.matrix33 import Matrix33
-from leorbit2.mathematics.quantity import Quantity
-from leorbit2.mathematics.transform import TransformVector3Affine
+from leorbit2.m import D, Vector3
+from leorbit2.transforms import Transform, TransformChain, TransformIdentify, TransformVector3Affine, TransformVector3RotationZ
 from leorbit2.time import Time
 
 if TYPE_CHECKING:

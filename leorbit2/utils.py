@@ -3,18 +3,12 @@
 
 import math
 from multiprocessing import Value
-from leorbit2.mathematics import D, Scalar, Quantity, TensorScalar, Vector3
-from leorbit2.mathematics.tensor import Tensor
-from leorbit2.mathematics.dimensions import P3, P2, P1, OO, N1, N2, N3, DimCoords, PowerDim
-from leorbit2.mathematics.functions import atan2, cos, sin, square, sqrt
 import numpy as np
 from numpy.typing import NDArray
 
 from typing import TYPE_CHECKING, Any, Type, TypeAlias, TypeVar, cast, overload
 
-from leorbit2.mathematics.matrix33 import ProductDim
-from leorbit2.mathematics.scalar import ScalarArray
-from leorbit2.mathematics.vector3 import Vector3Array
+from leorbit2.m import N2, P1, P3, DimCoords, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, ensure_tensor, D, Dim, Tensor_V3, Matrix33, sin, sqrt, square
 
 GravParam: TypeAlias = ProductDim[
     PowerDim[D.Length, P3, P1],
@@ -23,7 +17,7 @@ GravParam: TypeAlias = ProductDim[
 
 MU_EARTH: Scalar[GravParam] = cast(
     Scalar[GravParam],
-    TensorScalar.dimensionalize(DimCoords(length=3, time=-2)).new(398_600_441_800_000)
+    Scalar[DimCoords(length=3, time=-2).to_dimension()](398_600_441_800_000)
 )
 """Gravitational parameter for planet Earth (µ🜨) 
 
@@ -35,40 +29,47 @@ SQRT_MU_EARTH = sqrt(MU_EARTH)
 `√µ🜨 = 1.996e7 m**1.5/s`
 """
 
-RADIIE_AA = square(6_378_137 * Quantity.m)
+RADIIE_AA = square(6_378_137 * Quantity.meter)
 RADIIE_A4 = square(RADIIE_AA)
-RADIIE_BB = square(6_356_752 * Quantity.m)
+RADIIE_BB = square(6_356_752 * Quantity.meter)
 RADIIE_B4 = square(RADIIE_BB)
 
-def mean_motion_to_semi_major_axis_earth(mean_motion: TensorScalar[D.AngularVelocity]) -> TensorScalar[D.Length]:
-    return TensorScalar[D.Length].new(
-        (MU_EARTH.base_unit_value / mean_motion.base_unit_value**2)**(1/3)
-    )
+@overload
+def mean_motion_to_semi_major_axis_earth(mean_motion: Scalar[D.AngularVelocity]) -> Scalar[D.Length]: ...
 
-def geocentric_radius_earth(latitude: TensorScalar[D.Angle]) -> TensorScalar[D.Length]:
+@overload
+def mean_motion_to_semi_major_axis_earth(mean_motion: ScalarArray[D.AngularVelocity]) -> ScalarArray[D.Length]: ...
+
+def mean_motion_to_semi_major_axis_earth(mean_motion: Tensor_S[D.AngularVelocity]) -> Tensor_S[D.Length]:
+    sma = np.cbrt(MU_EARTH._values / np.square(mean_motion._values))
+    return Tensor_S[D.Length](sma)
+
+def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
     """Returns the mean radius of Earth at given latitude.
     Earth is considered as a spheroid. 
     
     Algorithm from: https://en.wikipedia.org/wiki/Earth_radius#Geocentric_radius"""
     cc = cos(latitude)
     ss = sin(latitude)
-    return sqrt((RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)).cast(D.Length)
+    quo = (RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)
 
-def apparent_magnitude(sun: Vec3, sat: Vec3, observer: Vec3, std_mag: float) -> float:
-    """Returns the apparent magnitude of a satellite from its standard magnitude,
-    to a given observer.
+    return sqrt(quo).cast(D.Length)
 
-    All positions must be given in the same orthogonal frame.
+# def apparent_magnitude(sun: Vec3, sat: Vec3, observer: Vec3, std_mag: float) -> float:
+#     """Returns the apparent magnitude of a satellite from its standard magnitude,
+#     to a given observer.
+
+#     All positions must be given in the same orthogonal frame.
     
-    Algorithm from: https://astronomy.stackexchange.com/questions/28744/calculating-the-apparent-magnitude-of-a-satellite"""
-    dir_obs = observer - sat
-    dir_sun = sun - sat
-    dist_sat: Quantity = abs(dir_obs)
-    phase = dir_sun.angle(dir_obs)
+#     Algorithm from: https://astronomy.stackexchange.com/questions/28744/calculating-the-apparent-magnitude-of-a-satellite"""
+#     dir_obs = observer - sat
+#     dir_sun = sun - sat
+#     dist_sat: Quantity = abs(dir_obs)
+#     phase = dir_sun.angle(dir_obs)
 
-    phi_term = sin(phase) + (HALF_REV - phase).m_as("rad") * cos(phase)
+#     phi_term = sin(phase) + (HALF_REV - phase).m_as("rad") * cos(phase)
 
-    return std_mag + 5 * log10(dist_sat.m_as("megameter")) - 2.5 * log10(phi_term)
+#     return std_mag + 5 * log10(dist_sat.m_as("megameter")) - 2.5 * log10(phi_term)
 
 def humanize_duration(t: Scalar[D.Time]) -> str:
     """Make a duration human-readable.
@@ -96,7 +97,16 @@ def humanize_duration(t: Scalar[D.Time]) -> str:
     
     return " ".join(f"{v} {k}" for k, v in components.items() if v > 0)
 
-def mean2true_anomaly(e: TensorScalar[D.Dimless], M: TensorScalar[D.Angle]) -> TensorScalar[D.Angle]:
+@overload
+def mean2true_anomaly(e: Scalar[D.Dimless], M: Scalar[D.Angle]) -> Scalar[D.Angle]: ...
+
+@overload
+def mean2true_anomaly(e: Scalar[D.Dimless], M: ScalarArray[D.Angle]) -> ScalarArray[D.Angle]: ...
+
+@overload
+def mean2true_anomaly(e: Tensor_S[D.Dimless], M: Tensor_S[D.Angle]) -> Tensor_S[D.Angle]: ...
+
+def mean2true_anomaly(e: Tensor_S[D.Dimless], M: Tensor_S[D.Angle]) -> Tensor_S[D.Angle]:
     """ O(e**4)"""
 
     _e = e.cast(D.Angle)
@@ -109,13 +119,31 @@ def mean2true_anomaly(e: TensorScalar[D.Dimless], M: TensorScalar[D.Angle]) -> T
         + (13 / 12) * _eee * sin(3 * M)
     )
 
-def mean2eccentric_anomaly(e: TensorScalar[D.Dimless], M: TensorScalar[D.Angle]) -> TensorScalar[D.Angle]:
+@overload
+def mean2eccentric_anomaly(e: Scalar[D.Dimless], M: Scalar[D.Angle]) -> Scalar[D.Angle]: ...
+
+@overload
+def mean2eccentric_anomaly(e: Scalar[D.Dimless], M: ScalarArray[D.Angle]) -> ScalarArray[D.Angle]: ...
+
+@overload
+def mean2eccentric_anomaly(e: Tensor_S[D.Dimless], M: Tensor_S[D.Angle]) -> Tensor_S[D.Angle]: ...
+
+def mean2eccentric_anomaly(e: Tensor_S[D.Dimless], M: Tensor_S[D.Angle]) -> Tensor_S[D.Angle]:
     E = M
     for _ in range(5):
         E = M + (e * sin(E)).cast(D.Angle)
     return E
 
-def eccentric2true_anomaly(e: TensorScalar[D.Dimless], E: TensorScalar[D.Angle]) -> TensorScalar[D.Angle]:
+@overload
+def eccentric2true_anomaly(e: Scalar[D.Dimless], E: Scalar[D.Angle]) -> Scalar[D.Angle]: ...
+
+@overload
+def eccentric2true_anomaly(e: Scalar[D.Dimless], E: ScalarArray[D.Angle]) -> ScalarArray[D.Angle]: ...
+
+@overload
+def eccentric2true_anomaly(e: Tensor_S[D.Dimless], E: Tensor_S[D.Angle]) -> Tensor_S[D.Angle]: ...
+
+def eccentric2true_anomaly(e: Tensor_S[D.Dimless], E: Tensor_S[D.Angle]) -> Tensor_S[D.Angle]:
     """Returns the true anomaly from the eccentric anomaly and the excentricity.
     
     Parameters
@@ -129,13 +157,22 @@ def eccentric2true_anomaly(e: TensorScalar[D.Dimless], E: TensorScalar[D.Angle])
     -------
     float
         True anomaly in radians"""
-
+    
     return atan2(
         sqrt(1 - square(e)) * sin(E), 
         cos(E) - e
     )
 
-def true2eccentric_anomaly(e: TensorScalar[D.Dimless], nu: TensorScalar[D.Angle]) -> TensorScalar[D.Angle]:
+@overload
+def true2eccentric_anomaly(e: Scalar[D.Dimless], nu: Scalar[D.Angle]) -> Scalar[D.Angle]: ...
+
+@overload
+def true2eccentric_anomaly(e: Scalar[D.Dimless], nu: ScalarArray[D.Angle]) -> ScalarArray[D.Angle]: ...
+
+@overload
+def true2eccentric_anomaly(e: Tensor_S[D.Dimless], nu: Tensor_S[D.Angle]) -> Tensor_S[D.Angle]: ...
+
+def true2eccentric_anomaly(e: Tensor_S[D.Dimless], nu: Tensor_S[D.Angle]) -> Tensor_S[D.Angle]:
     """Returns the eccentric anomaly from the true anomaly and the excentricity.
     Parameters
     ----------
@@ -165,7 +202,10 @@ def elements2orthogonal_gcrf(
     Ω: Scalar[D.Angle], 
     ω: Scalar[D.Angle], 
     i: Scalar[D.Angle]
-) -> Any: ...
+) -> tuple[
+    Vector3[D.Length], 
+    Vector3[D.Velocity]
+]: ...
 
 @overload
 def elements2orthogonal_gcrf(
@@ -175,27 +215,34 @@ def elements2orthogonal_gcrf(
     Ω: Scalar[D.Angle], 
     ω: Scalar[D.Angle], 
     i: Scalar[D.Angle]
-) -> Any: ...
+) -> tuple[
+    Vector3Array[D.Length], 
+    Vector3Array[D.Velocity]
+]: ...
 
 def elements2orthogonal_gcrf(
-    υ: TensorScalar[D.Angle], 
-    e: TensorScalar[D.Dimless], 
-    a: TensorScalar[D.Length], 
-    Ω: TensorScalar[D.Angle], 
-    ω: TensorScalar[D.Angle], 
-    i: TensorScalar[D.Angle]
-) -> Any:
+    υ: Tensor_S[D.Angle], 
+    e: Tensor_S[D.Dimless], 
+    a: Tensor_S[D.Length], 
+    Ω: Tensor_S[D.Angle], 
+    ω: Tensor_S[D.Angle], 
+    i: Tensor_S[D.Angle]
+) -> tuple[
+    Tensor_V3[D.Length], 
+    Tensor_V3[D.Velocity]
+]:
     """Returns the position and velocity of a satellite in GCRF coordinates (meters, meters/second)
     All parameters are in radians, except `e` dimensionless and `a` in meters."""
     
     # position of satellite in orbit plane (with z = 0)
+    sqrt_mu_earth = cast(Tensor_S[GravParam], SQRT_MU_EARTH)
     
     one_ee = (1 - square(e))
     E = true2eccentric_anomaly(e, υ)
     esinE = e * sin(E)
     
     r = a * one_ee / (1 + e * cos(υ))
-    rd = (SQRT_MU_EARTH * sqrt(a) * esinE / r).cast(D.Velocity)
+    rd = (sqrt_mu_earth * sqrt(a) * esinE / r).cast(D.Velocity)
     rυd = rd * one_ee / esinE
     
     c_raan, s_raan = cos(Ω), sin(Ω)
@@ -203,8 +250,8 @@ def elements2orthogonal_gcrf(
     υpω = υ + ω
     c_theta, s_theta = cos(υpω), sin(υpω)
      
-    def vector_gcrf_factory(x: TensorScalar[D.Dimless], y: TensorScalar[D.Dimless]) -> Vector3[D.Dimless]:
-        return Vector3[D.Dimless].new(
+    def vector_gcrf_factory(x: Tensor_S[D.Dimless], y: Tensor_S[D.Dimless]) -> Tensor_V3[D.Dimless]:
+        return Tensor_V3[D.Dimless].from_components(
             x = c_raan * x - s_raan * c_i * y,
             y = s_raan * x + c_raan * c_i * y,
             z = s_i * y
