@@ -617,14 +617,23 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
     @classmethod
     def from_components(
         cls,
-        x: Tensor_S[SomeDim] | Number,
-        y: Tensor_S[SomeDim] | Number,
-        z: Tensor_S[SomeDim] | Number,
+        x: Tensor_S[SomeDim] | Number | npt.NDArray,
+        y: Tensor_S[SomeDim] | Number | npt.NDArray,
+        z: Tensor_S[SomeDim] | Number | npt.NDArray,
     ) -> Tensor_V3[SomeDim]:
         vec_els = cast(list[object], [x, y, z])
         if all(isinstance(el, (int, float, np.floating)) for el in vec_els):
             return cls(
                 np.array(vec_els).reshape((3,1))
+            )
+        
+        if all(isinstance(el, (np.ndarray, list)) for el in vec_els):
+            arrs = [np.asarray(el) for el in vec_els]
+            if not all(arr.ndim == 1 for arr in arrs):
+                raise ValueError("...")
+            
+            return cls(
+                np.stack(arrs)
             )
         
         if not all(isinstance(el, Tensor_S) for el in vec_els):
@@ -635,6 +644,8 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
         z = cast(Tensor_S[SomeDim], z)
 
         ensure_same_dimensions(x, y, z)
+        if cls._dim._d != x.dim_coords:
+            raise ValueError("...")
 
         x_vals = np.asarray(x.base_unit_value).reshape(-1)
         y_vals = np.asarray(y.base_unit_value).reshape(-1)
