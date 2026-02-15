@@ -140,6 +140,8 @@ class Tensor_M33(Tensor[SomeDim], Generic[SomeDim]):
 
 
 class Scalar(Tensor_S[SomeDim], Generic[SomeDim]):
+    def __init__(self, value: Number) -> None: ...
+
     @overload
     def __add__(self: Scalar[D.Dimless], o: Number | Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
 
@@ -190,6 +192,8 @@ class Scalar(Tensor_S[SomeDim], Generic[SomeDim]):
 
 
 class ScalarArray(Tensor_S[SomeDim], Generic[SomeDim]):
+    def __init__(self, values: npt.NDArray[np.floating[Any]]) -> None: ...
+
     def __getitem__(self, index: int) -> Scalar[SomeDim]: ...
 
     @overload
@@ -452,3 +456,31 @@ class Matrix33(Tensor_M33[SomeDim], Generic[SomeDim]):
 
     @overload
     def __matmul__(self: Matrix33[SomeDim], o: Vector3Array[SomeOtherDim]) -> Vector3Array[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+
+class QuantityMeta(type):
+    def __getattr__(cls, name: str) -> Scalar: ...
+
+
+class Quantity(metaclass=QuantityMeta):
+    @classmethod
+    def get(cls, value: str) -> Scalar: ...
+
+    # ANGLES
+    rad: Scalar[D.Angle]
+    deg: Scalar[D.Angle]
+
+    # DISTANCES
+    meter: Scalar[D.Length]
+    kilo_meter: Scalar[D.Length]
+    radii_earth: Scalar[D.Length]
+    radii_sun: Scalar[D.Length]
+
+    # DURATIONS
+    second: Scalar[D.Time]
+    minute: Scalar[D.Time]
+    hour: Scalar[D.Time]
+    day: Scalar[D.Time]
+    month: Scalar[D.Time]
+    year: Scalar[D.Time]
+
