@@ -76,7 +76,7 @@ class TensorScalar(Tensor[SomeDim], Generic[SomeDim]):
 
     def __add__(self, o: object) -> TensorScalar[Any]:
         if isinstance(o, Number):
-            return cast(TensorScalar[Any], super().__add__(o))
+            return TensorScalar[D.Dimless].new(self._values + o)
         if not isinstance(o, TensorScalar):
             raise TypeError("...")
         if not self.ensure_compatible_dimensions(o):
@@ -104,7 +104,7 @@ class TensorScalar(Tensor[SomeDim], Generic[SomeDim]):
 
     def __sub__(self, o: object) -> TensorScalar[Any]:
         if isinstance(o, Number):
-            return cast(TensorScalar[Any], super().__sub__(o))
+            return TensorScalar[D.Dimless].new(self._values - o)
         if not isinstance(o, TensorScalar):
             raise TypeError("...")
         if not self.ensure_compatible_dimensions(o):
