@@ -3,7 +3,7 @@
     "python.defaultInterpreterPath": "/Users/lg/Code/leorbit/leorbit/.venv/bin/python",
     "python.pythonPath": "/Users/lg/Code/leorbit/leorbit/.venv/bin/python",
     "python.testing.pytestArgs": [
-        "leorbit2/mathematics/tests"
+        "leorbit2/tests"
     ],
     "python.testing.unittestEnabled": false,
     "python.testing.pytestEnabled": true,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from fractions import Fraction
+from tokenize import Exponent
 from typing import Any, ClassVar, Generic, Literal, Never, TypeAlias, TypeVar, overload
 
 import numpy as np
@@ -33,14 +34,22 @@ class D:
     class Time(Dim): ...
     class Mass(Dim): ...
 
-
+ExponentNumerator = TypeVar("ExponentNumerator", bound=int)
+ExponentDenominator = TypeVar("ExponentDenominator", bound=int)
 SomeDim = TypeVar("SomeDim", bound=Dim)
 SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
 
-
 class ProductDim(Dim, Generic[SomeDim, SomeOtherDim]): ...
 class QuotientDim(Dim, Generic[SomeDim, SomeOtherDim]): ...
-class PowerDim(Dim, Generic[SomeDim]): ...
+class PowerDim(Dim, Generic[SomeDim, ExponentNumerator, ExponentDenominator]): ...
+
+N3: TypeAlias = Literal[-3]
+N2: TypeAlias = Literal[-2]
+N1: TypeAlias = Literal[-1]
+OO: TypeAlias = Literal[0]
+P1: TypeAlias = Literal[1]
+P2: TypeAlias = Literal[2]
+P3: TypeAlias = Literal[3]
 
 
 class Tensor(Generic[SomeDim]):
@@ -456,6 +465,122 @@ class Matrix33(Tensor_M33[SomeDim], Generic[SomeDim]):
 
     @overload
     def __matmul__(self: Matrix33[SomeDim], o: Vector3Array[SomeOtherDim]) -> Vector3Array[ProductDim[SomeDim, SomeOtherDim]]: ...
+
+
+def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[SomeDim] | Tensor[D.Dimless]: ...
+
+def ensure_same_dimensions(*tensors: Tensor[Any]) -> Literal[True]: ...
+
+
+@overload
+def square(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P2, P1]]: ...
+
+@overload
+def square(tensor: Scalar[PowerDim[SomeDim, P1, P2]]) -> Scalar[SomeDim]: ...
+
+@overload
+def square(tensor: ScalarArray[SomeDim]) -> ScalarArray[PowerDim[SomeDim, P2, P1]]: ...
+
+@overload
+def square(tensor: ScalarArray[PowerDim[SomeDim, P1, P2]]) -> ScalarArray[SomeDim]: ...
+
+def square(tensor: Tensor[Any]) -> Tensor[Any]: ...
+
+
+@overload
+def sqrt(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P1, P2]]: ...
+
+@overload
+def sqrt(tensor: Scalar[PowerDim[SomeDim, P2, P1]]) -> Scalar[SomeDim]: ...
+
+@overload
+def sqrt(tensor: ScalarArray[SomeDim]) -> ScalarArray[PowerDim[SomeDim, P1, P2]]: ...
+
+@overload
+def sqrt(tensor: ScalarArray[PowerDim[SomeDim, P2, P1]]) -> ScalarArray[SomeDim]: ...
+
+def sqrt(tensor: Tensor[Any]) -> Tensor[Any]: ...
+
+
+@overload
+def cos(tensor: Scalar[D.Angle]) -> Scalar[D.Dimless]: ...
+
+@overload
+def cos(tensor: ScalarArray[D.Angle]) -> ScalarArray[D.Dimless]: ...
+
+def cos(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]: ...
+
+
+@overload
+def sin(tensor: Scalar[D.Angle]) -> Scalar[D.Dimless]: ...
+
+@overload
+def sin(tensor: ScalarArray[D.Angle]) -> ScalarArray[D.Dimless]: ...
+
+def sin(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]: ...
+
+
+@overload
+def tan(tensor: Scalar[D.Angle]) -> Scalar[D.Dimless]: ...
+
+@overload
+def tan(tensor: ScalarArray[D.Angle]) -> ScalarArray[D.Dimless]: ...
+
+def tan(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]: ...
+
+
+@overload
+def acos(tensor: Scalar[D.Dimless]) -> Scalar[D.Angle]: ...
+
+@overload
+def acos(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Angle]: ...
+
+def acos(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]: ...
+
+
+@overload
+def asin(tensor: Scalar[D.Dimless]) -> Scalar[D.Angle]: ...
+
+@overload
+def asin(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Angle]: ...
+
+def asin(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]: ...
+
+
+@overload
+def atan(tensor: Scalar[D.Dimless]) -> Scalar[D.Angle]: ...
+
+@overload
+def atan(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Angle]: ...
+
+def atan(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]: ...
+
+
+@overload
+def atan2(y: Scalar[SomeDim], x: Scalar[SomeDim]) -> Scalar[D.Angle]: ...
+
+@overload
+def atan2(y: ScalarArray[SomeDim], x: ScalarArray[SomeDim]) -> ScalarArray[D.Angle]: ...
+
+def atan2(y: Tensor[SomeDim], x: Tensor[SomeDim]) -> Tensor[D.Angle]: ...
+
+
+@overload
+def normalize_angle(angle: Scalar[D.Angle]) -> Scalar[D.Angle]: ...
+
+@overload
+def normalize_angle(angle: ScalarArray[D.Angle]) -> ScalarArray[D.Angle]: ...
+
+def normalize_angle(angle: Tensor[D.Angle]) -> Tensor[D.Angle]: ...
+
+
+@overload
+def normalize_angle_symmetric(angle: Scalar[D.Angle]) -> Scalar[D.Angle]: ...
+
+@overload
+def normalize_angle_symmetric(angle: ScalarArray[D.Angle]) -> ScalarArray[D.Angle]: ...
+
+def normalize_angle_symmetric(angle: Tensor[D.Angle]) -> Tensor[D.Angle]: ...
 
 
 class QuantityMeta(type):
