@@ -6,6 +6,7 @@ import inspect
 from pyclbr import Class
 from typing import Any, Callable, ClassVar, Generic, Literal, NamedTuple, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
 from copy import copy
+from unittest import result
 
 import numpy as np
 import numpy.typing as npt
@@ -295,9 +296,7 @@ class Tensor[SomeDim = D.Dimless]():
     def __init__(self, values: Number | TensorData):
         """Initialize raw tensor values.
 
-        Notes:
-            End-users are expected to construct concrete tensors through
-            subclass constructors/helpers such as ``new``.
+        NOTE: `Tensor` should never be used as-is
         """
         if not self._is_dimensionalized():
             raise RuntimeError("Class has to be dimensionalized")
@@ -611,12 +610,12 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
         data = np.asarray(data)
         rows, *_ = data.shape
         if data.ndim != 2 or rows != 3:
-            raise ValueError("Wrong shape")
+            raise ValueError("Wrong shape (expected 3 rows)")
         
         super().__init__(data)
 
     @classmethod
-    def new_from_components(
+    def from_components(
         cls,
         x: Tensor_S[SomeDim],
         y: Tensor_S[SomeDim],
@@ -633,6 +632,34 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
         
         return cls(
             np.stack([x_vals, y_vals, z_vals])
+        )
+    
+    @staticmethod
+    def from_spherical(
+        theta: Tensor_S[D.Angle],
+        delta: Tensor_S[D.Angle],
+        rho: Tensor_S[SomeOtherDim],
+    ) -> Tensor_V3[SomeOtherDim]:
+        
+        cos_delta = cos(delta)
+        sin_delta = sin(delta)
+        cos_theta = cos(theta)
+        sin_theta = sin(theta)
+
+        x = rho * cos_theta * cos_delta
+        y = rho * sin_theta * cos_delta
+        z = rho * sin_delta
+        
+        return Tensor_V3[rho.dim].from_components(
+            cast(Tensor_S[SomeOtherDim], x),
+            cast(Tensor_S[SomeOtherDim], y),
+            cast(Tensor_S[SomeOtherDim], z),
+        )
+    
+    def dot(self, o: Tensor_V3[SomeDim]) -> Tensor_S[SomeDim]:
+        result_dim = (self.dim_coords * o.dim_coords).to_dimension()
+        return Tensor_S[result_dim]( # type: ignore
+            np.sum(self._values * o._values, axis=0)
         )
 
     @property
@@ -671,39 +698,73 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
         return cast(Tensor_S[D.Angle], atan2(self.z, xy))
 
     def angle(self, o: Tensor_V3[SomeDim]) -> Tensor_S[D.Angle]:
-        cos_angle = cast(Tensor_S[D.Dimless], self.dot(o) / (self.length * o.length))
-        if self.size == 1:
-            if cast(Tensor_S[D.Dimless], cos_angle) >= 1:
-                return cast(Tensor_S[D.Angle], 0 * Quantity.rad)
-            if cast(Tensor_S[D.Dimless], cos_angle) <= -1:
-                return cast(Tensor_S[D.Angle], pi * Quantity.rad)
-        return cast(Tensor_S[D.Angle], acos(cos_angle))
+        dot: np.ndarray = np.sum(self._values * o._values, axis=0)
+        cos_angle: np.ndarray = (dot / (self.length._values * o.length._values))
+
+        angle = np.acos(cos_angle)
+        angle[cos_angle >= 1] = 0
+        angle[cos_angle <= -1] = np.pi
+
+        return Tensor_S[D.Angle](angle)
 
     def normalized(self) -> Tensor_V3[D.Dimless]:
         return cast(Tensor_V3[D.Dimless], self / self.length)
 
-    @staticmethod
-    def from_spherical(
-        theta: Tensor_S[D.Angle],
-        delta: Tensor_S[D.Angle],
-        rho: Tensor_S[SomeOtherDim],
-    ) -> Tensor_V3[SomeOtherDim]:
-        cos_delta = cos(delta)
-        sin_delta = sin(delta)
-        cos_theta = cos(theta)
-        sin_theta = sin(theta)
-        x = rho * cos_theta * cos_delta
-        y = rho * sin_theta * cos_delta
-        z = rho * sin_delta
-        return Tensor_V3[rho.dim].new_from_components(
-            cast(Tensor_S[SomeOtherDim], x),
-            cast(Tensor_S[SomeOtherDim], y),
-            cast(Tensor_S[SomeOtherDim], z),
-        )
-
 Tensor_V3._base_tensor_class = Tensor_V3
 
-class Tensor_M33: ...
+class Tensor_M33(Tensor[SomeDim], Generic[SomeDim]):
+    """3×3 matrix carrying a physical dimension."""
+
+    def __init__(self, data: TensorData):
+        data = np.asarray(data)
+        rows, cols, *_ = data.shape
+        if data.ndim != 2 or rows != 3 or cols != 3:
+            raise ValueError("Wrong shape (expected 3×3)")
+        
+        super().__init__(data)
+    
+    @classmethod
+    def from_elements(cls,
+        a: Tensor_S[SomeDim] | Number, b: Tensor_S[SomeDim] | Number, c: Tensor_S[SomeDim] | Number,
+        d: Tensor_S[SomeDim] | Number, e: Tensor_S[SomeDim] | Number, f: Tensor_S[SomeDim] | Number,
+        g: Tensor_S[SomeDim] | Number, h: Tensor_S[SomeDim] | Number, i: Tensor_S[SomeDim] | Number,
+    ) -> Tensor_M33[SomeDim]:
+        """Create a matrix from row-major coefficients."""
+        mat: TensorData
+        mat_els = cast(list[object], [a, b, c, d, e, f, g, h, i])
+
+        if all(isinstance(el, (int, float, np.floating)) for el in mat_els):
+            mat = np.array(mat_els).reshape((3,3))
+        elif all(isinstance(el, Tensor_S) and el.size == 1 for el in mat_els):
+            scalars = cast(list[Tensor_S[Any]], mat_els)
+            ensure_same_dimensions(*scalars)
+            mat = np.array([el.base_unit_value for el in scalars]).reshape((3,3))
+        else:
+            raise RuntimeError("...")
+
+        return cls(mat)
+    
+    def cast(self, dim: type[SomeOtherDim]) -> Tensor_M33[SomeOtherDim]:
+        """Type-cast to another dimension when coordinates are identical."""
+        if dim._d == self.dim_coords:
+            return self # type: ignore
+        raise RuntimeError("Cannot cast")
+    
+    @cached_property
+    def det(self) -> Number:
+        return np.linalg.det(self._values)
+    
+    def inverse(self) -> Tensor_M33:
+        """Return matrix inverse.
+        """
+        return Tensor_M33[
+            (self.dim_coords ** -1).to_dimension()
+        ](
+            np.linalg.inv(self._values)
+        )
+    
+    def __repr__(self) -> str:
+        return f"TensorMatrix33[D.{self.dim.__class__.__name__}]({self._values})"
 
 Tensor_M33._base_tensor_class = Tensor_M33
 
@@ -721,8 +782,28 @@ class ScalarArray(Tensor_S[SomeDim], Generic[SomeDim]):
         
         return cast(
             Scalar[SomeDim],
-            Scalar[self.dim].new(np.array(self._values)[index])
+            Scalar[self.dim](np.array(self._values)[index])
         )
+    
+class Vector3(Tensor_V3[SomeDim], Generic[SomeDim]):
+    """convenience wrapper for three-element vector tensors."""
+
+class Vector3Array(Tensor_V3[SomeDim], Generic[SomeDim]):
+    """Convenience wrapper for many-element vector tensors."""
+
+    def __getitem__(self, index: int) -> Vector3[SomeDim]:
+        if index < 0 or index >= self.size:
+            raise KeyError("...")
+        
+        return cast(
+            Vector3[SomeDim],
+            Vector3[self.dim](self._values[:, index])
+        )
+    
+class Matrix33(Tensor_M33[SomeDim], Generic[SomeDim]):
+    """Convience wrapper..."""
+
+
 
 OPERATION_RESULT_TYPE: dict[
     tuple[type[Tensor], type[Tensor]],
