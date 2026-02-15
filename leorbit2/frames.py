@@ -1,8 +1,8 @@
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING, ParamSpec, Callable, TypeVar, cast
+from typing import TYPE_CHECKING, ParamSpec, Callable, TypeAlias, TypeVar, cast
 
-from leorbit2.m import D, Vector3
+from leorbit2.m import D, Matrix33, Quantity, Vector3, cos
 from leorbit2.transforms import Transform, TransformChain, TransformIdentify, TransformVector3Affine, TransformVector3RotationZ
 from leorbit2.time import Time
 
@@ -60,6 +60,12 @@ _AbsPos = TypeVar("_AbsPos", bound=PosVec)
 _RelPos = TypeVar("_RelPos", bound=PosVec)
 
 class RelativeFrame:
+    transform: Transform
+    """The transformation that takes a vector expressed in the `reference_frame` and returns the same vector expressed in this `RelativeFrame`"""
+
+    reference_frame: AbsoluteFrame
+    """The absolute frame to which this frame is relative"""
+
     def __init__(self, reference_frame: AbsoluteFrame, transform: Transform[_AbsPos, _RelPos]):
         """A frame relative to a reference frame. """
         self.reference_frame = reference_frame
@@ -136,7 +142,7 @@ class EarthLocalFrame(RelativeFrame):
         if ang % half_turn == 0: # FIXME
             raise ValueError("Cannot create `EarthLocalFrame` in Earth's poles!")
         elif ang == quart_turn: # FIXME
-            x = north.copy()
+            x = north
         else:
             x = (north / cos(ang) - z).normalized()
             if ang > quart_turn:
@@ -144,15 +150,23 @@ class EarthLocalFrame(RelativeFrame):
         
         y = x.cross(z) # towards "east"
 
-        mat = Matrix33[D.Dimless].new(
+        mat = Matrix33[D.Dimless].from_elements(
             x.x, y.x, z.x,
             x.y, y.y, z.y,
             x.z, y.z, z.z
         )
 
-        transform = TransformVector3Affine(mat, itrf)
+        # Transform : Local @ v -> ITRF @ v
+        transform_local2itrf = TransformVector3Affine(mat, itrf)
 
-        super().__init__(AbsoluteFrame.ITRF, transform)
+        # FIXME: please check that this is correct... And could optimize
+        # Transform : ITRF @ v -> Local @ v
+        transform_itrf2local = transform_local2itrf.reverse()
+
+        super().__init__(
+            AbsoluteFrame.ITRF, 
+            cast(Transform, transform_itrf2local)
+        )
 
         self.location = location
     
