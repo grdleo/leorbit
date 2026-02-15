@@ -398,6 +398,12 @@ class Tensor[SomeDim = D.Dimless]():
         
         return a / factor
     
+    def __pos__(self) -> Self:
+        return self.__class__(self._values)
+    
+    def __neg__(self) -> Self:
+        return self.__class__(-self._values)
+    
     def __add__(self, o: object) -> Tensor:
         o = ensure_tensor(o)
         if not self.ensure_compatible_dimensions(o):
