@@ -617,10 +617,23 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
     @classmethod
     def from_components(
         cls,
-        x: Tensor_S[SomeDim],
-        y: Tensor_S[SomeDim],
-        z: Tensor_S[SomeDim],
+        x: Tensor_S[SomeDim] | Number,
+        y: Tensor_S[SomeDim] | Number,
+        z: Tensor_S[SomeDim] | Number,
     ) -> Tensor_V3[SomeDim]:
+        vec_els = cast(list[object], [x, y, z])
+        if all(isinstance(el, (int, float, np.floating)) for el in vec_els):
+            return cls(
+                np.array(vec_els).reshape((3,1))
+            )
+        
+        if not all(isinstance(el, Tensor_S) for el in vec_els):
+            raise ValueError("...")
+        
+        x = cast(Tensor_S[SomeDim], x)
+        y = cast(Tensor_S[SomeDim], y)
+        z = cast(Tensor_S[SomeDim], z)
+
         ensure_same_dimensions(x, y, z)
 
         x_vals = np.asarray(x.base_unit_value).reshape(-1)
@@ -825,31 +838,49 @@ def sqrt(tensor: Tensor[Any]) -> Tensor[Any]:
     )
 
 def cos(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
+    if not tensor.check(D.Angle):
+        raise ValueError("cos() expects an angle-typed tensor")
+    
     return tensor._base_tensor_class[D.Dimless]( # type: ignore
         np.cos(tensor._values)
     )
 
 def sin(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
+    if not tensor.check(D.Angle):
+        raise ValueError("sin() expects an angle-typed tensor")
+    
     return tensor._base_tensor_class[D.Dimless]( # type: ignore
         np.sin(tensor._values)
     )
 
 def tan(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
+    if not tensor.check(D.Angle):
+        raise ValueError("tan() expects an angle-typed tensor")
+    
     return tensor._base_tensor_class[D.Dimless]( # type: ignore
         np.tan(tensor._values)
     )
 
 def acos(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
+    if not tensor.check(D.Dimless):
+        raise ValueError("acos() expects a dimensionless tensor")
+    
     return tensor._base_tensor_class[D.Angle]( # type: ignore
         np.acos(tensor._values)
     )
 
 def asin(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
+    if not tensor.check(D.Dimless):
+        raise ValueError("asin() expects a dimensionless tensor")
+    
     return tensor._base_tensor_class[D.Angle]( # type: ignore
         np.asin(tensor._values)
     )
 
 def atan(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
+    if not tensor.check(D.Dimless):
+        raise ValueError("atan() expects a dimensionless tensor")
+    
     return tensor._base_tensor_class[D.Angle]( # type: ignore
         np.atan(tensor._values)
     )
