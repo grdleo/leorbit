@@ -649,7 +649,7 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
         x = rho * cos_theta * cos_delta
         y = rho * sin_theta * cos_delta
         z = rho * sin_delta
-        
+
         return Tensor_V3[rho.dim].from_components(
             cast(Tensor_S[SomeOtherDim], x),
             cast(Tensor_S[SomeOtherDim], y),
@@ -660,6 +660,12 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
         result_dim = (self.dim_coords * o.dim_coords).to_dimension()
         return Tensor_S[result_dim]( # type: ignore
             np.sum(self._values * o._values, axis=0)
+        )
+    
+    def cross(self, o: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
+        result_dim = (self.dim_coords * o.dim_coords).to_dimension()
+        return Tensor_V3[result_dim]( # type: ignore
+            np.cross(self._values, o._values, axis=0)
         )
 
     @property
@@ -803,6 +809,76 @@ class Vector3Array(Tensor_V3[SomeDim], Generic[SomeDim]):
 class Matrix33(Tensor_M33[SomeDim], Generic[SomeDim]):
     """Convience wrapper..."""
 
+
+######## functions
+
+def square(tensor: Tensor[Any]) -> Tensor[Any]:
+    return_dim = (tensor.dim_coords ** 2).to_dimension()
+    return tensor._base_tensor_class[return_dim]( # type: ignore
+        np.square(tensor._values)
+    )
+
+def sqrt(tensor: Tensor[Any]) -> Tensor[Any]:
+    return_dim = (tensor.dim_coords ** 0.5).to_dimension()
+    return tensor._base_tensor_class[return_dim]( # type: ignore
+        np.sqrt(tensor._values)
+    )
+
+def cos(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
+    return tensor._base_tensor_class[D.Dimless]( # type: ignore
+        np.cos(tensor._values)
+    )
+
+def sin(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
+    return tensor._base_tensor_class[D.Dimless]( # type: ignore
+        np.sin(tensor._values)
+    )
+
+def tan(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:
+    return tensor._base_tensor_class[D.Dimless]( # type: ignore
+        np.tan(tensor._values)
+    )
+
+def acos(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
+    return tensor._base_tensor_class[D.Angle]( # type: ignore
+        np.acos(tensor._values)
+    )
+
+def asin(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
+    return tensor._base_tensor_class[D.Angle]( # type: ignore
+        np.asin(tensor._values)
+    )
+
+def atan(tensor: Tensor[D.Dimless]) -> Tensor[D.Angle]:
+    return tensor._base_tensor_class[D.Angle]( # type: ignore
+        np.atan(tensor._values)
+    )
+
+def atan2(y: Tensor[SomeDim], x: Tensor[SomeDim]) -> Tensor[D.Angle]:
+    """Elementwise two-argument arctangent that returns an angle-typed tensor.
+
+    Returns a ``Scalar[D.Angle]`` when both inputs are scalar-like and a
+    ``ScalarArray[D.Angle]`` when at least one input has array semantics.
+    """
+    if not y.ensure_compatible_dimensions(x) or y._base_tensor_class is not x._base_tensor_class:
+        raise ValueError("Incompatible dimensions or tensor types")
+    
+    vals = np.atan2(y._values, x._values)
+
+    return y._base_tensor_class[D.Angle](vals) # type: ignore
+
+def normalize_angle(angle: Tensor[D.Angle]) -> Tensor[D.Angle]:
+    """Returns the given angle in its [0, 2π] range."""
+    return angle._base_tensor_class[D.Angle](angle._values % (2 * np.pi)) # type: ignore
+
+def normalize_angle_symmetric(angle: Tensor[D.Angle]) -> Tensor[D.Angle]:
+    """Returns the given angle in its [-π, π] range."""
+    normalized = angle._values % (2 * np.pi)
+    normalized[normalized > np.pi] -= 2 * np.pi
+
+    return angle._base_tensor_class[D.Angle](normalized) # type: ignore
+
+########################
 
 
 OPERATION_RESULT_TYPE: dict[
