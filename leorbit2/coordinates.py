@@ -8,11 +8,9 @@ from typing import ParamSpec, Callable, TypeVar, cast
 
 from leorbit2.algorithms import OrbitalElementsComputeTuple
 from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
-from leorbit2.mathematics import D, Dim, Scalar, TransformChain, Vector3, Transform, TransformVector3RotationZ, TransformIdentify, D
-from leorbit2.mathematics.functions import atan, normalize_angle, normalize_angle_symmetric, angle2dms, sqrt, square, tan
-from leorbit2.mathematics.quantity import Quantity
-from leorbit2.mathematics.transform import TransformVector3Affine
+from leorbit2.m import D, Dim, Quantity, Scalar, Vector3
 from leorbit2.time import Time, TimeInterval
+from leorbit2.transforms import Transform, TransformVector3Affine
 from leorbit2.utils import geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
 PosVec = Vector3[D.Length]
@@ -79,7 +77,7 @@ class Coordinates:
     def from_gps(
         longitude: Scalar[D.Angle], 
         latitude: Scalar[D.Angle], 
-        altitude: Scalar[D.Length] = 0 * Quantity.m, 
+        altitude: Scalar[D.Length] = 0 * Quantity.meter, 
         epoch: Time | None = None
     ) -> Coordinates:
         theta = longitude
