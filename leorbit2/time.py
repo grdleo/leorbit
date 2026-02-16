@@ -8,7 +8,7 @@ from math import ceil
 import numpy as np
 from numpy.typing import NDArray
 
-from leorbit2.m import D, Scalar, Number, Quantity
+from leorbit2.m import D, Scalar, Number, Quantity, ScalarArray
 from leorbit2.utils import humanize_duration
 
 import numpy as np
@@ -324,8 +324,8 @@ class TimeInterval:
         """Returns `True` if this `TimeInterval` is ponctual (start == stop + MIN_DURATION)"""
         return self.start == self.stop + MIN_DURATION
     
-    def to_time_stamps(self) -> NDArray:
-        return np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps)
+    def to_time_stamps(self) -> ScalarArray[D.Time]:
+        return ScalarArray[D.Time](np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps))
     
     @staticmethod
     def make_ponctual(time: Time) -> "TimeInterval":
