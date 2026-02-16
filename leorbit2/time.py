@@ -8,11 +8,13 @@ from math import ceil
 import numpy as np
 from numpy.typing import NDArray
 
-from leorbit2.mathematics import D, Scalar, Number, Quantity
+from leorbit2.m import D, Scalar, Number, Quantity
+from leorbit2.utils import humanize_duration
 
 import numpy as np
 TWOPI = 2 * np.pi
 TWELF_PI = np.pi / 12
+MIN_DURATION = Scalar[D.Time](1e-9)
 
 class Time:
     """Class representing a time instant."""
@@ -138,7 +140,7 @@ class Time:
 
         If `other > self`, the returned duration will be negative. 
         """
-        return Scalar[D.Time].new(self._unixepoch - other._unixepoch)
+        return Scalar[D.Time](self._unixepoch - other._unixepoch)
 
     @property
     def isoformat(self: "Time") -> str:
@@ -195,19 +197,10 @@ class Time:
         d = self.j2000.magnitude("day")
         angle_rad = ((np.float128(18.697374558) + np.float128(24.06570982441908) * d) * TWELF_PI) % TWOPI
         return angle_rad * Quantity.rad
-    
-
-
-
-
-
-
-
-MIN_DURATION = Q_("1ns")
 
 class TimeInterval:
     """A time interval between two `Time` objects. """
-    def __init__(self, start: Time, stop: Time, dt=Q_("1s")):
+    def __init__(self, start: Time, stop: Time, dt=(1 * Quantity.second)):
         if not stop > start:
             raise ValueError()
         if start + dt > stop:
@@ -219,7 +212,7 @@ class TimeInterval:
         self.stop = stop
         self.dt = dt
         self.duration = stop.delta(start)
-        steps = ceil(self.duration / dt)
+        steps = ceil((self.duration / dt).magnitude("1"))
         self.steps = int(steps)
     
     def __eq__(self, other: object) -> bool:
@@ -241,7 +234,7 @@ class TimeInterval:
         for i in range(self.steps):
             yield self.start + i * self.dt
     
-    def duplicate(self, dt: Q_ | None = None) -> "TimeInterval":
+    def duplicate(self, dt: Scalar[D.Time] | None = None) -> "TimeInterval":
         """Duplicates this `TimeInterval`.
         A new `dt` can be passed."""
         dt = dt if dt is not None else self.dt
@@ -258,7 +251,7 @@ class TimeInterval:
     def _time2idx(self, time: Time) -> int:
         if not (self.start <= time <= self.stop):
             raise ValueError()
-        i = (time.unixepoch - self.start.unixepoch) / self.dt.m_as("s")
+        i = (time.unixepoch - self.start.unixepoch) / self.dt.magnitude("s")
         return round(i)
     
     def snap_to_discretization(self, time: Time) -> Time:
@@ -287,7 +280,7 @@ class TimeInterval:
             or self.start <= t.stop <= self.stop
         )
     
-    def intersection(self: "TimeInterval", timeline: "TimeInterval", dt: Q_ | None = None) -> Optional["TimeInterval"]:
+    def intersection(self: "TimeInterval", timeline: "TimeInterval", dt: Scalar[D.Time] | None = None) -> Optional["TimeInterval"]:
         """Returns the intersection of current timeline with given timeline"""
         if self.stop <= timeline.start or self.start >= timeline.stop:
             return None
@@ -306,15 +299,15 @@ class TimeInterval:
     
     def progress(self, t: Time) -> float | None:
         """Returns the proportion of given time over the current timeline"""
-        p = (t.delta(self.start) / self.duration).m
+        p = float((t.delta(self.start) / self.duration).magnitude("1"))
         if not (0 <= p <= 1):
             return None
         return p
     
-    def divide(self, nb_segments: int, dt: Q_ | None = None) -> list["TimeInterval"]:
+    def divide(self, nb_segments: int, dt: Scalar[D.Time] | None = None) -> list["TimeInterval"]:
         """Divides the current TimeInterval in a given number of segments"""
         dt = dt if dt is not None else self.dt
-        dur: Q_ = self.duration / nb_segments
+        dur: Scalar[D.Time] = self.duration / nb_segments
         start = self.start
         return [TimeInterval(start + i * dur, start + (i + 1) * dur, dt) for i in range(nb_segments)]
     
@@ -341,7 +334,7 @@ class TimeInterval:
     
 def get_intersections_timelines(first_set: Iterable[TimeInterval], second_set: Iterable[TimeInterval]) -> list[TimeInterval]:
     """Returns the intersections of the two sets of timelines"""
-    all_pairs: dict[set[TimeInterval, TimeInterval], TimeInterval | None] = {}
+    all_pairs: dict[tuple[TimeInterval, TimeInterval], TimeInterval | None] = {}
     for t in first_set:
         for tt in second_set:
             k = t, tt
