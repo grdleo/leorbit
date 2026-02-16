@@ -575,7 +575,7 @@ class Tensor_S(Tensor[SomeDim], Generic[SomeDim]):
     def base_unit_value(self) -> Number | np.ndarray:
         if np.asarray(self._values).ndim == 0:
             return np.float64(self._values)
-        return cast(np.ndarray, np.float64(self._values))
+        return cast(Number, np.float64(self._values))
 
     def magnitude(self, units: str = "1") -> np.float64 | npt.NDArray[np.float64]:
         raw = self.get_raw_array(units)
