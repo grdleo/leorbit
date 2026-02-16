@@ -8,7 +8,7 @@ from numpy.typing import NDArray
 
 from typing import TYPE_CHECKING, Any, Type, TypeAlias, TypeVar, cast, overload
 
-from leorbit2.m import N2, P1, P3, DimCoords, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, ensure_tensor, D, Dim, Tensor_V3, Matrix33, sin, sqrt, square
+from leorbit2.m import N2, P1, P3, DimCoords, Number, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, ensure_tensor, D, Dim, Tensor_V3, Matrix33, sin, sqrt, square
 
 GravParam: TypeAlias = ProductDim[
     PowerDim[D.Length, P3, P1],
@@ -279,3 +279,9 @@ def elements2orthogonal_gcrf(
         ur * r,
         ur * rd + ut * rυd
     )
+
+def convert_quantity_units(quantity: Number, units_from: str, units_to: str) -> Number:
+    """Converts a number `quantity` that is expressed in `units_from`, to `units_to` (uses Pint)"""
+    import pint
+
+    return cast(Number, pint.Quantity(quantity, units_from).m_as(units_to))

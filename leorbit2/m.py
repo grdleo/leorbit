@@ -11,9 +11,6 @@ from unittest import result
 import numpy as np
 import numpy.typing as npt
 
-if TYPE_CHECKING:
-    import pint
-
 class DimCoords:
     """Exponent triplet describing a physical dimension.
 
@@ -563,21 +560,6 @@ class Tensor_S(Tensor[SomeDim], Generic[SomeDim]):
             super().__init__(data.item())
         else:
             raise ValueError("Wrong shape")
-        
-    @classmethod
-    def from_pint_quantity(cls, q: "pint.Quantity") -> Tensor_S[SomeDim]:
-        dim_coords = DimCoords(
-            length=Fraction(cast(Number, q.dimensionality.get("length", 0))),
-            time=Fraction(cast(Number, q.dimensionality.get("time", 0))),
-            mass=Fraction(cast(Number, q.dimensionality.get("mass", 0)))
-        )
-
-        if dim_coords != cls._dim._d:
-            raise ValueError("Quantity has dimension ... which is incompatible with tensor dimension ...")
-        
-        factor = cast(Number, q.to_base_units().magnitude)
-
-        return cls(np.asarray(factor))
 
     def cast(self, dim: type[SomeOtherDim]) -> Tensor_S[SomeOtherDim]:
         if dim._d == self.dim_coords:

@@ -8,9 +8,6 @@ import numpy as np
 from numpy._typing import NDArray
 import numpy.typing as npt
 
-if TYPE_CHECKING:
-    import pint
-
 Number: TypeAlias = float | int | np.floating[Any]
 TensorData: TypeAlias = npt.NDArray[np.floating[Any]]
 
@@ -471,9 +468,6 @@ class Tensor_M33(Tensor[SomeDim], Generic[SomeDim]):
 
 class Scalar(Tensor_S[SomeDim], Generic[SomeDim]):
     def __init__(self, value: Number) -> None: ...
-
-    @classmethod
-    def from_pint_quantity(cls, q: "pint.Quantity") -> Scalar[SomeDim]: ...
 
     def magnitude(self, units: str = ...) -> Number: ...
     def cast(self, dim: type[SomeOtherDim]) -> Scalar[SomeOtherDim]: ...

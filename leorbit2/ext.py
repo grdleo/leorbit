@@ -10,7 +10,7 @@ from leorbit2.coordinates import OrbitalElements
 from leorbit2.m import D, Quantity, Scalar, cube, square
 from leorbit2.time import Time
 
-import pint
+from leorbit2.utils import convert_quantity_units
 
 class CelestrakDataGP(BaseModel):
     """Orbital elements as returned by Celestrak in JSON format"""
@@ -34,14 +34,14 @@ class CelestrakDataGP(BaseModel):
         inv_meter = (1 / Quantity.meter).cast(D.InvLength)
 
         e = Scalar[D.Dimless](self.eccentricity)
-        i = float(pint.Quantity(self.inclination, "degrees").m_as("radians")) * Quantity.rad
-        Ω = float(pint.Quantity(self.ra_of_asc_node, "degrees").m_as("radians")) * Quantity.rad
-        ω = float(pint.Quantity(self.arg_of_pericenter, "degrees").m_as("radians")) * Quantity.rad
-        n = float(pint.Quantity(self.mean_motion, "turn/day").m_as("radians/second")) * rad_per_second
-        M = float(pint.Quantity(self.mean_anomaly, "degrees").m_as("radians")) * Quantity.rad
-        n_dot = float(pint.Quantity(self.mean_motion_dot, "turn/day^2").m_as("radians/second^2")) * rad_per_second_squared
-        n_ddot = float(pint.Quantity(self.mean_motion_ddot, "turn/day^3").m_as("radians/second^3")) * rad_per_second_cubed
-        bstar = float(pint.Quantity(self.bstar, "1/earthRadii").m_as("1/meter")) * inv_meter
+        i = convert_quantity_units(self.inclination, "degrees", "radians") * Quantity.rad
+        Ω = convert_quantity_units(self.ra_of_asc_node, "degrees", "radians") * Quantity.rad
+        ω = convert_quantity_units(self.arg_of_pericenter, "degrees", "radians") * Quantity.rad
+        n = convert_quantity_units(self.mean_motion, "turn/day", "radians/second") * rad_per_second
+        M = convert_quantity_units(self.mean_anomaly, "degrees", "radians") * Quantity.rad
+        n_dot = convert_quantity_units(self.mean_motion_dot, "turn/day^2", "radians/second^2") * rad_per_second_squared
+        n_ddot = convert_quantity_units(self.mean_motion_ddot, "turn/day^3", "radians/second^3") * rad_per_second_cubed
+        bstar = convert_quantity_units(self.bstar, "1/earthRadii", "1/meter") * inv_meter
 
         return OrbitalElements(
             epoch=Time.fromisoformat(self.epoch),
