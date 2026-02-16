@@ -34,6 +34,21 @@ RADIIE_A4 = square(RADIIE_AA)
 RADIIE_BB = square(6_356_752 * Quantity.meter)
 RADIIE_B4 = square(RADIIE_BB)
 
+#####################################
+
+def angle2dms(angle: Scalar[D.Angle]) -> str:
+    """Representation of the angle in DSM notation (degrees, minutes, seconds)
+
+    Example: `39° 17′ N, 76° 36′ O`"""
+    
+    angle_deg = float(angle.get_raw_array("deg"))
+    angle2convert = abs(angle_deg)
+    deg, deg_dec = divmod(angle2convert, 1)
+    min, min_dec = divmod(deg_dec * 60, 1)
+    sec, _ = divmod(min_dec * 60, 1)
+    
+    return f"{deg}° {min}′ {sec}″"
+
 @overload
 def mean_motion_to_semi_major_axis_earth(mean_motion: Scalar[D.AngularVelocity]) -> Scalar[D.Length]: ...
 
@@ -157,7 +172,7 @@ def eccentric2true_anomaly(e: Tensor_S[D.Dimless], E: Tensor_S[D.Angle]) -> Tens
     -------
     float
         True anomaly in radians"""
-    
+
     return atan2(
         sqrt(1 - square(e)) * sin(E), 
         cos(E) - e

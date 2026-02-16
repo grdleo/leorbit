@@ -4,12 +4,15 @@ from fractions import Fraction
 from functools import cache, cached_property
 import inspect
 from pyclbr import Class
-from typing import Any, Callable, ClassVar, Generic, Literal, NamedTuple, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Callable, ClassVar, Generic, Literal, NamedTuple, Never, Self, TypeAlias, TypeGuard, TypeIs, TypeVar, cast, overload
 from copy import copy
 from unittest import result
 
 import numpy as np
 import numpy.typing as npt
+
+if TYPE_CHECKING:
+    import pint
 
 class DimCoords:
     """Exponent triplet describing a physical dimension.
@@ -560,6 +563,21 @@ class Tensor_S(Tensor[SomeDim], Generic[SomeDim]):
             super().__init__(data.item())
         else:
             raise ValueError("Wrong shape")
+        
+    @classmethod
+    def from_pint_quantity(cls, q: "pint.Quantity") -> Tensor_S[SomeDim]:
+        dim_coords = DimCoords(
+            length=Fraction(cast(Number, q.dimensionality.get("length", 0))),
+            time=Fraction(cast(Number, q.dimensionality.get("time", 0))),
+            mass=Fraction(cast(Number, q.dimensionality.get("mass", 0)))
+        )
+
+        if dim_coords != cls._dim._d:
+            raise ValueError("Quantity has dimension ... which is incompatible with tensor dimension ...")
+        
+        factor = cast(Number, q.to_base_units().magnitude)
+
+        return cls(np.asarray(factor))
 
     def cast(self, dim: type[SomeOtherDim]) -> Tensor_S[SomeOtherDim]:
         if dim._d == self.dim_coords:
@@ -848,10 +866,22 @@ def square(tensor: Tensor[Any]) -> Tensor[Any]:
         np.square(tensor._values)
     )
 
+def cube(tensor: Tensor[Any]) -> Tensor[Any]:
+    return_dim = (tensor.dim_coords ** 3).to_dimension()
+    return tensor._base_tensor_class[return_dim]( # type: ignore
+        np.power(tensor._values, 3)
+    )
+
 def sqrt(tensor: Tensor[Any]) -> Tensor[Any]:
-    return_dim = (tensor.dim_coords ** 0.5).to_dimension()
+    return_dim = (tensor.dim_coords ** Fraction(1, 2)).to_dimension()
     return tensor._base_tensor_class[return_dim]( # type: ignore
         np.sqrt(tensor._values)
+    )
+
+def cbrt(tensor: Tensor[Any]) -> Tensor[Any]:
+    return_dim = (tensor.dim_coords ** Fraction(1, 3)).to_dimension()
+    return tensor._base_tensor_class[return_dim]( # type: ignore
+        np.cbrt(tensor._values)
     )
 
 def cos(tensor: Tensor[D.Angle]) -> Tensor[D.Dimless]:

@@ -2,10 +2,13 @@ from __future__ import annotations
 
 from fractions import Fraction
 from tokenize import Exponent
-from typing import Any, ClassVar, Generic, Literal, Never, TypeAlias, TypeVar, overload
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, Never, TypeAlias, TypeVar, overload
 
 import numpy as np
 import numpy.typing as npt
+
+if TYPE_CHECKING:
+    import pint
 
 Number: TypeAlias = float | int | np.floating[Any]
 TensorData: TypeAlias = npt.NDArray[np.floating[Any]]
@@ -467,6 +470,9 @@ class Tensor_M33(Tensor[SomeDim], Generic[SomeDim]):
 
 class Scalar(Tensor_S[SomeDim], Generic[SomeDim]):
     def __init__(self, value: Number) -> None: ...
+
+    @classmethod
+    def from_pint_quantity(cls, q: "pint.Quantity") -> Scalar[SomeDim]: ...
 
     def cast(self, dim: type[SomeOtherDim]) -> Scalar[SomeOtherDim]: ...
     def copy(self) -> Scalar[SomeDim]: ...
@@ -1135,6 +1141,36 @@ def square(tensor: Tensor[Any]) -> Tensor[Any]: ...
 
 
 @overload
+def cube(tensor: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
+
+@overload
+def cube(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Dimless]: ...
+
+@overload
+def cube(tensor: Tensor_S[D.Dimless]) -> Tensor_S[D.Dimless]: ...
+
+@overload
+def cube(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P3, P1]]: ...
+
+@overload
+def cube(tensor: Scalar[PowerDim[SomeDim, P1, P3]]) -> Scalar[SomeDim]: ...
+
+@overload
+def cube(tensor: ScalarArray[SomeDim]) -> ScalarArray[PowerDim[SomeDim, P3, P1]]: ...
+
+@overload
+def cube(tensor: ScalarArray[PowerDim[SomeDim, P1, P3]]) -> ScalarArray[SomeDim]: ...
+
+@overload
+def cube(tensor: Tensor_S[SomeDim]) -> Tensor_S[PowerDim[SomeDim, P3, P1]]: ...
+
+@overload
+def cube(tensor: Tensor_S[PowerDim[SomeDim, P1, P3]]) -> Tensor_S[SomeDim]: ...
+
+def cube(tensor: Tensor[Any]) -> Tensor[Any]: ...
+
+
+@overload
 def sqrt(tensor: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
 
 @overload
@@ -1162,6 +1198,36 @@ def sqrt(tensor: Tensor_S[SomeDim]) -> Tensor_S[PowerDim[SomeDim, P1, P2]]: ...
 def sqrt(tensor: Tensor_S[PowerDim[SomeDim, P2, P1]]) -> Tensor_S[SomeDim]: ...
 
 def sqrt(tensor: Tensor[Any]) -> Tensor[Any]: ...
+
+
+@overload
+def cbrt(tensor: Scalar[D.Dimless]) -> Scalar[D.Dimless]: ...
+
+@overload
+def cbrt(tensor: ScalarArray[D.Dimless]) -> ScalarArray[D.Dimless]: ...
+
+@overload
+def cbrt(tensor: Tensor_S[D.Dimless]) -> Tensor_S[D.Dimless]: ...
+
+@overload
+def cbrt(tensor: Scalar[SomeDim]) -> Scalar[PowerDim[SomeDim, P1, P3]]: ...
+
+@overload
+def cbrt(tensor: Scalar[PowerDim[SomeDim, P3, P1]]) -> Scalar[SomeDim]: ...
+
+@overload
+def cbrt(tensor: ScalarArray[SomeDim]) -> ScalarArray[PowerDim[SomeDim, P1, P3]]: ...
+
+@overload
+def cbrt(tensor: ScalarArray[PowerDim[SomeDim, P3, P1]]) -> ScalarArray[SomeDim]: ...
+
+@overload
+def cbrt(tensor: Tensor_S[SomeDim]) -> Tensor_S[PowerDim[SomeDim, P1, P3]]: ...
+
+@overload
+def cbrt(tensor: Tensor_S[PowerDim[SomeDim, P3, P1]]) -> Tensor_S[SomeDim]: ...
+
+def cbrt(tensor: Tensor[Any]) -> Tensor[Any]: ...
 
 
 @overload

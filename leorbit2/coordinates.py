@@ -8,10 +8,10 @@ from typing import ParamSpec, Callable, TypeVar, cast
 
 from leorbit2.algorithms import OrbitalElementsComputeTuple
 from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
-from leorbit2.m import D, Dim, Quantity, Scalar, Vector3
+from leorbit2.m import D, Dim, Quantity, Scalar, Vector3, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan
 from leorbit2.time import Time, TimeInterval
 from leorbit2.transforms import Transform, TransformVector3Affine
-from leorbit2.utils import geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
+from leorbit2.utils import angle2dms, elements2orthogonal_gcrf, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]
@@ -303,9 +303,9 @@ class OrbitalElements(CoordinatesRepresentation):
         arg_of_pericenter: Scalar[D.Angle],
         mean_motion: Scalar[D.AngularVelocity],
         mean_anomaly: Scalar[D.Angle],
-        mean_motion_dot: Scalar[D.AngularAcc] = Scalar[D.AngularAcc].new(0),
-        mean_motion_ddot: Scalar[D.AngularJerk] = Scalar[D.AngularJerk].new(0),
-        bstar: Scalar[D.InvLength] = Scalar[D.InvLength].new(0),
+        mean_motion_dot: Scalar[D.AngularAcc] = Scalar[D.AngularAcc](0),
+        mean_motion_ddot: Scalar[D.AngularJerk] = Scalar[D.AngularJerk](0),
+        bstar: Scalar[D.InvLength] = Scalar[D.InvLength](0),
     ):
         deg_0 = 0 * Quantity.deg
         deg_180 = 180 * Quantity.deg
@@ -395,22 +395,20 @@ class OrbitalElements(CoordinatesRepresentation):
         """Returns current orbital elements, at given epoch, 
         as a `Coordinates` object."""
         # position of satellite in orbit plane (with z = 0)
-        pos_vel_gcrf = elements2orthogonal_gcrf(
-            self.true_anomaly.m_as("rad"),
-            self.eccentricity.m_as("1"),
-            self.semi_major_axis.m_as("m"),
-            self.ra_of_asc_node.m_as("rad"),
-            self.arg_of_pericenter.m_as("rad"),
-            self.inclination.m_as("rad")
+        pos_gcrf, vel_gcrf = elements2orthogonal_gcrf(
+            self.true_anomaly,
+            self.eccentricity,
+            self.semi_major_axis,
+            self.ra_of_asc_node,
+            self.arg_of_pericenter,
+            self.inclination
         )
 
-        assert not pos_vel_gcrf.array_values
-
         return Coordinates(
+            self.epoch,
             AbsoluteFrame.GCRF, 
-            Vec3(pos_vel_gcrf.x, pos_vel_gcrf.y, pos_vel_gcrf.z, UREG.meter),
-            Vec3(pos_vel_gcrf.vx, pos_vel_gcrf.vy, pos_vel_gcrf.vz, UREG.meter / UREG.second),
-            self.epoch
+            pos_gcrf,
+            vel_gcrf
         )
 
     @staticmethod
