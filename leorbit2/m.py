@@ -938,6 +938,17 @@ def normalize_angle_symmetric(angle: Tensor[D.Angle]) -> Tensor[D.Angle]:
 
     return angle._base_tensor_class[D.Angle](normalized) # type: ignore
 
+def interpolate(t1: Tensor[SomeDim], t2: Tensor[SomeDim], alpha: Number) -> Tensor[SomeDim]:
+    """Return the linear interpolation between ``t1`` and ``t2`` with factor ``0 <= alpha <= 1``."""
+    if not t1.ensure_compatible_dimensions(t2) or t1._base_tensor_class is not t2._base_tensor_class:
+        raise ValueError("Incompatible dimensions or tensor types")
+    
+    return t1._base_tensor_class[ # type: ignore
+        t1.dim_coords.to_dimension()
+    ](
+        (1 - alpha) * t1._values + alpha * t2._values
+    )
+
 ########################
 
 
