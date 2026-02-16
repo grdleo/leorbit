@@ -8,7 +8,7 @@ from typing import ParamSpec, Callable, TypeVar, cast
 
 from leorbit2.algorithms import OrbitalElementsComputeTuple
 from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
-from leorbit2.m import D, Dim, Quantity, Scalar, Vector3, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan
+from leorbit2.m import D, Dim, Quantity, Scalar, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan
 from leorbit2.time import Time, TimeInterval
 from leorbit2.transforms import Transform, TransformVector3Affine
 from leorbit2.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
@@ -487,33 +487,39 @@ class OrbitalElements(CoordinatesRepresentation):
         return get_celestrak_gpdata(catnr, log).to_orbital_elements()
 
 class Interpolation(Enum):
-    SNAP = "snap"
+    CONSTANT = "constant"
     """Snaps to closest"""
 
     LINEAR = "linear"
     """Linear interpolation between two closest"""
 
+PosVecArray = Vector3Array[D.Length]
+VelVecArray = Vector3Array[D.Velocity]
+
 class PosVelArray(NamedTuple):
-    pos: "PosVecArray"
-    vel: "VelVecArray"
+    pos: PosVecArray
+    vel: VelVecArray | None
 
 class Trajectory:
-    def __init__(self, interval: TimeInterval, frame: Frame, pos: "PosVecArray", vel: "VelVecArray" | None = None):
+    def __init__(self, interval: TimeInterval, frame: Frame, pos: PosVecArray, vel: VelVecArray | None = None):
+        if not (interval.steps == pos.size and (vel is None or interval.steps == vel.size)):
+            raise ValueError("Size of position and velocity arrays must match the number of steps in the given interval.")
+        
         self.interval = interval
-        self.positions: dict[Frame, PosVel] = {frame: PosVelArray(pos, vel)}
+        self.positions: dict[Frame, PosVelArray] = {frame: PosVelArray(pos, vel)}
         self.privileged_frame = frame
         self.vel_available = vel is not None
         self.name = None
         
         self._already_computed_repr: dict[type[CoordinatesRepresentation], CoordinatesRepresentation] = {}
 
-    def coordinates_at(self, epoch: Time, interpolation: Interpolation = Interpolation.SNAP) -> Coordinates:
+    def coordinates_at(self, epoch: Time, interpolation: Interpolation = Interpolation.CONSTANT) -> Coordinates:
         raise NotImplementedError()
 
-    def get_pos(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.SNAP) -> PosVec: 
+    def get_pos(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> PosVec: 
         raise NotImplementedError()
     
-    def get_vel(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.SNAP) -> VelVec: 
+    def get_vel(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> VelVec: 
         raise NotImplementedError()
     
     def gps(self) -> dict[Time, GPS]:
