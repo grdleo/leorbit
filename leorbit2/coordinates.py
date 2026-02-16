@@ -11,7 +11,7 @@ from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_fact
 from leorbit2.m import D, Dim, Quantity, Scalar, Vector3, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan
 from leorbit2.time import Time, TimeInterval
 from leorbit2.transforms import Transform, TransformVector3Affine
-from leorbit2.utils import angle2dms, elements2orthogonal_gcrf, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
+from leorbit2.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]
@@ -355,16 +355,11 @@ class OrbitalElements(CoordinatesRepresentation):
         e = self.eccentricity
         M = self.mean_anomaly
         self.eccentric_anomaly = E = mean2eccentric_anomaly(e, M)
-
-        tan_half_nu = sqrt((1 + e) / (1 - e)) * tan(.5 * E)
-        self.true_anomaly = 2 * atan(tan_half_nu)
-
+        self.true_anomaly = eccentric2true_anomaly(e, E)
         self.semi_major_axis = mean_motion_to_semi_major_axis_earth(self.mean_motion)
-
+        self.semi_minor_axis = self.semi_major_axis * sqrt(1 - square(e))
         dt = (self.mean_anomaly / self.mean_motion).cast(D.Time)
         self.time_at_periaster = self.epoch - dt
-
-        self.semi_minor_axis = self.semi_major_axis * sqrt(1 - square(e))
 
     @cached_property
     def compute_tuple(self) -> OrbitalElementsComputeTuple:
@@ -481,36 +476,6 @@ class OrbitalElements(CoordinatesRepresentation):
         )
 
     @staticmethod
-    def from_celestrak_json(celestrak_json: str | dict[str, str | float | int]) -> "OrbitalElements":
-        """Creates an instance of `OrbitalElements` object from a Celestrak query in JSON format"""
-        query = celestrak_json
-        if isinstance(query, str):
-            query = json.loads(celestrak_json)
-            if isinstance(query, list):
-                query = query[0]
-        
-        if not isinstance(query, dict):
-            raise ValueError(f"Given argument {celestrak_json} is not an acceptable JSON Celestrak query")
-
-        try:
-            return OrbitalElements(
-                epoch=Time.fromisoformat(query["EPOCH"]),
-                eccentricity=query["ECCENTRICITY"] * UREG("dimensionless"),
-                inclination=query["INCLINATION"] * UREG("°"),
-                ra_of_asc_node=query["RA_OF_ASC_NODE"] * UREG("°"),
-                arg_of_pericenter=query["ARG_OF_PERICENTER"] * UREG("°"),
-                mean_motion=query["MEAN_MOTION"] * UREG("turn/day"),
-                mean_anomaly=query["MEAN_ANOMALY"] * UREG("°"),
-                mean_motion_dot=query["MEAN_MOTION_DOT"] * UREG("turn/day^2") * 2, # NOTE: factor is cancelled when loading directly from Celestrack
-                mean_motion_ddot=query["MEAN_MOTION_DDOT"] * UREG("turn/day^3") * 6, # NOTE: factor is cancelled when loading directly from Celestrack
-                bstar=query["BSTAR"] * UREG("1/earthRadii"),
-                name=query["OBJECT_NAME"],
-                norad_cat_id=int(query["NORAD_CAT_ID"])
-            )
-        except KeyError as ex:
-            raise ValueError(f"Given argument {celestrak_json} is not an acceptable JSON Celestrak query")
-
-    @staticmethod
     def from_celestrak_norad_cat_id(catnr: int, log: bool = False) -> "OrbitalElements":
         """
         Fetches lastest GP data on `celestrak.org` corresponding to given NORAD catalog ID, 
@@ -518,13 +483,8 @@ class OrbitalElements(CoordinatesRepresentation):
 
         If last fetch on Celestrak is recent enough, uses cached GP data.
         """
-        gp_dict = get_celestrak_gpdata_json(catnr, log)
-        return OrbitalElements.from_celestrak_json(gp_dict)
-    
-
-
-
-
+        from leorbit2.ext import get_celestrak_gpdata
+        return get_celestrak_gpdata(catnr, log).to_orbital_elements()
 
 class Interpolation(Enum):
     SNAP = "snap"

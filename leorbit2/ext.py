@@ -12,7 +12,7 @@ from leorbit2.time import Time
 
 import pint
 
-class CelestrakOrbitalElements(BaseModel):
+class CelestrakDataGP(BaseModel):
     """Orbital elements as returned by Celestrak in JSON format"""
     epoch: str = Field(alias="EPOCH")
     eccentricity: float = Field(alias="ECCENTRICITY")
@@ -59,7 +59,7 @@ class CelestrakOrbitalElements(BaseModel):
 TEMPFILE_CELESTRAK_PREFIX = "python_leorbit_celestrak_gpdata_"
 MINIMAL_DURATION_UPDATE_HOURS = 1
 
-def get_celestrak_gpdata(catnr: int, log: bool = False) -> CelestrakOrbitalElements:
+def get_celestrak_gpdata(catnr: int, log: bool = False) -> CelestrakDataGP:
     """
     Retrieves GP data for object with given CATNR by fetching data on `celestrak.com.`
     If this GP was fetched recently, uses locally stored GP data instead of making a request.
@@ -72,8 +72,8 @@ def get_celestrak_gpdata(catnr: int, log: bool = False) -> CelestrakOrbitalEleme
 
     Returns
     -------
-    CelestrakOrbitalElements
-        GP data as a CelestrakOrbitalElements instance
+    CelestrakDataGP
+        GP data as a CelestrakDataGP instance
     """
     if not (0 < catnr <= 9_999_999_999):
         raise ValueError("NORAD Catalog ID must be a 1 to 9 digit number!")
@@ -85,7 +85,7 @@ def get_celestrak_gpdata(catnr: int, log: bool = False) -> CelestrakOrbitalEleme
         last_modified = Time(unixepoch_last_modified)
         if Time.now().delta(last_modified) < (MINIMAL_DURATION_UPDATE_HOURS * Quantity.hour):
             try:
-                return CelestrakOrbitalElements(
+                return CelestrakDataGP(
                     **json.loads(store_path.read_text())
                 )
             except: # GP data in storing file may be corrupted
@@ -110,7 +110,7 @@ def get_celestrak_gpdata(catnr: int, log: bool = False) -> CelestrakOrbitalEleme
         raise ValueError(f"ID {catnr} does not correspond to existing GP!")\
     
     try:
-        orbital_elements = CelestrakOrbitalElements(
+        orbital_elements = CelestrakDataGP(
             **res.json()[0]
         )
     except Exception as e:
