@@ -58,7 +58,7 @@ class RawSGP4Output(NamedTuple):
     vy: npt.NDArray[np.float64] # [m/s]
     vz: npt.NDArray[np.float64] # [m/s]
 
-def _sgp4(
+def sgp4(
     elements_sat0: OrbitalElementsComputeTuple,
     tsince: npt.NDArray[np.float64] # [min]
 ) -> RawSGP4Output:
