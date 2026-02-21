@@ -33,6 +33,14 @@ class Propagator(ABC):
 class NoPropagator(Propagator):
     """A propagator that does not propagate, but always returns the same coordinates as given by the orbital elements"""
 
+    @overload
+    def propagate(self, epoch: Time) -> Coordinates:
+        ...
+
+    @overload
+    def propagate(self, epoch: TimeInterval) -> Trajectory:
+        ...
+    
     def propagate(self, epoch: TimeInterval | Time) -> Trajectory | Coordinates:
         els = self.elements
 
@@ -72,6 +80,14 @@ class SGP4(Propagator):
     """A propagator that uses the SGP4 algorithm to propagate the orbital elements. 
     Note: SGP4 only works for Earth satellites, so the absolute frame of the returned coordinates is always GCRF"""
 
+    @overload
+    def propagate(self, epoch: Time) -> Coordinates:
+        ...
+
+    @overload
+    def propagate(self, epoch: TimeInterval) -> Trajectory:
+        ...
+    
     def propagate(self, epoch: TimeInterval | Time) -> Trajectory | Coordinates:
         tsince: npt.NDArray[np.float64]
 

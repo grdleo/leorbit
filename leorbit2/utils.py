@@ -59,6 +59,16 @@ def mean_motion_to_semi_major_axis_earth(mean_motion: Tensor_S[D.AngularVelocity
     sma = np.cbrt(MU_EARTH._values / np.square(mean_motion._values))
     return Tensor_S[D.Length](sma)
 
+@overload
+def semi_major_axis_earth_to_mean_motion(sma: Scalar[D.Length]) -> Scalar[D.AngularVelocity]: ...
+
+@overload
+def semi_major_axis_earth_to_mean_motion(sma: ScalarArray[D.Length]) -> ScalarArray[D.AngularVelocity]: ...
+
+def semi_major_axis_earth_to_mean_motion(sma: Tensor_S[D.Length]) -> Tensor_S[D.AngularVelocity]:
+    mm = np.sqrt(MU_EARTH._values / sma._values ** 3)
+    return Tensor_S[D.AngularVelocity](mm)
+
 def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
     """Returns the mean radius of Earth at given latitude.
     Earth is considered as a spheroid. 

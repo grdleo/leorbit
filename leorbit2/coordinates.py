@@ -311,9 +311,6 @@ class OrbitalElements(CoordinatesRepresentation):
         deg_180 = 180 * Quantity.deg
         deg_360 = 360 * Quantity.deg
 
-        self.name: str = "No name"
-        self.norad_cat_id: int | None = None
-
         self.epoch = epoch
 
         self.eccentricity = e = eccentricity
