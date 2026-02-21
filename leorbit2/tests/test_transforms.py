@@ -94,9 +94,15 @@ def test_transform_vector3_affine_do_and_undo():
     np.testing.assert_allclose(restored._values.flatten(), [1.0, 2.0, 3.0])
 
 
-def test_transform_rotation_z_constructor_current_behavior():
-    with pytest.raises(ValueError):
-        _ = TransformVector3RotationZ[D.Dimless](Scalar[D.Angle](np.pi / 2))
+def test_transform_rotation_z_quarter_turn():
+    t = TransformVector3RotationZ[D.Dimless](Scalar[D.Angle](np.pi / 2))
+    x = Vector3[D.Dimless].from_components(1.0, 0.0, 0.0)
+
+    y = t.do(x)
+    x_back = t.undo(y)
+
+    np.testing.assert_allclose(y._values.flatten(), [0.0, 1.0, 0.0], atol=1e-12)
+    np.testing.assert_allclose(x_back._values.flatten(), [1.0, 0.0, 0.0], atol=1e-12)
 
 
 def test_transform_reverse_swaps_do_and_undo():
