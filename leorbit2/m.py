@@ -581,7 +581,10 @@ class Tensor_S(Tensor[SomeDim], Generic[SomeDim]):
     
     @property
     def size(self) -> int:
-        s, = np.array(self._values).shape
+        shape = np.asarray(self._values).shape
+        if len(shape) == 0:
+            return 1
+        s, = shape
         return int(s)
 
     @property

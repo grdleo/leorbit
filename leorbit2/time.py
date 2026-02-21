@@ -98,7 +98,7 @@ class Time:
     def __add__(self: "Time", other: Scalar[D.Time]) -> "Time":
         try:
             assert other.check(D.Time)
-            delta_seconds = other.magnitude("s")
+            delta_seconds = other.magnitude("second")
             return self.__class__(self._unixepoch + delta_seconds)
         except Exception as ex:
             raise ValueError(
@@ -108,7 +108,7 @@ class Time:
     def __iadd__(self: "Time", other: Scalar[D.Time]) -> None:
         try:
             assert other.check(D.Time)
-            delta_seconds = other.magnitude("s")
+            delta_seconds = other.magnitude("second")
             self._unixepoch += float(delta_seconds)
         except Exception as ex:
             raise ValueError(
@@ -118,7 +118,7 @@ class Time:
     def __sub__(self: "Time", other: Scalar[D.Time]) -> "Time":
         try:
             assert other.check(D.Time)
-            delta_seconds = other.magnitude("s")
+            delta_seconds = other.magnitude("second")
             return self.__class__(self._unixepoch - delta_seconds)
         except Exception as ex:
             raise ValueError(
@@ -128,7 +128,7 @@ class Time:
     def __isub__(self: "Time", other: Scalar[D.Time]) -> None:
         try:
             assert other.check(D.Time)
-            delta_seconds = other.magnitude("s")
+            delta_seconds = other.magnitude("second")
             self._unixepoch -= float(delta_seconds)
         except Exception as ex:
             raise ValueError(
@@ -185,7 +185,7 @@ class Time:
         full_y = iso[0:4]
         newyear = Time.fromisoformat(f"{full_y}-01-01T00:00:00")
         from_newyear = self.delta(newyear)
-        days = from_newyear.magnitude("s") / 86_400
+        days = from_newyear.magnitude("second") / 86_400
         return f"{full_y[2:4]}{days:012.8f}"
 
     @property
@@ -195,7 +195,7 @@ class Time:
         (angle) of Latitude 0 at this `Time`.
         """
         d = self.j2000.magnitude("day")
-        angle_rad = ((np.float128(18.697374558) + np.float128(24.06570982441908) * d) * TWELF_PI) % TWOPI
+        angle_rad = ((np.longdouble(18.697374558) + np.longdouble(24.06570982441908) * d) * TWELF_PI) % TWOPI
         return angle_rad * Quantity.rad
 
 class TimeInterval:
@@ -251,7 +251,7 @@ class TimeInterval:
     def _time2idx(self, time: Time) -> int:
         if not (self.start <= time <= self.stop):
             raise ValueError()
-        i = (time.unixepoch - self.start.unixepoch) / self.dt.magnitude("s")
+        i = (time.unixepoch - self.start.unixepoch) / self.dt.magnitude("second")
         return round(i)
     
     def snap_to_discretization(self, time: Time) -> Time:
