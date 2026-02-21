@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from functools import cache, lru_cache
+from statistics import mean
 from typing import Literal, NamedTuple, Self
 
 from enum import Enum
@@ -11,7 +12,7 @@ from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_fact
 from leorbit2.m import D, Dim, Quantity, Scalar, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan
 from leorbit2.time import Time, TimeInterval
 from leorbit2.transforms import Transform, TransformVector3Affine
-from leorbit2.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
+from leorbit2.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]
@@ -404,7 +405,7 @@ class OrbitalElements(CoordinatesRepresentation):
         )
 
     @staticmethod
-    def from_state_vectors(coordinate: Coordinates) -> "OrbitalElements":
+    def from_state_vectors(epoch: Time, pos: PosVec, vel: VelVec) -> "OrbitalElements":
         """
         From the state vectors of a given satellite (position and velocity, both condensed in a `Coordinates` object),
         returns a `OrbitalElements` object corresponding to its orbit.
@@ -414,62 +415,19 @@ class OrbitalElements(CoordinatesRepresentation):
             and any other perturbations.
             Propagating those elements for more than a few hours will lead in huge errors.
         """
-        raise NotImplementedError("should be updated")
-
-        if coordinate.epoch is None:
-            raise ValueError(f"Epoch of given coordinate {coordinate} needs to be specified.")
-        if not coordinate.vel_specified:
-            raise ValueError(f"Velocity of given coordinate {coordinate} needs to be specified.")
-        
-        pos = coordinate.to_gcrf()
-        vel = coordinate.to_gcrf_vel()
-        north = Vec3.zaxis()
-
-        kinetic = pos.cross(vel)
-        kinetic_sq = kinetic.sqr()
-        pos_dir = pos.normalize()
-        ecc_vec: Vec3 = vel.cross(kinetic) / MU_EARTH - pos_dir
-        descending_node = kinetic.cross(north).normalize() # descending node line
-        asc = -descending_node
-
-        # create a 2D frame on the ellipsis, x along ascending node line
-        xaxis_asc = asc.normalize()
-        yaxis_asc = kinetic.cross(asc).normalize()
-
-        xe_asc = xaxis_asc.dot(ecc_vec).m
-        ye_asc = yaxis_asc.dot(ecc_vec).m
-        argp = atan2(ye_asc, xe_asc) * UREG("rad")
-
-        xp_asc = xaxis_asc.dot(pos).m_as("m")
-        yp_asc = yaxis_asc.dot(pos).m_as("m")
-        nu = (atan2(yp_asc, xp_asc) * UREG("rad") - argp) % tau
-
-        e = abs(ecc_vec) # [1]
-        ee = e * e
-        eee = ee * e
-        eeee = eee * e
-        i = north.angle(kinetic) # [rad]
-        raan = atan2(asc.y, asc.x) % tau # [rad]
-        raan = raan * UREG("rad") # convert to Quantity
-        a = kinetic_sq / (MU_EARTH * (1 - ee)) # [m]
-        aaa = a**3
-        n = ((MU_EARTH / aaa)**0.5).to("rad/s")  # [rad/s]
-        M = (
-            nu
-            - 2 * e * sin(nu)
-            + (ee * .75 + eeee * .125) * sin(2 * nu)
-            - eee * sin(3 * nu) / 3
-            + eeee * sin(4 * nu) * .15625
-        )
+        els = gcrf_state_vectors2elements(pos, vel)
 
         return OrbitalElements(
-            coordinate.epoch,
-            e,
-            i,
-            raan,
-            argp,
-            n,
-            M
+            epoch=epoch,
+            eccentricity=els.eccentricity,
+            inclination=els.inclination,
+            ra_of_asc_node=els.ra_of_asc_node,
+            arg_of_pericenter=els.arg_of_pericenter,
+            mean_motion=els.mean_motion,
+            mean_anomaly=els.mean_anomaly,
+            mean_motion_dot=Scalar[D.AngularAcc](0),
+            mean_motion_ddot=Scalar[D.AngularJerk](0),
+            bstar=Scalar[D.InvLength](0)
         )
 
     @staticmethod

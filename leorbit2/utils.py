@@ -44,7 +44,7 @@ def angle2dms(angle: Scalar[D.Angle]) -> str:
     Example: `39° 17′ N, 76° 36′ O`"""
     
     angle_deg = float(angle.get_raw_array("deg"))
-    angle2convert = abs(angle_deg)
+    angle2convert = np.abs(angle_deg)
     deg, deg_dec = divmod(angle2convert, 1)
     min, min_dec = divmod(deg_dec * 60, 1)
     sec, _ = divmod(min_dec * 60, 1)
