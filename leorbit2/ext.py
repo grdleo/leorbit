@@ -3,6 +3,7 @@ from genericpath import getmtime
 import json
 from pathlib import Path
 from tempfile import gettempdir
+import numpy as np
 from pydantic import BaseModel, Field
 from requests import HTTPError, get
 
@@ -28,20 +29,25 @@ class CelestrakDataGP(BaseModel):
     norad_cat_id: int | None = Field(alias="NORAD_CAT_ID", default=None)
 
     def to_orbital_elements(self) -> "OrbitalElements":
-        rad_per_second = (Quantity.rad / Quantity.second).cast(D.AngularVelocity)
-        rad_per_second_squared = (Quantity.rad / square(Quantity.second)).cast(D.AngularAcc)
-        rad_per_second_cubed = (Quantity.rad / cube(Quantity.second)).cast(D.AngularJerk)
-        inv_meter = (1 / Quantity.meter).cast(D.InvLength)
+        deg_to_rad = np.pi / 180
+        turn_per_day_to_rad_per_second = 2 * np.pi / (24 * 3600)
+        turn_per_day_sqr_to_rad_per_second_sqr = turn_per_day_to_rad_per_second / (24 * 3600)
+        turn_per_day_cub_to_rad_per_second_cub = turn_per_day_sqr_to_rad_per_second_sqr / (24 * 3600)
+        inv_radiiearth_to_inv_meter = float(1 / Quantity.radii_earth.magnitude("meter"))
 
         e = Scalar[D.Dimless](self.eccentricity)
-        i = convert_quantity_units(self.inclination, "degrees", "radians") * Quantity.rad
-        Ω = convert_quantity_units(self.ra_of_asc_node, "degrees", "radians") * Quantity.rad
-        ω = convert_quantity_units(self.arg_of_pericenter, "degrees", "radians") * Quantity.rad
-        n = convert_quantity_units(self.mean_motion, "turn/day", "radians/second") * rad_per_second
-        M = convert_quantity_units(self.mean_anomaly, "degrees", "radians") * Quantity.rad
-        n_dot = convert_quantity_units(self.mean_motion_dot, "turn/day^2", "radians/second^2") * rad_per_second_squared
-        n_ddot = convert_quantity_units(self.mean_motion_ddot, "turn/day^3", "radians/second^3") * rad_per_second_cubed
-        bstar = convert_quantity_units(self.bstar, "1/earthRadii", "1/meter") * inv_meter
+        i = Scalar[D.Angle](self.inclination * deg_to_rad)
+        Ω = Scalar[D.Angle](self.ra_of_asc_node * deg_to_rad)
+        ω = Scalar[D.Angle](self.arg_of_pericenter * deg_to_rad)
+        n = Scalar[D.AngularVelocity](self.mean_motion * turn_per_day_to_rad_per_second)
+        M = Scalar[D.Angle](self.mean_anomaly * deg_to_rad)
+        n_dot = Scalar[D.AngularAcc](
+            self.mean_motion_dot * turn_per_day_sqr_to_rad_per_second_sqr
+        )
+        n_ddot = Scalar[D.AngularJerk](
+            self.mean_motion_ddot * turn_per_day_cub_to_rad_per_second_cub
+        )
+        bstar = Scalar[D.InvLength](self.bstar * inv_radiiearth_to_inv_meter)
 
         return OrbitalElements(
             epoch=Time.fromisoformat(self.epoch),

@@ -3,7 +3,10 @@
 
 import numpy as np
 
-from typing import NamedTuple, TypeAlias, TypeVar, cast, overload
+from typing import NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import pint
 
 from leorbit2.m import N2, P1, P3, DimCoords, Number, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, abs, cube, ensure_tensor, D, Dim, Tensor_V3, Matrix33, normalize_angle, sin, sqrt, square
 
@@ -346,7 +349,7 @@ def gcrf_state_vectors2elements(pos: Vector3[D.Length], vel: Vector3[D.Velocity]
         M
     )
 
-def convert_quantity_units(quantity: Number, units_from: str, units_to: str) -> Number:
+def convert_quantity_units(quantity: Number, units_from: Union[str, "pint.Unit"], units_to: Union[str, "pint.Unit"]) -> Number:
     """Converts a number `quantity` that is expressed in `units_from`, to `units_to` (uses Pint)"""
     import pint
 
