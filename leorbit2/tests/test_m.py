@@ -6,16 +6,21 @@ from leorbit2.m import (
     Matrix33,
     Quantity,
     Scalar,
+    ScalarArray,
     Tensor_V3,
     Vector3,
     Vector3Array,
+    abs,
     acos,
     asin,
     atan,
     atan2,
+    cbrt,
     cos,
+    cube,
     ensure_same_dimensions,
     ensure_tensor,
+    interpolate,
     normalize_angle,
     normalize_angle_symmetric,
     sin,
@@ -99,7 +104,7 @@ def test_vector3_from_components_and_basic_vector_ops():
 
 def test_vector3_from_components_rejects_mixed_dims():
     with pytest.raises(RuntimeError):
-        Vector3[D.Length].from_components(Quantity.meter, Quantity.second, Quantity.meter)
+        Tensor_V3[D.Length].from_components(Quantity.meter, Quantity.second, Quantity.meter)  # type: ignore[arg-type]
 
 
 def test_vector3array_from_components_and_matrix_products():
@@ -184,3 +189,73 @@ def test_tensor_v3_direct_cross_operation():
     y = Tensor_V3[D.Dimless].from_components(0.0, 1.0, 0.0)
     cross = x.cross(y)
     np.testing.assert_allclose(cross._values.flatten(), [0.0, 0.0, 1.0])
+
+
+def test_abs_helper_on_scalar_vector_and_matrix():
+    s = Scalar[D.Length](-12)
+    assert abs(s).magnitude("meter") == pytest.approx(12)
+
+    v = Tensor_V3[D.Length].from_components(-1.0, 2.0, -3.0)
+    av = abs(v)
+    np.testing.assert_allclose(av._values.flatten(), [1.0, 2.0, 3.0])
+    assert av.dim_coords == D.Length._d
+
+    m = Matrix33[D.Time].from_elements(
+        -1, 2, -3,
+        4, -5, 6,
+        -7, 8, -9,
+    )
+    am = abs(m)
+    np.testing.assert_allclose(
+        am._values,
+        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=float),
+    )
+    assert am.dim_coords == D.Time._d
+
+
+def test_cube_and_cbrt_roundtrip_and_dimensions():
+    length = Scalar[D.Length](4)
+    volume = cube(length)
+    assert volume.dim_coords == (D.Length._d ** 3)
+    assert volume.magnitude() == pytest.approx(64)
+
+    restored = cbrt(volume)
+    assert restored.dim_coords == D.Length._d
+    assert restored.magnitude("meter") == pytest.approx(4)
+
+
+def test_interpolate_scalar_vector_and_matrix():
+    a = Scalar[D.Length](10)
+    b = Scalar[D.Length](14)
+    mid = interpolate(a, b, 0.25)
+    assert mid.magnitude("meter") == pytest.approx(11)
+
+    v1 = Vector3[D.Dimless].from_components(0.0, 0.0, 0.0)
+    v2 = Vector3[D.Dimless].from_components(2.0, 4.0, 6.0)
+    vm = interpolate(v1, v2, 0.5)
+    np.testing.assert_allclose(vm._values.flatten(), [1.0, 2.0, 3.0])
+
+    m1 = Matrix33[D.Dimless].from_elements(
+        0, 0, 0,
+        0, 0, 0,
+        0, 0, 0,
+    )
+    m2 = Matrix33[D.Dimless].from_elements(
+        2, 2, 2,
+        2, 2, 2,
+        2, 2, 2,
+    )
+    mm = interpolate(m1, m2, 0.5)
+    np.testing.assert_allclose(mm._values, np.ones((3, 3)))
+
+
+def test_dot_for_single_vector_currently_raises_on_shape():
+    v = Tensor_V3[D.Dimless].from_components(3.0, 4.0, 12.0)
+    with pytest.raises(ValueError):
+        _ = v.dot(v)
+
+
+def test_normalize_angle_wrap_for_negative_scalar():
+    a = Scalar[D.Angle](-np.pi / 2)
+    wrapped = normalize_angle(a)
+    assert wrapped.magnitude("rad") == pytest.approx(3 * np.pi / 2)

@@ -531,8 +531,21 @@ def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[SomeDim] | Tensor[D.Dimles
 
     if isinstance(o, Tensor):
         return o
-    elif isinstance(o, Number | np.ndarray):
-        return Tensor[D.Dimless](o)
+    elif isinstance(o, Number):
+        return Scalar[D.Dimless](np.asarray(o))
+    elif isinstance(o, np.ndarray):
+        arr = np.asarray(o)
+
+        if arr.ndim == 0:
+            return Scalar[D.Dimless](arr.item())
+        if arr.ndim == 1:
+            return ScalarArray[D.Dimless](arr)
+        if arr.ndim == 2 and arr.shape[0] == 3:
+            return Vector3Array[D.Dimless](arr)
+        if arr.ndim == 2 and arr.shape == (3, 3):
+            return Matrix33[D.Dimless](arr)
+
+        raise RuntimeError("Unsupported array shape for tensor conversion")
 
     raise RuntimeError("...")
 

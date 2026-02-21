@@ -1,16 +1,11 @@
 """Special functions with special purposes. Should not be useful for the average user.
 """
 
-import math
-from multiprocessing import Value
-from statistics import mean
 import numpy as np
-from numpy.typing import NDArray
 
-from typing import TYPE_CHECKING, Any, Generic, NamedTuple, Type, TypeAlias, TypeVar, cast, overload
+from typing import NamedTuple, TypeAlias, TypeVar, cast, overload
 
 from leorbit2.m import N2, P1, P3, DimCoords, Number, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, abs, cube, ensure_tensor, D, Dim, Tensor_V3, Matrix33, normalize_angle, sin, sqrt, square
-from leorbit2.time import Time
 
 GravParam: TypeAlias = ProductDim[
     PowerDim[D.Length, P3, P1],
