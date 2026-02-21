@@ -38,6 +38,24 @@ class Coordinates:
         
         self._already_computed_repr: dict[type[CoordinatesRepresentation], CoordinatesRepresentation] = {}
 
+    def __repr__(self) -> str:
+        km = "kilo_meter"
+        kmph = "kilo_meter_per_hour"
+        pos_repr = f"(x={self.pos.x.magnitude(km):.2f}, y={self.pos.y.magnitude(km):.2f}, z={self.pos.z.magnitude(km):.2f})"
+        vel_repr = None if self.vel is None else f"(x={self.vel.x.magnitude(kmph):.2f}, y={self.vel.y.magnitude(kmph):.2f}, z={self.vel.z.magnitude(kmph):.2f})"
+        return (
+            f"<Coordinates: epoch={self.epoch}, "
+            f"frame={self.privileged_frame}, "
+            f"pos={pos_repr}, "
+            f"vel={vel_repr}>" if vel_repr is not None else ""
+            ">"
+        )
+    
+    def __hash__(self) -> int:
+        pos, vel = self.positions[self.privileged_frame]
+        hash_str = f"{hash(self.epoch)}${hash(pos)}${hash(vel)}${self.name}"
+        return hash(hash_str)
+
     def _compute_new_frame(self, frame: Frame):
         if frame in self.positions.keys():
             return

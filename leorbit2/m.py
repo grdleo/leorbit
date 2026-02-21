@@ -303,6 +303,9 @@ class Tensor[SomeDim = D.Dimless]():
         
         self._values = np.asarray(values)
 
+    def __hash__(self) -> int:
+        return hash(f"{hash(self._values.data.tobytes())}${hash(self._dim._d)}")
+
     @property
     def dim_coords(self) -> DimCoords:
         """Dimension coordinates associated with this tensor."""
@@ -1128,3 +1131,11 @@ class Quantity(metaclass=QuantityMeta):
 
     year: Scalar[D.Time]
     """year (365 days)"""
+
+    # VELOCITIES
+
+    meter_per_second: Scalar[D.Velocity]
+    """meter per second"""
+
+    kilo_meter_per_hour: Scalar[D.Velocity]
+    """kilometer per hour"""
