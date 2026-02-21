@@ -99,6 +99,7 @@ class Time:
         try:
             assert other.check(D.Time)
             delta_seconds = other.magnitude("second")
+            delta_seconds = float(np.asarray(delta_seconds).reshape(-1)[0])
             return self.__class__(self._unixepoch + delta_seconds)
         except Exception as ex:
             raise ValueError(
@@ -109,7 +110,7 @@ class Time:
         try:
             assert other.check(D.Time)
             delta_seconds = other.magnitude("second")
-            self._unixepoch += float(delta_seconds)
+            self._unixepoch += float(np.asarray(delta_seconds).reshape(-1)[0])
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a time"
@@ -119,6 +120,7 @@ class Time:
         try:
             assert other.check(D.Time)
             delta_seconds = other.magnitude("second")
+            delta_seconds = float(np.asarray(delta_seconds).reshape(-1)[0])
             return self.__class__(self._unixepoch - delta_seconds)
         except Exception as ex:
             raise ValueError(
@@ -129,7 +131,7 @@ class Time:
         try:
             assert other.check(D.Time)
             delta_seconds = other.magnitude("second")
-            self._unixepoch -= float(delta_seconds)
+            self._unixepoch -= float(np.asarray(delta_seconds).reshape(-1)[0])
         except Exception as ex:
             raise ValueError(
                 f"Could not do operation with {other} and {self} since it is not a time"

@@ -92,9 +92,9 @@ class SGP4(Propagator):
         tsince: npt.NDArray[np.float64]
 
         if isinstance(epoch, Time):
-            tsince = epoch.delta(self.elements.epoch).get_raw_array("min")
+            tsince = epoch.delta(self.elements.epoch).get_raw_array("minute")
         elif isinstance(epoch, TimeInterval):
-            tsince = (epoch.to_time_stamps() - Scalar[D.Time](self.elements.epoch.unixepoch)).get_raw_array("min")
+            tsince = (epoch.to_time_stamps() - Scalar[D.Time](self.elements.epoch.unixepoch)).get_raw_array("minute")
         else:
             raise TypeError()
 
@@ -104,18 +104,25 @@ class SGP4(Propagator):
         )
 
         if isinstance(epoch, Time):
+            x = float(np.asarray(output.x).reshape(-1)[0])
+            y = float(np.asarray(output.y).reshape(-1)[0])
+            z = float(np.asarray(output.z).reshape(-1)[0])
+            vx = float(np.asarray(output.vx).reshape(-1)[0])
+            vy = float(np.asarray(output.vy).reshape(-1)[0])
+            vz = float(np.asarray(output.vz).reshape(-1)[0])
+
             return Coordinates(
                 epoch,
                 AbsoluteFrame.GCRF,
                 Vector3[D.Length].from_components(
-                    x=float(output.x),
-                    y=float(output.y),
-                    z=float(output.z)
+                    x=x,
+                    y=y,
+                    z=z
                 ).cast(D.Length),
                 Vector3[D.Velocity].from_components(
-                    x=float(output.vx),
-                    y=float(output.vy),
-                    z=float(output.vz)
+                    x=vx,
+                    y=vy,
+                    z=vz
                 ).cast(D.Velocity),
             )
         elif isinstance(epoch, TimeInterval):

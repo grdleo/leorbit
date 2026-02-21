@@ -574,6 +574,8 @@ class Tensor_S(Tensor[SomeDim], Generic[SomeDim]):
 
         if data.ndim == 0:
             super().__init__(data.item())
+        elif data.ndim == 1:
+            super().__init__(data)
         else:
             raise ValueError("Wrong shape")
 

@@ -302,7 +302,7 @@ class OrbitalElementsTuple(NamedTuple):
     
 
 def gcrf_state_vectors2elements(pos: Vector3[D.Length], vel: Vector3[D.Velocity]) -> OrbitalElementsTuple:
-    north = Vector3.Z
+    north = Vector3[D.Dimless].from_components(0.0, 0.0, 1.0)
 
     kinetic = pos.cross(vel)
     kinetic_sq = kinetic.length_squared
@@ -328,7 +328,7 @@ def gcrf_state_vectors2elements(pos: Vector3[D.Length], vel: Vector3[D.Velocity]
     eee = ee * e
     eeee = eee * e
     i = north.angle(kinetic.normalized())
-    raan = atan2(asc.y, asc.x)
+    raan = normalize_angle(atan2(asc.y, asc.x))
     a = (kinetic_sq / (MU_EARTH * (1 - ee))).cast(D.Length)
     aaa = cube(a)
     n = sqrt(MU_EARTH / aaa).cast(D.AngularVelocity)
