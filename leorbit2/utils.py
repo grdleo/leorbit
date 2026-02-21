@@ -3,12 +3,14 @@
 
 import math
 from multiprocessing import Value
+from statistics import mean
 import numpy as np
 from numpy.typing import NDArray
 
-from typing import TYPE_CHECKING, Any, Type, TypeAlias, TypeVar, cast, overload
+from typing import TYPE_CHECKING, Any, Generic, NamedTuple, Type, TypeAlias, TypeVar, cast, overload
 
-from leorbit2.m import N2, P1, P3, DimCoords, Number, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, ensure_tensor, D, Dim, Tensor_V3, Matrix33, sin, sqrt, square
+from leorbit2.m import N2, P1, P3, DimCoords, Number, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, abs, cube, ensure_tensor, D, Dim, Tensor_V3, Matrix33, normalize_angle, sin, sqrt, square
+from leorbit2.time import Time
 
 GravParam: TypeAlias = ProductDim[
     PowerDim[D.Length, P3, P1],
@@ -288,6 +290,65 @@ def elements2orthogonal_gcrf(
     return (
         ur * r,
         ur * rd + ut * rυd
+    )
+
+ScalarType = TypeVar("ScalarType", bound=Scalar | ScalarArray)
+
+class OrbitalElementsTuple(NamedTuple):
+    eccentricity: Scalar[D.Dimless]
+    inclination: Scalar[D.Angle]
+    ra_of_asc_node: Scalar[D.Angle]
+    arg_of_pericenter: Scalar[D.Angle]
+    mean_motion: Scalar[D.AngularVelocity]
+    mean_anomaly: Scalar[D.Angle]
+    
+
+def gcrf_state_vectors2elements(pos: Vector3[D.Length], vel: Vector3[D.Velocity]) -> OrbitalElementsTuple:
+    north = Vector3.Z
+
+    kinetic = pos.cross(vel)
+    kinetic_sq = kinetic.length_squared
+    pos_dir = pos.normalized()
+    ecc_vec = (vel.cross(kinetic) / MU_EARTH).cast(D.Dimless) - pos_dir
+    descending_node = kinetic.cross(north).normalized() # descending node line
+    asc = -descending_node
+
+    # create a 2D frame on the ellipsis, x along ascending node line
+    xaxis_asc = asc.normalized()
+    yaxis_asc = kinetic.cross(asc).normalized()
+
+    xe_asc = xaxis_asc.dot(ecc_vec)
+    ye_asc = yaxis_asc.dot(ecc_vec)
+    argp = atan2(ye_asc, xe_asc)
+
+    xp_asc = xaxis_asc.dot(pos)
+    yp_asc = yaxis_asc.dot(pos)
+    nu = normalize_angle(atan2(yp_asc, xp_asc) - argp)
+
+    e = ecc_vec.length
+    ee = e * e
+    eee = ee * e
+    eeee = eee * e
+    i = north.angle(kinetic.normalized())
+    raan = atan2(asc.y, asc.x)
+    a = (kinetic_sq / (MU_EARTH * (1 - ee))).cast(D.Length)
+    aaa = cube(a)
+    n = sqrt(MU_EARTH / aaa).cast(D.AngularVelocity)
+    M = (
+        nu
+        - 2 * e * sin(nu).cast(D.Angle)
+        + (ee * .75 + eeee * .125) * sin(2 * nu).cast(D.Angle)
+        - eee * sin(3 * nu).cast(D.Angle) / 3
+        + eeee * sin(4 * nu).cast(D.Angle) * .15625
+    )
+
+    return OrbitalElementsTuple(
+        e,
+        i,
+        raan,
+        argp,
+        n,
+        M
     )
 
 def convert_quantity_units(quantity: Number, units_from: str, units_to: str) -> Number:

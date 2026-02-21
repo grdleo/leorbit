@@ -686,13 +686,13 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
             cast(Tensor_S[SomeOtherDim], z),
         )
     
-    def dot(self, o: Tensor_V3[SomeDim]) -> Tensor_S[SomeDim]:
+    def dot(self, o: Tensor_V3[SomeOtherDim]) -> Tensor_S[ProductDim[SomeDim, SomeOtherDim]]:
         result_dim = (self.dim_coords * o.dim_coords).to_dimension()
         return Tensor_S[result_dim]( # type: ignore
             np.sum(self._values * o._values, axis=0)
         )
     
-    def cross(self, o: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
+    def cross(self, o: Tensor_V3[SomeOtherDim]) -> Tensor_V3[ProductDim[SomeDim, SomeOtherDim]]:
         result_dim = (self.dim_coords * o.dim_coords).to_dimension()
         return Tensor_V3[result_dim]( # type: ignore
             np.cross(self._values, o._values, axis=0)
@@ -722,7 +722,11 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
 
     @cached_property
     def length(self) -> Tensor_S[SomeDim]:
-        return Tensor_S[self.dim](np.sum(self._values ** 2, axis=0) ** 0.5)
+        return sqrt(self.length_squared) # type: ignore
+    
+    @cached_property
+    def length_squared(self) -> Tensor_S[PowerDim[SomeDim, P2, P1]]:
+        return self.dot(self) # type: ignore
 
     @cached_property
     def theta(self) -> Tensor_S[D.Angle]:
@@ -841,6 +845,11 @@ class Matrix33(Tensor_M33[SomeDim], Generic[SomeDim]):
 
 
 ######## functions
+
+def abs(tensor: Tensor[Any]) -> Tensor[Any]:
+    return tensor._base_tensor_class[tensor.dim]( # type: ignore
+        np.abs(tensor._values)
+    )
 
 def square(tensor: Tensor[Any]) -> Tensor[Any]:
     return_dim = (tensor.dim_coords ** 2).to_dimension()
