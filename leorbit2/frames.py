@@ -42,6 +42,9 @@ def absolute_frame_transform_factory(from_frame: AbsoluteFrame, to_frame: Absolu
     """Returns a function to be called with epoch as parameter. 
     That function returns a transformation that, applied to a vector `v` (whose coordinates are expressed in `from_frame`), 
     returns the same vector but whose coordinates are expressed in `to_frame`"""
+    if from_frame == to_frame:
+        return lambda epoch: cast(Transform[DynamicVec, DynamicVec], TransformIdentify[DynamicVec]())
+
     frames = from_frame, to_frame
     factory = ABS_FRAME_TRANSFORMS.get(frames, None)
     if factory is not None:
