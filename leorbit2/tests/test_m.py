@@ -65,14 +65,10 @@ def test_scalar_modulo_and_comparisons():
 
     t1 = Scalar[D.Time](2)
     t2 = Scalar[D.Time](3)
-    with pytest.raises(ValueError):
-        _ = t1 < t2
-    with pytest.raises(ValueError):
-        _ = t1 <= t2
-    with pytest.raises(ValueError):
-        _ = t2 > t1
-    with pytest.raises(ValueError):
-        _ = t2 >= t1
+    assert t1 < t2
+    assert t1 <= t2
+    assert t2 > t1
+    assert t2 >= t1
 
 
 def test_ensure_tensor_and_dimension_helpers():
@@ -249,10 +245,11 @@ def test_interpolate_scalar_vector_and_matrix():
     np.testing.assert_allclose(mm._values, np.ones((3, 3)))
 
 
-def test_dot_for_single_vector_currently_raises_on_shape():
+def test_dot_for_single_vector_returns_scalar():
     v = Tensor_V3[D.Dimless].from_components(3.0, 4.0, 12.0)
-    with pytest.raises(ValueError):
-        _ = v.dot(v)
+    dot = v.dot(v)
+    assert dot.check(D.Dimless)
+    assert dot.magnitude() == pytest.approx(169)
 
 
 def test_normalize_angle_wrap_for_negative_scalar():
