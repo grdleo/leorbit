@@ -9,7 +9,7 @@ from typing import ParamSpec, Callable, TypeVar, cast
 
 from leorbit.algorithms import OrbitalElementsComputeTuple
 from leorbit.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
-from leorbit.m import D, Dim, Quantity, Scalar, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan
+from leorbit.m import D, Dim, Quantity, Scalar, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan, abs
 from leorbit.time import Time, TimeInterval
 from leorbit.transforms import Transform, TransformVector3Affine
 from leorbit.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
@@ -235,9 +235,9 @@ class GPS(CoordinatesRepresentation):
         lat = self.latitude
 
         return (
-            angle2dms(lon) + ("E" if lon >= 0 else "O") 
+            angle2dms(abs(lon)) + ("E" if lon >= 0 else "O") 
             + ", "
-            + angle2dms(lat) + ("N" if lat >= 0 else "S") 
+            + angle2dms(abs(lat)) + ("N" if lat >= 0 else "S") 
         )
     
     def __repr__(self) -> str:

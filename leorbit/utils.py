@@ -47,7 +47,7 @@ def angle2dms(angle: Scalar[D.Angle]) -> str:
     min, min_dec = divmod(deg_dec * 60, 1)
     sec, _ = divmod(min_dec * 60, 1)
     
-    return f"{deg}° {min}′ {sec}″"
+    return f"{int(deg): 04}° {int(min):02}′ {int(sec):02}″"
 
 @overload
 def mean_motion_to_semi_major_axis_earth(mean_motion: Scalar[D.AngularVelocity]) -> Scalar[D.Length]: ...
