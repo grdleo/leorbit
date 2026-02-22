@@ -14,7 +14,28 @@ from leorbit.time import Time
 from leorbit.utils import convert_quantity_units
 
 class CelestrakDataGP(BaseModel):
-    """Orbital elements as returned by Celestrak in JSON format"""
+    """Orbital elements as returned by Celestrak in JSON format
+
+    The original data use uppercase field names (aliases) that differ from the
+    Python attribute names.  Pydantic will **by default** only populate the
+    model using the alias names, which means that if you dump the model using
+    the regular field names and try to re‑create an instance with ``**`` the
+    constructor will ignore all values.
+
+    To make the object round‑trip nicely we enable ``populate_by_name`` in the
+    configuration.  This lets us write e.g.::
+
+        obj = CelestrakDataGP(**data)             # alias keys OK
+        d = obj.model_dump()                      # lowercase names
+        obj2 = CelestrakDataGP(**d)               # works because of config
+
+    If you prefer to keep using aliases when dumping then pass ``by_alias=True``
+    to ``model_dump``/``model_dump_json`` or use ``model_validate`` with the
+    appropriate option.
+    """
+    # allow instantiation from either field names or aliases
+    model_config = {"populate_by_name": True}
+
     epoch: str = Field(alias="EPOCH")
     eccentricity: float = Field(alias="ECCENTRICITY")
     inclination: float = Field(alias="INCLINATION")
