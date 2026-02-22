@@ -723,10 +723,10 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
         if len(vectors) == 0:
             raise ValueError("Expected at least one vector")
 
-        if not all(isinstance(v, Vector3) for v in vectors):
-            raise ValueError("Expected Vector3 inputs")
+        if not all(isinstance(v, Tensor_V3) for v in vectors):
+            raise ValueError("Expected Vector3-compatible inputs")
 
-        vectors_ = cast(tuple[Vector3[SomeDim], ...], vectors)
+        vectors_ = cast(tuple[Tensor_V3[SomeDim], ...], vectors)
 
         try:
             ensure_same_dimensions(*vectors_)

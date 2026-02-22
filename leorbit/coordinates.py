@@ -186,11 +186,12 @@ _HASH_VAL = "__hash_val"
 class CoordinatesRepresentation:
     def __hash__(self) -> int:
         if not hasattr(self, _HASH_VAL):
+            annotations = getattr(type(self), "__annotations__", {})
             h = hash(
-                "".join(
+                f"${type(self).__name__}$".join(
                     (
                         f"{attr_name}:{getattr(self, attr_name, None)}"
-                        for attr_name in self.__annotations__.keys()
+                        for attr_name in annotations.keys()
                     )
                 )
             )
@@ -221,8 +222,8 @@ class GPS(CoordinatesRepresentation):
         latitude: Scalar[D.Angle],
         altitude: Scalar[D.Length],
     ):
-        self.longitude = longitude
-        self.latitude = latitude
+        self.longitude = normalize_angle_symmetric(longitude)
+        self.latitude = normalize_angle_symmetric(latitude)
         self.altitude = altitude
         
     @cached_property
@@ -230,8 +231,8 @@ class GPS(CoordinatesRepresentation):
         """Representation of the GPS coordinates in DSM notation (degrees, minutes, seconds)
 
         Example: `39° 17′ N, 76° 36′ O`"""
-        lon = normalize_angle_symmetric(self.longitude)
-        lat = normalize_angle_symmetric(self.latitude)
+        lon = self.longitude
+        lat = self.latitude
 
         return (
             angle2dms(lon) + ("E" if lon >= 0 else "O") 
@@ -242,7 +243,7 @@ class GPS(CoordinatesRepresentation):
     def __repr__(self) -> str:
         return f"<GPS: {self.dms}>"
     
-    @lru_cache
+    @lru_cache(4096)
     def to_coordinates(self, epoch: Time) -> "Coordinates":
         coordinates = Coordinates.from_gps(
             longitude=self.longitude,
