@@ -1,63 +1,90 @@
-"""
-    Quick benchmark for LEOrbit propagation performance.  Similar to
-    ``iss_accuracy_test.py`` but instead of querying a remote API we just
-    propagate the ISS state repeatedly and measure how long it takes.
+"""LEOrbit ISS benchmark against Open Notify live position.
 
-    Run with ``python examples2/iss_benchmark.py`` and you should see
-    per-propagation timings printed.
+This script:
+1) builds a 4-hour trajectory for the ISS using LEOrbit,
+2) polls Open Notify for the live ISS GPS position,
+3) compares LEOrbit GPS at the same epoch,
+4) prints a readable summary with latitude/longitude errors.
+
+Run:
+    python examples2/iss_benchmark.py
 """
 
 from datetime import timedelta
 from time import perf_counter, sleep
-from typing import Any
 
 import numpy as np
 from pydantic import BaseModel
 import requests
 
 from leorbit.coordinates import GPS
-from leorbit.frames import AbsoluteFrame
 from leorbit.m import Quantity
 from leorbit.time import Time, TimeInterval
 from leorbit import get_satellite
-from leorbit.m import Vector3
-
-class OpenNotifyPosition(BaseModel):
-    latitude: str # [degrees]
-    longitude: str # [degrees]
 
 class OpenNotifyIssResponse(BaseModel):
-    """http://api.open-notify.org/iss-now.json"""
+    """Response payload for ``http://api.open-notify.org/iss-now.json``."""
+
     message: str
     timestamp: int
-    iss_position: OpenNotifyPosition
+    iss_position: "OpenNotifyIssResponse.OpenNotifyPosition"
+
+    class OpenNotifyPosition(BaseModel):
+        """Raw latitude/longitude values returned by the API, in degrees."""
+
+        latitude: str
+        longitude: str
 
     @staticmethod
     def retrieve() -> OpenNotifyIssResponse:
+        """Fetch and validate one Open Notify sample."""
         response = requests.get("http://api.open-notify.org/iss-now.json")
+        response.raise_for_status()
         return OpenNotifyIssResponse(**response.json())
     
     @property
     def epoch(self) -> Time:
+        """UTC epoch associated with this sample."""
         return Time(self.timestamp)
 
     @property
     def gps(self) -> GPS:
+        """Sample converted to LEOrbit ``GPS`` representation.
+
+        Open Notify does not provide altitude; we use a rough LEO value
+        to build a full GPS point for display/comparison purposes.
+        """
         return GPS(
             latitude=float(self.iss_position.latitude) * Quantity.deg,
             longitude=float(self.iss_position.longitude) * Quantity.deg,
             altitude=400 * Quantity.kilo_meter
         )
-    
-def _repr_vec_pos(v: Vector3[Any]) -> str:
-    vals = v._values.flatten()
-    return f"Position: ({vals[0]:.0f} m, {vals[1]:.0f} m, {vals[2]:.0f} m)"
+
+
+def _delta_deg(a, b) -> float:
+    """Return absolute angular delta in degrees for two angle scalars."""
+    return abs(float(np.asarray((a - b).magnitude("deg")).reshape(-1)[0]))
+
+
+def _print_sample(sample_idx: int, epoch: Time, open_notify_gps: GPS, leorbit_gps: GPS) -> None:
+    """Pretty-print one comparison sample."""
+    dlat = _delta_deg(leorbit_gps.latitude, open_notify_gps.latitude)
+    dlon = _delta_deg(leorbit_gps.longitude, open_notify_gps.longitude)
+
+    print(f"\n── Sample #{sample_idx:02d} @ {epoch.isoformat}")
+    print(f"   Open Notify : {open_notify_gps.dms}")
+    print(f"   LEOrbit     : {leorbit_gps.dms}")
+    print(f"   Error       : Δlat={dlat:7.4f}°, Δlon={dlon:7.4f}°")
 
 def main():
-    # build a satellite object once
+    """Run the benchmark loop and print live comparison samples."""
+
+    print("\n══════════════════════════════════════════════════════════════")
+    print("  LEOrbit ISS benchmark vs Open Notify")
+    print("══════════════════════════════════════════════════════════════")
+
     iss = get_satellite(25544, log=True)
 
-    # pick a fixed epoch to propagate from and include margin for API timestamp drift
     t0 = Time.now() - timedelta(hours=2)
     timeline = TimeInterval(
         t0,
@@ -66,30 +93,20 @@ def main():
 
     _time_flag = perf_counter()
     trajectory = iss.trajectory(timeline)
-    print(f"Computed trajectory for 4 hours with 1s step in {perf_counter() - _time_flag:.4f}s")
+    dt = perf_counter() - _time_flag
+    print(f"\nTrajectory precompute: 4h @ 1s step in {dt:.4f}s")
 
-    for _ in range(16):
+    for i in range(1, 17):
         open_notify_coords = OpenNotifyIssResponse.retrieve()
         open_notify_gps = open_notify_coords.gps
         epoch = open_notify_coords.epoch
-        gps = trajectory.gps_at(epoch)
+        leorbit_gps = trajectory.gps_at(epoch)
 
-        on_pos_itrf = open_notify_coords.gps.to_coordinates(epoch).get_pos(AbsoluteFrame.ITRF)
-        leorbit_pos_itrf = trajectory.get_pos(epoch, AbsoluteFrame.ITRF)
-
-        # display results
-        print(f"At epoch {epoch.isoformat}: ")
-        print(f"Open notify position: {open_notify_gps.dms}")
-        print(f"Leorbit position:     {gps.dms}")
-
-        # compute simple latitude/longitude differences in degrees
-        dlat = float(np.asarray((gps.latitude - open_notify_gps.latitude).magnitude("deg")).reshape(-1)[0])
-        dlon = float(np.asarray((gps.longitude - open_notify_gps.longitude).magnitude("deg")).reshape(-1)[0])
-        dlat = abs(dlat)
-        dlon = abs(dlon)
-        print(f"Difference: Δlat={dlat:.4f}°, Δlon={dlon:.4f}°")
+        _print_sample(i, epoch, open_notify_gps, leorbit_gps)
 
         sleep(5)
+
+    print("\nDone.")
 
 if __name__ == "__main__":
     main()
