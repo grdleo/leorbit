@@ -683,10 +683,10 @@ class ScalarArray(Tensor_S[SomeDim], Generic[SomeDim]):
 
 
 class Vector3(Tensor_V3[SomeDim], Generic[SomeDim]):
-    O: ClassVar[Tensor_V3[D.Dimless]]
-    X: ClassVar[Tensor_V3[D.Dimless]]
-    Y: ClassVar[Tensor_V3[D.Dimless]]
-    Z: ClassVar[Tensor_V3[D.Dimless]]
+    O: ClassVar[Vector3[D.Dimless]]
+    X: ClassVar[Vector3[D.Dimless]]
+    Y: ClassVar[Vector3[D.Dimless]]
+    Z: ClassVar[Vector3[D.Dimless]]
 
     @property
     def x(self) -> Scalar[SomeDim]: ...
