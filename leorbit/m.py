@@ -594,14 +594,13 @@ class Tensor_S(Tensor[SomeDim], Generic[SomeDim]):
 
     @property
     def base_unit_value(self) -> Number | np.ndarray:
-        if np.asarray(self._values).ndim == 0:
-            return np.float64(self._values)
-        return cast(Number, np.float64(self._values))
+        return self.magnitude("1")
 
-    def magnitude(self, units: str = "1") -> np.float64 | npt.NDArray[np.float64]:
+    def magnitude(self, units: str = "1") -> Number | npt.NDArray[np.float64]:
         raw = self.get_raw_array(units)
-        if np.asarray(raw).ndim == 0:
-            return np.float64(raw)
+        if self.size == 1:
+            return raw.item()
+        
         return cast(npt.NDArray[np.float64], raw)
     
     def _comparison(self, o: object, comparison: Callable[[npt.NDArray, npt.NDArray], npt.NDArray]) -> bool:
