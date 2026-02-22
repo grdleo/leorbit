@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Self, TypeVar, cast, overload
 
-from leorbit2.m import D, Dim, Matrix33, Scalar, Tensor_V3, Vector3, Vector3Array, cos, sin
+from leorbit.m import D, Dim, Matrix33, Scalar, Tensor_V3, Vector3, Vector3Array, cos, sin
 
 
 T1 = TypeVar("T1")

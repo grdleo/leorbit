@@ -2,12 +2,12 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING, ParamSpec, Callable, TypeAlias, TypeVar, cast
 
-from leorbit2.m import D, Matrix33, Quantity, Vector3, cos
-from leorbit2.transforms import Transform, TransformChain, TransformIdentify, TransformVector3Affine, TransformVector3RotationZ
-from leorbit2.time import Time
+from leorbit.m import D, Matrix33, Quantity, Vector3, cos
+from leorbit.transforms import Transform, TransformChain, TransformIdentify, TransformVector3Affine, TransformVector3RotationZ
+from leorbit.time import Time
 
 if TYPE_CHECKING:
-    from leorbit2.coordinates import Coordinates
+    from leorbit.coordinates import Coordinates
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]

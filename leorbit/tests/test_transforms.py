@@ -1,8 +1,8 @@
 import numpy as np
 import pytest
 
-from leorbit2.m import D, Matrix33, Scalar, Vector3, Vector3Array
-from leorbit2.transforms import (
+from leorbit.m import D, Matrix33, Scalar, Vector3, Vector3Array
+from leorbit.transforms import (
     TransformChain,
     TransformIdentify,
     TransformVector3Affine,

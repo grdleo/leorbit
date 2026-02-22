@@ -7,11 +7,11 @@ import numpy as np
 from pydantic import BaseModel, Field
 from requests import HTTPError, get
 
-from leorbit2.coordinates import OrbitalElements
-from leorbit2.m import D, Quantity, Scalar, cube, square
-from leorbit2.time import Time
+from leorbit.coordinates import OrbitalElements
+from leorbit.m import D, Quantity, Scalar, cube, square
+from leorbit.time import Time
 
-from leorbit2.utils import convert_quantity_units
+from leorbit.utils import convert_quantity_units
 
 class CelestrakDataGP(BaseModel):
     """Orbital elements as returned by Celestrak in JSON format"""

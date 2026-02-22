@@ -2,8 +2,8 @@ from datetime import timedelta
 
 import pytest
 
-from leorbit2.m import Quantity
-from leorbit2.time import Time, TimeInterval, get_intersections_timelines
+from leorbit.m import Quantity
+from leorbit.time import Time, TimeInterval, get_intersections_timelines
 
 
 @pytest.mark.parametrize(

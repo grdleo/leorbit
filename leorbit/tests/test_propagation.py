@@ -3,12 +3,12 @@ from math import tau
 import numpy as np
 import pytest
 
-from leorbit2.coordinates import OrbitalElements
-from leorbit2.ext import CelestrakDataGP
-from leorbit2.frames import AbsoluteFrame
-from leorbit2.m import Quantity, normalize_angle
-from leorbit2.propagator import NoPropagator, SGP4
-from leorbit2.sky_object import Satellite
+from leorbit.coordinates import OrbitalElements
+from leorbit.ext import CelestrakDataGP
+from leorbit.frames import AbsoluteFrame
+from leorbit.m import Quantity, normalize_angle
+from leorbit.propagator import NoPropagator, SGP4
+from leorbit.sky_object import Satellite
 
 
 CELESTRAK_JSON = {

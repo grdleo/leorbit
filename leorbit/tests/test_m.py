@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from leorbit2.m import (
+from leorbit.m import (
     D,
     Matrix33,
     Quantity,

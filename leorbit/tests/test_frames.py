@@ -2,16 +2,16 @@ import numpy as np
 import pytest
 from typing import cast
 
-from leorbit2.frames import (
+from leorbit.frames import (
     AbsoluteFrame,
     RelativeFrame,
     absolute_frame_transform_factory,
     frame_transform_factory,
 )
-from leorbit2.m import D, Matrix33, Scalar, Vector3
-from leorbit2.time import Time
-from leorbit2.transforms import TransformVector3Affine
-from leorbit2.transforms import Transform
+from leorbit.m import D, Matrix33, Scalar, Vector3
+from leorbit.time import Time
+from leorbit.transforms import TransformVector3Affine
+from leorbit.transforms import Transform
 
 
 def _vec_len(x: float, y: float, z: float) -> Vector3[D.Length]:

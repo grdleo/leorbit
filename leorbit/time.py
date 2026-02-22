@@ -8,8 +8,8 @@ from math import ceil
 import numpy as np
 from numpy.typing import NDArray
 
-from leorbit2.m import D, Scalar, Number, Quantity, ScalarArray
-from leorbit2.utils import humanize_duration
+from leorbit.m import D, Scalar, Number, Quantity, ScalarArray
+from leorbit.utils import humanize_duration
 
 import numpy as np
 TWOPI = 2 * np.pi

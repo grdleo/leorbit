@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from leorbit2.coordinates import Coordinates
-from leorbit2.coordinates import Trajectory
-from leorbit2.ext import OrbitalElements
-from leorbit2.m import Scalar, D, Quantity, cos, atan, tan, sin, sqrt, normalize_angle
-from leorbit2.propagator import NoPropagator, Propagator
-from leorbit2.time import Time
-from leorbit2.time import TimeInterval
-from leorbit2.utils import semi_major_axis_earth_to_mean_motion
+from leorbit.coordinates import Coordinates
+from leorbit.coordinates import Trajectory
+from leorbit.ext import OrbitalElements
+from leorbit.m import Scalar, D, Quantity, cos, atan, tan, sin, sqrt, normalize_angle
+from leorbit.propagator import NoPropagator, Propagator
+from leorbit.time import Time
+from leorbit.time import TimeInterval
+from leorbit.utils import semi_major_axis_earth_to_mean_motion
 
 
 class SkyObject(ABC):

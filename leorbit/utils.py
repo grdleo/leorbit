@@ -8,7 +8,7 @@ from typing import NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_C
 if TYPE_CHECKING:
     import pint
 
-from leorbit2.m import N2, P1, P3, DimCoords, Number, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, abs, cube, ensure_tensor, D, Dim, Tensor_V3, Matrix33, normalize_angle, sin, sqrt, square
+from leorbit.m import N2, P1, P3, DimCoords, Number, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, abs, cube, ensure_tensor, D, Dim, Tensor_V3, Matrix33, normalize_angle, sin, sqrt, square
 
 GravParam: TypeAlias = ProductDim[
     PowerDim[D.Length, P3, P1],

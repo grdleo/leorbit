@@ -1,12 +1,12 @@
 import pytest
 
-from leorbit2.coordinates import Coordinates
-from leorbit2.ext import CelestrakDataGP
-from leorbit2.frames import EarthLocalFrame
-from leorbit2.m import Quantity, normalize_angle_symmetric
-from leorbit2.propagator import SGP4
-from leorbit2.sky_object import Satellite
-from leorbit2.time import Time, TimeInterval
+from leorbit.coordinates import Coordinates
+from leorbit.ext import CelestrakDataGP
+from leorbit.frames import EarthLocalFrame
+from leorbit.m import Quantity, normalize_angle_symmetric
+from leorbit.propagator import SGP4
+from leorbit.sky_object import Satellite
+from leorbit.time import Time, TimeInterval
 
 
 def _find_visibility_windows(sat: Satellite, local_frame: EarthLocalFrame, timeline: TimeInterval, min_altitude):

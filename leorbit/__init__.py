@@ -1,7 +1,7 @@
-from leorbit2.propagator import SGP4, Propagator
-from leorbit2.sky_object import Satellite
-from leorbit2.coordinates import OrbitalElements
-from leorbit2.ext import get_celestrak_gpdata
+from leorbit.propagator import SGP4, Propagator
+from leorbit.sky_object import Satellite
+from leorbit.coordinates import OrbitalElements
+from leorbit.ext import get_celestrak_gpdata
 
 def get_satellite(
     norad_cat_id: int, 

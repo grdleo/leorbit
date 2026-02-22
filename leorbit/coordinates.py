@@ -7,12 +7,12 @@ from enum import Enum
 from functools import lru_cache
 from typing import ParamSpec, Callable, TypeVar, cast
 
-from leorbit2.algorithms import OrbitalElementsComputeTuple
-from leorbit2.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
-from leorbit2.m import D, Dim, Quantity, Scalar, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan
-from leorbit2.time import Time, TimeInterval
-from leorbit2.transforms import Transform, TransformVector3Affine
-from leorbit2.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
+from leorbit.algorithms import OrbitalElementsComputeTuple
+from leorbit.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
+from leorbit.m import D, Dim, Quantity, Scalar, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan
+from leorbit.time import Time, TimeInterval
+from leorbit.transforms import Transform, TransformVector3Affine
+from leorbit.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]
@@ -456,7 +456,7 @@ class OrbitalElements(CoordinatesRepresentation):
 
         If last fetch on Celestrak is recent enough, uses cached GP data.
         """
-        from leorbit2.ext import get_celestrak_gpdata
+        from leorbit.ext import get_celestrak_gpdata
         return get_celestrak_gpdata(catnr, log).to_orbital_elements()
 
 class Interpolation(Enum):

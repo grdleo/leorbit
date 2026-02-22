@@ -3,12 +3,12 @@ from typing import cast, overload
 
 import numpy as np
 
-from leorbit2.algorithms import TimeInterval, sgp4
-from leorbit2.coordinates import Coordinates, OrbitalElements, Trajectory
-from leorbit2.frames import AbsoluteFrame
-from leorbit2.m import D, Scalar, ScalarArray, Vector3, Vector3Array, normalize_angle
-from leorbit2.time import Time
-from leorbit2.utils import elements2orthogonal_gcrf, mean2true_anomaly
+from leorbit.algorithms import TimeInterval, sgp4
+from leorbit.coordinates import Coordinates, OrbitalElements, Trajectory
+from leorbit.frames import AbsoluteFrame
+from leorbit.m import D, Scalar, ScalarArray, Vector3, Vector3Array, normalize_angle
+from leorbit.time import Time
+from leorbit.utils import elements2orthogonal_gcrf, mean2true_anomaly
 
 import numpy.typing as npt
 
