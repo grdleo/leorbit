@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 
 from leorbit2.m import Quantity
@@ -27,6 +29,25 @@ def test_instance(unix: float, iso: str):
 )
 def test_shift(unix: float, shift):
     assert (Time(unix) + shift).unixepoch == pytest.approx(unix + shift.magnitude("second"))
+
+
+def test_shift_with_timedelta():
+    t = Time(1_700_000_000)
+    delta = timedelta(seconds=12.5)
+
+    assert (t + delta).unixepoch == pytest.approx(1_700_000_012.5)
+    assert (t - delta).unixepoch == pytest.approx(1_699_999_987.5)
+
+
+def test_inplace_shift_with_timedelta():
+    t = Time(1_700_000_000)
+    delta = timedelta(minutes=2)
+
+    t += delta
+    assert t.unixepoch == pytest.approx(1_700_000_120)
+
+    t -= delta
+    assert t.unixepoch == pytest.approx(1_700_000_000)
 
 
 @pytest.mark.parametrize(
