@@ -627,6 +627,15 @@ class Tensor_S(Tensor[SomeDim], Generic[SomeDim]):
 
     def __ge__(self, o: object) -> bool:
         return self._comparison(o, np.greater_equal)
+    
+    def __getitem__(self, index: int) -> Scalar[SomeDim]:
+        if index < 0 or index >= self.size:
+            raise KeyError("...")
+        
+        return cast(
+            Scalar[SomeDim],
+            Scalar[self.dim](np.array(self._values)[index])
+        )
 
 Tensor_S._base_tensor_class = Tensor_S
 
@@ -707,6 +716,30 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
             cast(Tensor_S[SomeOtherDim], z),
         )
     
+    @staticmethod
+    def from_vectors(
+        *vectors: Vector3[SomeDim]
+    ):
+        if len(vectors) == 0:
+            raise ValueError("Expected at least one vector")
+
+        if not all(isinstance(v, Vector3) for v in vectors):
+            raise ValueError("Expected Vector3 inputs")
+
+        vectors_ = cast(tuple[Vector3[SomeDim], ...], vectors)
+
+        try:
+            ensure_same_dimensions(*vectors_)
+        except RuntimeError as ex:
+            raise ValueError("All vectors must share the same dimensions") from ex
+
+        if not all(v.size == 1 for v in vectors_):
+            raise ValueError("from_vectors expects scalar Vector3 values (size == 1)")
+
+        stacked = np.concatenate([v._values for v in vectors_], axis=1)
+        first = vectors_[0]
+        return Vector3Array[first.dim](stacked)  # type: ignore
+    
     def dot(self, o: Tensor_V3[SomeOtherDim]) -> Tensor_S[ProductDim[SomeDim, SomeOtherDim]]:
         result_dim = (self.dim_coords * o.dim_coords).to_dimension()
         return Tensor_S[result_dim]( # type: ignore
@@ -770,6 +803,15 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
 
     def normalized(self) -> Tensor_V3[D.Dimless]:
         return cast(Tensor_V3[D.Dimless], self / self.length)
+    
+    def __getitem__(self, index: int) -> Vector3[SomeDim]:
+        if index < 0 or index >= self.size:
+            raise KeyError("...")
+        
+        return cast(
+            Vector3[SomeDim],
+            Vector3[self.dim](self._values[:, index])
+        )
 
 Tensor_V3._base_tensor_class = Tensor_V3
 
@@ -836,15 +878,6 @@ class Scalar(Tensor_S[SomeDim], Generic[SomeDim]):
     
 class ScalarArray(Tensor_S[SomeDim], Generic[SomeDim]):
     """Convenience wrapper for many-element scalar tensors."""
-
-    def __getitem__(self, index: int) -> Scalar[SomeDim]:
-        if index < 0 or index >= self.size:
-            raise KeyError("...")
-        
-        return cast(
-            Scalar[SomeDim],
-            Scalar[self.dim](np.array(self._values)[index])
-        )
     
 class Vector3(Tensor_V3[SomeDim], Generic[SomeDim]):
     """convenience wrapper for three-element vector tensors."""
@@ -861,15 +894,6 @@ Vector3.Z = Vector3[D.Dimless].from_components(0, 0, 1)
 
 class Vector3Array(Tensor_V3[SomeDim], Generic[SomeDim]):
     """Convenience wrapper for many-element vector tensors."""
-
-    def __getitem__(self, index: int) -> Vector3[SomeDim]:
-        if index < 0 or index >= self.size:
-            raise KeyError("...")
-        
-        return cast(
-            Vector3[SomeDim],
-            Vector3[self.dim](self._values[:, index])
-        )
     
 class Matrix33(Tensor_M33[SomeDim], Generic[SomeDim]):
     """Convience wrapper..."""

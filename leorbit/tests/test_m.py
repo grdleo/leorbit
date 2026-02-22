@@ -120,6 +120,26 @@ def test_vector3array_from_components_and_matrix_products():
     np.testing.assert_allclose(out._values, np.array([[2, 0], [0, 2], [0, 0]], dtype=float))
 
 
+def test_vector3array_from_vectors():
+    v1 = Vector3[D.Length].from_components(1.0, 2.0, 3.0)
+    v2 = Vector3[D.Length].from_components(4.0, 5.0, 6.0)
+
+    arr = Vector3Array.from_vectors(v1, v2)
+    assert arr.size == 2
+    assert arr.check(D.Length)
+    np.testing.assert_allclose(arr._values, np.array([[1, 4], [2, 5], [3, 6]], dtype=float))
+
+
+def test_vector3array_from_vectors_rejects_empty_and_mixed_dims():
+    with pytest.raises(ValueError):
+        Vector3Array.from_vectors()
+
+    v_len = Vector3[D.Length].from_components(1.0, 2.0, 3.0)
+    v_time = Vector3[D.Time].from_components(1.0, 2.0, 3.0)
+    with pytest.raises(ValueError):
+        Vector3Array.from_vectors(v_len, v_time)
+
+
 def test_matrix33_arithmetic_inverse_and_products():
     i = Matrix33[D.Dimless].from_elements(
         1, 0, 0,
