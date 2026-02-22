@@ -33,7 +33,7 @@ def itrf2gcrf(epoch: Time) -> Transform[SomeDynamicVec, SomeDynamicVec]:
     return cast(Transform[SomeDynamicVec, SomeDynamicVec], t)
 
 ABS_FRAME_TRANSFORMS: dict[tuple[AbsoluteFrame, AbsoluteFrame], FrameTransformFactory] = {
-    (AbsoluteFrame.GCRF, AbsoluteFrame.ITRF): itrf2gcrf
+    (AbsoluteFrame.ITRF, AbsoluteFrame.GCRF): itrf2gcrf
 }
 """Transformations between every absolute frames"""
 
