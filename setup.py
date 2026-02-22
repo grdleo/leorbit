@@ -5,14 +5,14 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="leorbit",
-    licence="MIT",
+    license="MIT",
     version="0.0.0",
     author="Léo Giroud",
     author_email="leo@leog.dev",
     description="Python library for satellites in LEO (Low Earth Orbit): propagation, predictions & more",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/grdleo",
+    url="https://github.com/grdleo/leorbit",
     packages=setuptools.find_packages(exclude=["tests"]),
     classifiers=[
         "Programming Language :: Python :: 3",
@@ -22,10 +22,12 @@ setuptools.setup(
         "Development Status :: 3 - Alpha",
     ],
     install_requires=[
+        "numpy",
+        "matplotlib",
+        "cartopy",
         "pint",
         "requests",
-        "beautifulsoup4"
     ],
-    python_requires=">=3.12"
+    python_requires=">=3.14"
 )
 
