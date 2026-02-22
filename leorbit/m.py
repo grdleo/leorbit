@@ -810,7 +810,7 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
         
         return cast(
             Vector3[SomeDim],
-            Vector3[self.dim](self._values[:, index])
+            Vector3[self.dim](self._values[:, index:index + 1])
         )
 
 Tensor_V3._base_tensor_class = Tensor_V3
@@ -997,8 +997,8 @@ def normalize_angle(angle: Tensor[D.Angle]) -> Tensor[D.Angle]:
 
 def normalize_angle_symmetric(angle: Tensor[D.Angle]) -> Tensor[D.Angle]:
     """Returns the given angle in its [-π, π] range."""
-    normalized = angle._values % (2 * np.pi)
-    normalized[normalized > np.pi] -= 2 * np.pi
+    normalized = np.asarray(angle._values) % (2 * np.pi)
+    normalized = np.where(normalized > np.pi, normalized - 2 * np.pi, normalized)
 
     return angle._base_tensor_class[D.Angle](normalized) # type: ignore
 

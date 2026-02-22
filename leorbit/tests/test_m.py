@@ -140,6 +140,19 @@ def test_vector3array_from_vectors_rejects_empty_and_mixed_dims():
         Vector3Array.from_vectors(v_len, v_time)
 
 
+def test_vector3array_getitem_returns_vector3():
+    arr = Vector3Array[D.Length].from_components(
+        np.array([1.0, 4.0]),
+        np.array([2.0, 5.0]),
+        np.array([3.0, 6.0]),
+    )
+
+    v0 = arr[0]
+    assert isinstance(v0, Vector3)
+    assert v0.size == 1
+    np.testing.assert_allclose(v0._values.flatten(), [1.0, 2.0, 3.0])
+
+
 def test_matrix33_arithmetic_inverse_and_products():
     i = Matrix33[D.Dimless].from_elements(
         1, 0, 0,
@@ -196,8 +209,8 @@ def test_atan2_and_angle_normalization_helpers():
     n = normalize_angle(Scalar[D.Angle](5 * np.pi))
     assert n.magnitude("rad") == pytest.approx(np.pi)
 
-    with pytest.raises(TypeError):
-        _ = normalize_angle_symmetric(Scalar[D.Angle](3 * np.pi / 2))
+    ns = normalize_angle_symmetric(Scalar[D.Angle](3 * np.pi / 2))
+    assert ns.magnitude("rad") == pytest.approx(-np.pi / 2)
 
 
 def test_tensor_v3_direct_cross_operation():

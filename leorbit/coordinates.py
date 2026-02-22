@@ -523,9 +523,25 @@ class Trajectory:
         if isinstance(frame, AbsoluteFrame) and not isinstance(self.privileged_frame, AbsoluteFrame):
             self.privileged_frame = frame
 
+    @lru_cache(4096)
     def coordinates_at(self, epoch: Time, interpolation: Interpolation = Interpolation.CONSTANT) -> Coordinates:
-        raise NotImplementedError()
+        if interpolation != Interpolation.CONSTANT:
+            raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")
+        
+        if epoch not in self.interval:
+            raise ValueError("Epoch is out of bounds of this trajectory.")
+        
+        idx = self.interval._time2idx(epoch) # check if epoch is in interval
+        pos, vel = self.positions[self.privileged_frame]
 
+        return Coordinates(
+            epoch,
+            self.privileged_frame,
+            pos[idx],
+            vel[idx] if vel is not None else None
+        )
+
+    @lru_cache(4096)
     def get_pos(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> PosVec: 
         if interpolation != Interpolation.CONSTANT:
             raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")
@@ -540,6 +556,7 @@ class Trajectory:
 
         return pos[idx]
     
+    @lru_cache(4096)
     def get_vel(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> VelVec:
         if self.vel_available is False:
             raise ValueError("Velocity data is not available for this trajectory.")
@@ -557,8 +574,10 @@ class Trajectory:
 
         return cast(VelVecArray, vel)[idx]
     
-    def gps(self) -> dict[Time, GPS]:
-        raise NotImplementedError()
+    @lru_cache(4096)
+    def gps_at(self, epoch: Time) -> GPS:
+        return self.coordinates_at(epoch).gps()
     
-    def horizontal(self) -> dict[Time, Horizontal]:
-        raise NotImplementedError()
+    @lru_cache(4096)
+    def horizontal_at(self, epoch: Time) -> Horizontal:
+        return self.coordinates_at(epoch).horizontal()
