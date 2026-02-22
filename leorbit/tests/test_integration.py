@@ -58,8 +58,8 @@ def test_event_visibility_integration():
     oe_iss = CelestrakDataGP(**oe_09fev24).to_orbital_elements()
     iss = Satellite("ISS", oe_iss, SGP4)
 
-    t0 = Time.fromisoformat("2024-02-09T14:40:00")
-    t1 = Time.fromisoformat("2024-02-09T14:56:00")
+    t0 = Time.fromisoformat("2024-02-09T08:15:00")
+    t1 = Time.fromisoformat("2024-02-09T08:30:00")
     timeline = TimeInterval(t0, t1, 1 * Quantity.second)
 
     gre_coords = Coordinates.from_gps(
@@ -76,21 +76,21 @@ def test_event_visibility_integration():
 
     event_start, event_stop = windows[0]
 
-    assert event_start.unixepoch == pytest.approx(Time.fromisoformat("2024-02-09T14:44:44").unixepoch, abs=2)
-    assert event_stop.unixepoch == pytest.approx(Time.fromisoformat("2024-02-09T14:50:54").unixepoch, abs=2)
+    assert event_start.unixepoch == pytest.approx(Time.fromisoformat("2024-02-09T08:17:15").unixepoch, abs=2)
+    assert event_stop.unixepoch == pytest.approx(Time.fromisoformat("2024-02-09T08:22:57").unixepoch, abs=2)
 
     c0 = iss.coordinates(event_start)
     hor0 = c0.horizontal(local_frame)
     azi0 = normalize_angle_symmetric(hor0.azimuth).magnitude("deg")
     alt0 = hor0.altitude.magnitude("deg")
-    assert azi0 == pytest.approx(-67, abs=2)
+    assert azi0 == pytest.approx(-164, abs=2)
     assert alt0 == pytest.approx(10, abs=1)
 
     c1 = iss.coordinates(event_stop)
     hor1 = c1.horizontal(local_frame)
     azi1 = normalize_angle_symmetric(hor1.azimuth).magnitude("deg")
     alt1 = hor1.altitude.magnitude("deg")
-    assert azi1 == pytest.approx(128, abs=2)
+    assert azi1 == pytest.approx(81, abs=2)
     assert alt1 == pytest.approx(10, abs=1)
 
     tmid = event_start + 206 * Quantity.second
@@ -98,5 +98,5 @@ def test_event_visibility_integration():
     hormid = cmid.horizontal(local_frame)
     azimid = normalize_angle_symmetric(hormid.azimuth).magnitude("deg")
     altmid = hormid.altitude.magnitude("deg")
-    assert azimid == pytest.approx(171, abs=2)
-    assert altmid == pytest.approx(58, abs=1)
+    assert azimid == pytest.approx(120, abs=2)
+    assert altmid == pytest.approx(24, abs=1)
