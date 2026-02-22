@@ -76,7 +76,9 @@ def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
     Algorithm from: https://en.wikipedia.org/wiki/Earth_radius#Geocentric_radius"""
     cc = cos(latitude)
     ss = sin(latitude)
-    quo = (RADIIE_A4 * cc + RADIIE_B4 * ss) / (RADIIE_AA * cc + RADIIE_BB * ss)
+    cc2 = square(cc)
+    ss2 = square(ss)
+    quo = (RADIIE_A4 * cc2 + RADIIE_B4 * ss2) / (RADIIE_AA * cc2 + RADIIE_BB * ss2)
 
     return sqrt(quo).cast(D.Length)
 

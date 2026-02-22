@@ -301,7 +301,7 @@ class Tensor[SomeDim = D.Dimless]():
         if not self._is_dimensionalized():
             raise RuntimeError("Class has to be dimensionalized")
         
-        self._values = np.asarray(values)
+        self._values = np.asarray(values, dtype=np.float64)
 
     def __hash__(self) -> int:
         return hash(f"{hash(self._values.data.tobytes())}${hash(self._dim._d)}")
@@ -848,6 +848,16 @@ class ScalarArray(Tensor_S[SomeDim], Generic[SomeDim]):
     
 class Vector3(Tensor_V3[SomeDim], Generic[SomeDim]):
     """convenience wrapper for three-element vector tensors."""
+
+    O: ClassVar[Tensor_V3[D.Dimless]]
+    X: ClassVar[Tensor_V3[D.Dimless]]
+    Y: ClassVar[Tensor_V3[D.Dimless]]
+    Z: ClassVar[Tensor_V3[D.Dimless]]
+
+Vector3.O = Vector3[D.Dimless].from_components(0, 0, 0)
+Vector3.X = Vector3[D.Dimless].from_components(1, 0, 0)
+Vector3.Y = Vector3[D.Dimless].from_components(0, 1, 0)
+Vector3.Z = Vector3[D.Dimless].from_components(0, 0, 1)
 
 class Vector3Array(Tensor_V3[SomeDim], Generic[SomeDim]):
     """Convenience wrapper for many-element vector tensors."""
