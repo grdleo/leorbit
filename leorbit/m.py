@@ -40,12 +40,12 @@ class DimCoords:
     
     @cached_property
     def representation(self) -> str:
-        """Return a stable human-readable representation, e.g. ``L 1 × T -2 × M 0``."""
+        """Return a stable human-readable representation, e.g. ``L^1 × T^-2 × M^0``."""
         l, t, m = self.__length, self.__time, self.__mass
 
-        sl = f"L {l.numerator}" + ("" if l.denominator == 1 else f"/{l.denominator}")
-        st = f"T {t.numerator}" + ("" if t.denominator == 1 else f"/{t.denominator}")
-        sm = f"M {m.numerator}" + ("" if m.denominator == 1 else f"/{m.denominator}")
+        sl = f"L^{l.numerator}" + ("" if l.denominator == 1 else f"/{l.denominator}")
+        st = f"T^{t.numerator}" + ("" if t.denominator == 1 else f"/{t.denominator}")
+        sm = f"M^{m.numerator}" + ("" if m.denominator == 1 else f"/{m.denominator}")
 
         return " × ".join((sl, st, sm))
     
@@ -336,7 +336,7 @@ class Tensor[SomeDim = D.Dimless]():
         return True
 
     def __repr__(self) -> str:
-        return f"Tensor[D.{self.dim.__class__.__name__}]({self._values})"
+        return f"<Tensor {self._values} [{self.dim_coords.representation}]>"
 
     @classmethod
     def __class_getitem__(cls, dim: type[SomeDim]) -> type[Tensor]:
