@@ -486,14 +486,76 @@ class Trajectory:
         
         self._already_computed_repr: dict[type[CoordinatesRepresentation], CoordinatesRepresentation] = {}
 
+    def _compute_new_frame(self, frame: Frame):
+        if frame in self.positions.keys():
+            return
+        
+        positions, velocities = self.positions[self.privileged_frame]
+        transformed_positions: list[PosVec] = []
+        transformed_velocities: list[VelVec] = []
+
+        for idx, epoch in enumerate(self.interval):
+            p = positions[idx]
+            v = velocities[idx] if velocities is not None else None
+
+            transform = cast(
+                Transform[DynamicVec, DynamicVec], 
+                frame_transform_factory(self.privileged_frame, frame)(epoch)
+            )
+
+            transformed_positions.append(
+                cast(PosVec, transform.do(p))
+            )
+            if v is not None:
+                transformed_velocities.append(
+                    cast(VelVec, transform.do(v))
+                )
+        
+        self.positions[frame] = PosVelArray(
+            Vector3Array[D.Length].from_vectors(*transformed_positions),
+            (
+                Vector3Array[D.Velocity].from_vectors(*transformed_velocities)
+                if transformed_velocities 
+                else None
+            )
+        )
+
+        if isinstance(frame, AbsoluteFrame) and not isinstance(self.privileged_frame, AbsoluteFrame):
+            self.privileged_frame = frame
+
     def coordinates_at(self, epoch: Time, interpolation: Interpolation = Interpolation.CONSTANT) -> Coordinates:
         raise NotImplementedError()
 
     def get_pos(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> PosVec: 
-        raise NotImplementedError()
+        if interpolation != Interpolation.CONSTANT:
+            raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")
+        
+        if epoch not in self.interval:
+            raise ValueError("Epoch is out of bounds of this trajectory.")
+        
+        self._compute_new_frame(frame)
+        
+        idx = self.interval._time2idx(epoch) # check if epoch is in interval
+        pos, vel = self.positions[frame]
+
+        return pos[idx]
     
-    def get_vel(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> VelVec: 
-        raise NotImplementedError()
+    def get_vel(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> VelVec:
+        if self.vel_available is False:
+            raise ValueError("Velocity data is not available for this trajectory.")
+         
+        if interpolation != Interpolation.CONSTANT:
+            raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")
+        
+        if epoch not in self.interval:
+            raise ValueError("Epoch is out of bounds of this trajectory.")
+        
+        self._compute_new_frame(frame)
+        
+        idx = self.interval._time2idx(epoch) # check if epoch is in interval
+        pos, vel = self.positions[frame]
+
+        return cast(VelVecArray, vel)[idx]
     
     def gps(self) -> dict[Time, GPS]:
         raise NotImplementedError()
