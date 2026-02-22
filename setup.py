@@ -27,6 +27,7 @@ setuptools.setup(
         "cartopy",
         "pint",
         "requests",
+        "pydantic"
     ],
     python_requires=">=3.14"
 )
