@@ -225,7 +225,8 @@ def sgp4(
         epw = (capu - temp4 + temp3 - temp2) / (1 - temp5 - temp6) + temp2
         temp7 = temp2
         temp2 = epw
-        if np.fabs(epw - temp7) <= 1e-6:
+        cond_break = np.fabs(epw - temp7) <= 1e-6
+        if np.all(cond_break):
             break
 
     ecose = temp5 + temp6
