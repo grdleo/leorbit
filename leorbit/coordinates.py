@@ -53,7 +53,7 @@ class Coordinates:
     
     def __hash__(self) -> int:
         pos, vel = self.positions[self.privileged_frame]
-        hash_str = f"{hash(self.epoch)}${hash(pos)}${hash(vel)}${self.name}"
+        hash_str = f"{self.__class__.__name__}${hash(self.epoch)}${hash(pos)}${hash(vel)}${self.name}"
         return hash(hash_str)
 
     def _compute_new_frame(self, frame: Frame):
@@ -486,6 +486,11 @@ class Trajectory:
         self.name = None
         
         self._already_computed_repr: dict[type[CoordinatesRepresentation], CoordinatesRepresentation] = {}
+
+    def __hash__(self) -> int:
+        pos, vel = self.positions[self.privileged_frame]
+        hash_str = f"{self.__class__.__name__}${hash(self.interval)}${hash(pos)}${hash(vel)}${self.name}"
+        return hash(hash_str)
 
     def _compute_new_frame(self, frame: Frame):
         if frame in self.positions.keys():
