@@ -3,7 +3,7 @@
 
 import numpy as np
 
-from typing import NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
+from typing import Iterable, NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
 
 if TYPE_CHECKING:
     import pint
@@ -356,3 +356,56 @@ def convert_quantity_units(quantity: Number, units_from: Union[str, "pint.Unit"]
     import pint
 
     return cast(Number, pint.Quantity(quantity, units_from).m_as(units_to))
+
+def truth_array_to_indices_intervals(
+    truth_array: Iterable[bool] | np.ndarray,
+    min_size_intervals: int = 1
+) -> list[tuple[int, int]]:
+    """Return contiguous ``True`` runs as inclusive index intervals.
+
+    Parameters
+    ----------
+    truth_array:
+        Boolean sequence (Python iterable or NumPy array). If not already a
+        NumPy array, it is converted with ``np.asarray(..., dtype=bool)``.
+        The input is flattened to 1-D.
+    min_size_intervals:
+        Minimum run length to keep. Runs shorter than this value are filtered
+        out. Must be >= 1.
+
+    Returns
+    -------
+    list[tuple[int, int]]
+        Inclusive ``(start, stop)`` index pairs for each kept ``True`` run.
+
+    Notes
+    -----
+    The implementation is fully vectorized (padding + ``np.diff``), avoiding
+    Python loops over elements.
+
+    Example
+    -------
+    >>> t = [False, True, True, True, False, False, True, True, False]
+    >>> truth_array_to_indices_intervals(t)
+    [(1, 3), (6, 7)]
+    """
+    if min_size_intervals < 1:
+        raise ValueError("min_size_intervals must be >= 1")
+
+    if isinstance(truth_array, np.ndarray):
+        arr = np.asarray(truth_array, dtype=bool).reshape(-1)
+    else:
+        arr = np.asarray(list(truth_array), dtype=bool).reshape(-1)
+    if arr.size == 0:
+        return []
+
+    padded = np.pad(arr.astype(np.int8), (1, 1), mode="constant")
+    edges = np.diff(padded)
+
+    starts = np.flatnonzero(edges == 1)
+    stops = np.flatnonzero(edges == -1) - 1
+
+    lengths = stops - starts + 1
+    keep = lengths >= int(min_size_intervals)
+
+    return list(zip(starts[keep].tolist(), stops[keep].tolist()))
