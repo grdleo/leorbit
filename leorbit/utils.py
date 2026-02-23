@@ -69,7 +69,16 @@ def semi_major_axis_earth_to_mean_motion(sma: Tensor_S[D.Length]) -> Tensor_S[D.
     mm = np.sqrt(MU_EARTH._values / sma._values ** 3)
     return Tensor_S[D.AngularVelocity](mm)
 
-def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
+@overload
+def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]: ...
+
+@overload
+def geocentric_radius_earth(latitude: ScalarArray[D.Angle]) -> ScalarArray[D.Length]: ...
+
+@overload
+def geocentric_radius_earth(latitude: Tensor_S[D.Angle]) -> Tensor_S[D.Length]: ...
+
+def geocentric_radius_earth(latitude: Tensor_S[D.Angle]) -> Tensor_S[D.Length]:
     """Returns the mean radius of Earth at given latitude.
     Earth is considered as a spheroid. 
     
@@ -78,7 +87,7 @@ def geocentric_radius_earth(latitude: Scalar[D.Angle]) -> Scalar[D.Length]:
     ss = sin(latitude)
     cc2 = square(cc)
     ss2 = square(ss)
-    quo = (RADIIE_A4 * cc2 + RADIIE_B4 * ss2) / (RADIIE_AA * cc2 + RADIIE_BB * ss2)
+    quo = (cc2 * RADIIE_A4 + ss2 * RADIIE_B4) / (cc2 * RADIIE_AA + ss2 * RADIIE_BB)
 
     return sqrt(quo).cast(D.Length)
 
@@ -349,6 +358,23 @@ def gcrf_state_vectors2elements(pos: Vector3[D.Length], vel: Vector3[D.Velocity]
         argp,
         n,
         M
+    )
+
+class TupleGPS(NamedTuple):
+    latitude: Tensor_S[D.Angle]
+    longitude: Tensor_S[D.Angle]
+    altitude: Tensor_S[D.Length]
+
+def itrf2gps(itrf_pos: Tensor_V3[D.Length]) -> TupleGPS:
+    """Convert a position in ITRS coordinates to GPS coordinates, at a given time."""
+    lon = itrf_pos.theta
+    lat = itrf_pos.delta
+    alt = itrf_pos.length - geocentric_radius_earth(lat)
+
+    return TupleGPS(
+        latitude=lat,
+        longitude=lon,
+        altitude=alt
     )
 
 def convert_quantity_units(quantity: Number, units_from: Union[str, "pint.Unit"], units_to: Union[str, "pint.Unit"]) -> Number:

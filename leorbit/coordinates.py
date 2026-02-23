@@ -9,10 +9,10 @@ from typing import ParamSpec, Callable, TypeVar, cast
 
 from leorbit.algorithms import OrbitalElementsComputeTuple
 from leorbit.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
-from leorbit.m import D, Dim, Quantity, Scalar, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan, abs
+from leorbit.m import D, Dim, Quantity, Scalar, ScalarArray, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan, abs
 from leorbit.time import Time, TimeInterval
 from leorbit.transforms import Transform, TransformVector3Affine
-from leorbit.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
+from leorbit.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, itrf2gps, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]
@@ -115,14 +115,12 @@ class Coordinates:
             return cast(GPS, gps)
         
         itrf_pos = self.get_pos(AbsoluteFrame.ITRF)
-        lon = itrf_pos.theta
-        lat = itrf_pos.delta
-        alt = itrf_pos.length - geocentric_radius_earth(lat)
+        tuple_gps = itrf2gps(itrf_pos)
 
         return GPS(
-            longitude=lon, 
-            latitude=lat, 
-            altitude=alt
+            longitude=cast(Scalar[D.Angle], tuple_gps.longitude), 
+            latitude=cast(Scalar[D.Angle], tuple_gps.latitude), 
+            altitude=cast(Scalar[D.Length], tuple_gps.altitude)
         )
     
     ### ### ###
@@ -598,6 +596,18 @@ class Trajectory:
     @lru_cache(4096)
     def gps_at(self, epoch: Time) -> GPS:
         return self.coordinates_at(epoch).gps()
+    
+    class _GPSArray(NamedTuple):
+        longitude: ScalarArray[D.Angle]
+        latitude: ScalarArray[D.Angle]
+        altitude: ScalarArray[D.Length]
+    
+    @lru_cache(16)
+    def gps(self) -> _GPSArray:
+        itrs_pos = self.trajectory_pos(AbsoluteFrame.ITRF)
+        tuple_gps = itrf2gps(itrs_pos)
+        
+        return cast(Trajectory._GPSArray, tuple_gps)
     
     @lru_cache(4096)
     def horizontal_at(self, epoch: Time) -> Horizontal:
