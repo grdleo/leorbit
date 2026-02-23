@@ -580,6 +580,21 @@ class Trajectory:
 
         return cast(VelVecArray, vel)[idx]
     
+    @lru_cache(16)
+    def trajectory_pos(self, frame: Frame) -> PosVecArray:
+        self._compute_new_frame(frame)
+        pos, vel = self.positions[frame]
+        return pos
+    
+    @lru_cache(16)
+    def trajectory_vel(self, frame: Frame) -> VelVecArray:
+        if self.vel_available is False:
+            raise ValueError("Velocity data is not available for this trajectory.")
+        
+        self._compute_new_frame(frame)
+        pos, vel = self.positions[frame]
+        return cast(VelVecArray, vel)
+    
     @lru_cache(4096)
     def gps_at(self, epoch: Time) -> GPS:
         return self.coordinates_at(epoch).gps()
