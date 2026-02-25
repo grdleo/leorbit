@@ -4,6 +4,7 @@ import pytest
 from leorbit.m import (
     D,
     Matrix33,
+    Matrix33Array,
     Quantity,
     Scalar,
     ScalarArray,
@@ -177,6 +178,57 @@ def test_matrix33_arithmetic_inverse_and_products():
     v = Vector3[D.Length].from_components(1.0, 2.0, 3.0)
     mv = x2 @ v
     np.testing.assert_allclose(mv._values.flatten(), [2, 4, 6])
+
+
+def test_matrix33array_matmul_vector3array_pairwise():
+    vectors = Vector3Array[D.Dimless].from_components(
+        np.array([1.0, 4.0, 7.0, 10.0]),
+        np.array([2.0, 5.0, 8.0, 11.0]),
+        np.array([3.0, 6.0, 9.0, 12.0]),
+    )
+
+    m0 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
+    m1 = np.array([[2.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 4.0]])
+    m2 = np.array([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
+    m3 = np.array([[1.0, 1.0, 1.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]])
+
+    matrices = Matrix33Array[D.Dimless](np.stack([m0, m1, m2, m3], axis=2))
+
+    out = matrices @ vectors
+
+    np.testing.assert_allclose(
+        out._values,
+        np.array(
+            [
+                [1.0, 8.0, 8.0, 33.0],
+                [2.0, 15.0, 9.0, 11.0],
+                [3.0, 24.0, 7.0, -12.0],
+            ]
+        ),
+    )
+
+
+def test_matrix33array_matmul_vector3array_requires_same_size():
+    matrices = Matrix33Array[D.Dimless](
+        np.stack(
+            [
+                np.eye(3),
+                np.eye(3),
+                np.eye(3),
+                np.eye(3),
+            ],
+            axis=2,
+        )
+    )
+
+    vectors = Vector3Array[D.Dimless].from_components(
+        np.array([1.0, 2.0, 3.0]),
+        np.array([4.0, 5.0, 6.0]),
+        np.array([7.0, 8.0, 9.0]),
+    )
+
+    with pytest.raises(RuntimeError):
+        _ = matrices @ vectors
 
 
 def test_square_sqrt_and_trig_functions():

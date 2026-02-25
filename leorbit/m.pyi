@@ -406,6 +406,8 @@ class Tensor_V3(Tensor[SomeDim], Generic[SomeDim]):
 
 
 class Tensor_M33(Tensor[SomeDim], Generic[SomeDim]):
+    def __init__(self, data: TensorData) -> None: ...
+
     @classmethod
     def from_elements(
         cls,
