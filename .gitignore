@@ -2,6 +2,7 @@
 *.code-workspace
 __pycache__
 venv/
+.venv/
 self-notes.md
 *.egg-info/
 .coverage
@@ -12,3 +13,4 @@ self-notes.md
 dist
 .pypirc
 docs/build/
+.vscode/

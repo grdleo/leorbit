@@ -24,7 +24,6 @@ setuptools.setup(
     install_requires=[
         "numpy",
         "matplotlib",
-        "cartopy",
         "pint",
         "requests",
         "pydantic"
