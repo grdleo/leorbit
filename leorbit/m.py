@@ -486,12 +486,30 @@ class Tensor[SomeDim = D.Dimless]():
             self._base_tensor_class, o._base_tensor_class
         ]["@"]
 
+        ein_op = "ij,jn->in"
+        if (
+            self._base_tensor_class is Tensor_M33
+            and o._base_tensor_class is Tensor_V3
+            and self._values.ndim == 3
+        ):
+            # case: array of 3x3 matrices with array of vectors: 
+            # each vector `i` @'d with the matrix `[:,:,i]`
+
+            _, _, nb_matrices = self._values.shape
+            _, nb_vecs = o._values.shape
+            if nb_matrices == nb_vecs:
+                ein_op = "abn,bn->an"
+            else:
+                raise RuntimeError("...")
+
         if tensor_cls_result is None:
             raise ValueError("...")
         
         return tensor_cls_result[ # type: ignore (is not specialized...)
             (self.dim_coords * o.dim_coords).to_dimension()
-        ](self._values @ o._values)
+        ](
+            np.einsum(ein_op, self._values, o._values)
+        )
     
     def __rmatmul__(self, o: object) -> Tensor:
         return ensure_tensor(o) @ self
@@ -819,11 +837,24 @@ class Tensor_M33(Tensor[SomeDim], Generic[SomeDim]):
 
     def __init__(self, data: TensorData):
         data = np.asarray(data)
+
+        if data.ndim not in (2, 3):
+            raise ValueError("...")
+        
         rows, cols, *_ = data.shape
-        if data.ndim != 2 or rows != 3 or cols != 3:
-            raise ValueError("Wrong shape (expected 3×3)")
+
+        if rows != 3 or cols != 3:
+            raise ValueError("...")
         
         super().__init__(data)
+
+    @property
+    def size(self) -> int:
+        if self._values.ndim == 2:
+            return 1
+        
+        *_, size = self._values.shape
+        return int(size)
     
     @classmethod
     def from_elements(cls,
@@ -852,21 +883,38 @@ class Tensor_M33(Tensor[SomeDim], Generic[SomeDim]):
             return self # type: ignore
         raise RuntimeError("Cannot cast")
     
-    @cached_property
-    def det(self) -> Number:
-        return np.linalg.det(self._values)
-    
     def inverse(self) -> Tensor_M33:
         """Return matrix inverse.
         """
+        vals = np.asarray(self._values)
+        if vals.ndim == 2:
+            inv_vals = np.linalg.inv(vals)
+        elif vals.ndim == 3:
+            # shape (3,3,n) -> (n,3,3), invert each, -> back to (3,3,n)
+            moved = np.moveaxis(vals, 2, 0)
+            inv_moved = np.linalg.inv(moved)
+            inv_vals = np.moveaxis(inv_moved, 0, 2)
+        else:
+            raise ValueError("Unsupported array shape for matrix inverse")
+
         return Tensor_M33[
             (self.dim_coords ** -1).to_dimension()
-        ](
-            np.linalg.inv(self._values)
-        )
+        ](inv_vals)
     
     def __repr__(self) -> str:
         return f"TensorMatrix33[D.{self.dim.__class__.__name__}]({self._values})"
+    
+    def __getitem__(self, index: int) -> Matrix33[SomeDim]:
+        if self.size == 1:
+            return cast(Matrix33, self)
+        
+        if index < 0 or index >= self.size:
+            raise KeyError("...")
+        
+        return cast(
+            Matrix33[SomeDim],
+            Matrix33[self.dim](self._values[:, :, index:index + 1])
+        )
 
 Tensor_M33._base_tensor_class = Tensor_M33
 
@@ -895,6 +943,17 @@ class Vector3Array(Tensor_V3[SomeDim], Generic[SomeDim]):
     """Convenience wrapper for many-element vector tensors."""
     
 class Matrix33(Tensor_M33[SomeDim], Generic[SomeDim]):
+    """Convience wrapper..."""
+
+    Id: ClassVar[Tensor_M33[D.Dimless]]
+
+Matrix33.Id = Matrix33[D.Dimless].from_elements(
+    1, 0, 0,
+    0, 1, 0,
+    0, 0, 1
+)
+
+class Matrix33Array(Tensor_M33[SomeDim], Generic[SomeDim]):
     """Convience wrapper..."""
 
 
