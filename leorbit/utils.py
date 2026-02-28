@@ -6,6 +6,9 @@ import numpy.typing as npt
 
 from typing import Iterable, NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
 
+from leorbit.frames import EarthLocalFrame
+from leorbit.transforms import TransformVector3Affine
+
 if TYPE_CHECKING:
     import pint
 
@@ -388,21 +391,39 @@ def gcrf_state_vectors2elements(pos: Vector3[D.Length], vel: Vector3[D.Velocity]
         M
     )
 
-class TupleGPS(NamedTuple):
+class _TupleGPS(NamedTuple):
     latitude: Tensor_S[D.Angle]
     longitude: Tensor_S[D.Angle]
     altitude: Tensor_S[D.Length]
 
-def itrf2gps(itrf_pos: Tensor_V3[D.Length]) -> TupleGPS:
+def itrf2gps(itrf_pos: Tensor_V3[D.Length]) -> _TupleGPS:
     """Convert a position in ITRS coordinates to GPS coordinates, at a given time."""
     lon = itrf_pos.theta
     lat = itrf_pos.delta
     alt = itrf_pos.length - geocentric_radius_earth(lat)
 
-    return TupleGPS(
+    return _TupleGPS(
         latitude=lat,
         longitude=lon,
         altitude=alt
+    )
+
+class _TupleHorizontal(NamedTuple):
+    azimuth: Tensor_S[D.Angle]
+    altitude: Tensor_S[D.Angle]
+    distance: Tensor_S[D.Length]
+
+def itrf2horizontal(itrf_pos: Tensor_V3[D.Length], earth_local_frame: EarthLocalFrame) -> _TupleHorizontal:
+    t = cast(
+        TransformVector3Affine[D.Length],
+        earth_local_frame.transform
+    )
+    horizontal_pos = t.do(itrf_pos)
+
+    return _TupleHorizontal(
+        azimuth=horizontal_pos.theta,
+        altitude=horizontal_pos.delta,
+        distance=itrf_pos.length
     )
 
 def convert_quantity_units(quantity: Number, units_from: Union[str, "pint.Unit"], units_to: Union[str, "pint.Unit"]) -> Number:

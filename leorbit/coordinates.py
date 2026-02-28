@@ -12,7 +12,7 @@ from leorbit.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_facto
 from leorbit.m import D, Dim, Quantity, Scalar, ScalarArray, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan, abs
 from leorbit.time import Time, TimeInterval
 from leorbit.transforms import Transform, TransformVector3Affine
-from leorbit.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, itrf2gps, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
+from leorbit.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, itrf2gps, itrf2horizontal, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
 PosVec = Vector3[D.Length]
 VelVec = Vector3[D.Velocity]
@@ -34,8 +34,6 @@ class Coordinates:
         self.privileged_frame = frame
         self.vel_available = vel is not None
         self.name = None
-        
-        self._already_computed_repr: dict[type[CoordinatesRepresentation], CoordinatesRepresentation] = {}
 
     def __repr__(self) -> str:
         km = "kilo_meter"
@@ -109,10 +107,6 @@ class Coordinates:
     @lru_cache
     def gps(self) -> GPS:
         """Returns this coordinates as their GPS representation"""
-        gps = self._already_computed_repr.get(GPS, None)
-        if gps is not None:
-            return cast(GPS, gps)
-        
         itrf_pos = self.get_pos(AbsoluteFrame.ITRF)
         tuple_gps = itrf2gps(itrf_pos)
 
@@ -145,19 +139,16 @@ class Coordinates:
     @lru_cache
     def horizontal(self, local_frame: EarthLocalFrame) -> Horizontal:
         """Returns the representation of this coordinates as 'horizontal', in the given frame"""
-        assert local_frame.reference_frame == AbsoluteFrame.ITRF # FIXME
 
-        itrf_pos = self.get_pos(AbsoluteFrame.ITRF)
-        t = cast(
-            TransformVector3Affine[D.Length],
-            local_frame.transform
+        tuple_hor = itrf2horizontal(
+            self.get_pos(AbsoluteFrame.ITRF),
+            local_frame
         )
-        horizontal_pos = t.do(itrf_pos)
 
         return Horizontal(
-            azimuth=horizontal_pos.theta,
-            altitude=horizontal_pos.delta,
-            distance=itrf_pos.length
+            azimuth=cast(Scalar[D.Angle], tuple_hor.azimuth),
+            altitude=cast(Scalar[D.Angle], tuple_hor.altitude),
+            distance=cast(Scalar[D.Length], tuple_hor.distance),
         )
     
     ### ########## ###
@@ -248,7 +239,6 @@ class GPS(CoordinatesRepresentation):
             altitude=self.altitude,
             epoch=epoch
         )
-        coordinates._already_computed_repr[GPS] = self
         
         return coordinates
     
@@ -481,8 +471,6 @@ class Trajectory:
         self.privileged_frame = frame
         self.vel_available = vel is not None
         self.name = None
-        
-        self._already_computed_repr: dict[type[CoordinatesRepresentation], CoordinatesRepresentation] = {}
 
     def __hash__(self) -> int:
         pos, vel = self.positions[self.privileged_frame]
@@ -574,10 +562,6 @@ class Trajectory:
         pos, vel = self.positions[frame]
         return cast(VelVecArray, vel)
     
-    @lru_cache(4096)
-    def gps_at(self, epoch: Time) -> GPS:
-        return self.coordinates_at(epoch).gps()
-    
     class _GPSArray(NamedTuple):
         longitude: ScalarArray[D.Angle]
         latitude: ScalarArray[D.Angle]
@@ -585,11 +569,57 @@ class Trajectory:
     
     @lru_cache(16)
     def gps(self) -> _GPSArray:
+        """Returns this trajectory as a tuple containing the GPS coordinates of each point of the trajectory, as arrays."""
         itrs_pos = self.trajectory_pos(AbsoluteFrame.ITRF)
         tuple_gps = itrf2gps(itrs_pos)
         
         return cast(Trajectory._GPSArray, tuple_gps)
     
     @lru_cache(4096)
-    def horizontal_at(self, epoch: Time) -> Horizontal:
-        return self.coordinates_at(epoch).horizontal()
+    def gps_at(self, epoch: Time, interpolation: Interpolation = Interpolation.CONSTANT) -> GPS:
+        """Returns the GPS coordinates of this trajectory at a given epoch."""
+        if interpolation != Interpolation.CONSTANT:
+            raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")
+        
+        if epoch not in self.interval:
+            raise ValueError("Epoch is out of bounds of this trajectory.")
+        
+        gps_array = self.gps()
+        idx = self.interval._time2idx(epoch)
+
+        return GPS(
+            longitude=gps_array.longitude[idx],
+            latitude=gps_array.latitude[idx],
+            altitude=gps_array.altitude[idx]
+        )
+    
+    class _HorizontalArray(NamedTuple):
+        azimuth: ScalarArray[D.Angle]
+        altitude: ScalarArray[D.Angle]
+        distance: ScalarArray[D.Length]
+
+    @lru_cache(16)
+    def horizontal(self, local_frame: EarthLocalFrame) -> _HorizontalArray:
+        """Returns this trajectory as a tuple containing the horizontal coordinates of each point of the trajectory, as arrays."""
+        itrs_pos = self.trajectory_pos(AbsoluteFrame.ITRF)
+        tuple_hor = itrf2horizontal(itrs_pos, local_frame)
+        
+        return cast(Trajectory._HorizontalArray, tuple_hor)
+    
+    @lru_cache(4096)
+    def horizontal_at(self, epoch: Time, local_frame: EarthLocalFrame, interpolation: Interpolation = Interpolation.CONSTANT) -> Horizontal:
+        """Returns the horizontal coordinates of this trajectory at a given epoch, in the given local frame."""
+        if interpolation != Interpolation.CONSTANT:
+            raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")
+        
+        if epoch not in self.interval:
+            raise ValueError("Epoch is out of bounds of this trajectory.")
+        
+        horizontal_array = self.horizontal(local_frame)
+        idx = self.interval._time2idx(epoch)
+        
+        return Horizontal(
+            azimuth=horizontal_array.azimuth[idx],
+            altitude=horizontal_array.altitude[idx],
+            distance=horizontal_array.distance[idx]
+        )

@@ -62,6 +62,9 @@ class TransformVector3Linear(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Ten
 
     @overload
     def do(self, tensor: Vector3Array[SomeDim]) -> Vector3Array[SomeDim]: ...
+
+    @overload
+    def do(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]: ...
     
     def do(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
         """Apply the linear transformation."""
@@ -72,6 +75,9 @@ class TransformVector3Linear(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Ten
 
     @overload
     def undo(self, tensor: Vector3Array[SomeDim]) -> Vector3Array[SomeDim]: ...
+
+    @overload
+    def undo(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]: ...
     
     def undo(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
         """Apply the inverse linear transformation."""
@@ -97,6 +103,9 @@ class TransformVector3Affine(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Ten
 
     @overload
     def do(self, tensor: Vector3Array[SomeDim]) -> Vector3Array[SomeDim]: ...
+
+    @overload
+    def do(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]: ...
     
     def do(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
         """Apply affine transform ``M @ v + t``."""
@@ -107,6 +116,9 @@ class TransformVector3Affine(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Ten
 
     @overload
     def undo(self, tensor: Vector3Array[SomeDim]) -> Vector3Array[SomeDim]: ...
+
+    @overload
+    def undo(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]: ...
     
     def undo(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
         """Apply inverse affine transform ``M⁻¹ @ (v - t)``."""
@@ -119,21 +131,6 @@ class TransformVector3Affine(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Ten
             translation=self.translation.copy()
         )
         return cast(Self, t)
-    
-class TransformVector3RotationZ(Generic[SomeDim], TransformVector3Linear[SomeDim]):
-    """Specialized linear transform: rotation around the Z axis."""
-
-    def __init__(self, angle_rad: Scalar[D.Angle]):
-        """Build the Z-rotation matrix from an angle in radians or angle scalar."""
-        c, s = cos(angle_rad), sin(angle_rad)
-        _0, _1 = Scalar[D.Dimless](0), Scalar[D.Dimless](1)
-        rot_mat = Matrix33[D.Dimless].from_elements(
-            c, -s, _0,
-            s, c, _0,
-            _0, _0, _1
-        )
-
-        super().__init__(rot_mat)
     
 class TransformChain(Generic[T1, T2], Transform[T1, T2]):
     def __init__(self, *transforms: Transform[Any, Any]):
