@@ -19,9 +19,8 @@ VelVec = Vector3[D.Velocity]
 
 SomeDim = TypeVar("SomeDim", bound=Dim)
 DynamicVec = Vector3[D.Length] | Vector3[D.Velocity]
-SomeDynamicVec = TypeVar("SomeDynamicVec", bound=DynamicVec)
+DynamicVecArray = Vector3Array[D.Length] | Vector3Array[D.Velocity]
 DynamicD = D.Length | D.Velocity
-SomeDynamicD = TypeVar("SomeDynamicD", bound=DynamicD)
 
 class PosVel(NamedTuple):
 	pos: PosVec
@@ -489,40 +488,22 @@ class Trajectory:
         pos, vel = self.positions[self.privileged_frame]
         hash_str = f"{self.__class__.__name__}${hash(self.interval)}${hash(pos)}${hash(vel)}${self.name}"
         return hash(hash_str)
-
+    
     def _compute_new_frame(self, frame: Frame):
         if frame in self.positions.keys():
             return
         
-        positions, velocities = self.positions[self.privileged_frame]
-        transformed_positions: list[PosVec] = []
-        transformed_velocities: list[VelVec] = []
-
-        for idx, epoch in enumerate(self.interval):
-            p = positions[idx]
-            v = velocities[idx] if velocities is not None else None
-
-            transform = cast(
-                Transform[DynamicVec, DynamicVec], 
-                frame_transform_factory(self.privileged_frame, frame)(epoch)
-            )
-
-            transformed_positions.append(
-                cast(PosVec, transform.do(p))
-            )
-            if v is not None:
-                transformed_velocities.append(
-                    cast(VelVec, transform.do(v))
-                )
-        
-        self.positions[frame] = PosVelArray(
-            Vector3Array[D.Length].from_vectors(*transformed_positions),
-            (
-                Vector3Array[D.Velocity].from_vectors(*transformed_velocities)
-                if transformed_velocities 
-                else None
-            )
+        p, v = self.positions[self.privileged_frame]
+        transform = cast(
+            Transform[DynamicVecArray, DynamicVecArray], 
+            frame_transform_factory(self.privileged_frame, frame)(self.interval)
         )
+
+        p = cast(PosVecArray, transform.do(p))
+        if v is not None:
+            v = cast(VelVecArray, transform.do(v))
+
+        self.positions[frame] = PosVelArray(p, v)
 
         if isinstance(frame, AbsoluteFrame) and not isinstance(self.privileged_frame, AbsoluteFrame):
             self.privileged_frame = frame
