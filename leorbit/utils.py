@@ -6,10 +6,10 @@ import numpy.typing as npt
 
 from typing import Iterable, NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
 
-from leorbit.frames import EarthLocalFrame
 from leorbit.transforms import TransformVector3Affine
 
 if TYPE_CHECKING:
+    from leorbit.frames import EarthLocalFrame
     import pint
 
 from leorbit.m import N2, P1, P3, DimCoords, Number, ProductDim, PowerDim, Scalar, ScalarArray, Tensor_S, Vector3, Quantity, Vector3Array, atan2, cos, abs, cube, ensure_tensor, D, Dim, Tensor_V3, Matrix33, normalize_angle, sin, sqrt, square
@@ -413,7 +413,7 @@ class _TupleHorizontal(NamedTuple):
     altitude: Tensor_S[D.Angle]
     distance: Tensor_S[D.Length]
 
-def itrf2horizontal(itrf_pos: Tensor_V3[D.Length], earth_local_frame: EarthLocalFrame) -> _TupleHorizontal:
+def itrf2horizontal(itrf_pos: Tensor_V3[D.Length], earth_local_frame: "EarthLocalFrame") -> _TupleHorizontal:
     t = cast(
         TransformVector3Affine[D.Length],
         earth_local_frame.transform
