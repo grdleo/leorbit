@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Self, TypeVar, cast, overload
 
-from leorbit.m import D, Dim, Matrix33, Scalar, Tensor_V3, Vector3, Vector3Array, cos, sin
+from leorbit.m import D, Dim, Matrix33, Scalar, Tensor_M33, Tensor_V3, Vector3, Vector3Array, cos, sin
 
 
 T1 = TypeVar("T1")
@@ -53,7 +53,7 @@ class TransformIdentify(Generic[T1], Transform[T1, T1]):
 class TransformVector3Linear(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Tensor_V3[SomeDim]]):
     """Linear transform for vectors using a dimensionless 3×3 matrix."""
 
-    def __init__(self, matrix: Matrix33[D.Dimless]):
+    def __init__(self, matrix: Tensor_M33[D.Dimless]):
         """Initialize with the transformation matrix."""
         self.matrix = matrix
 
@@ -87,7 +87,7 @@ class TransformVector3Linear(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Ten
 class TransformVector3Affine(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Tensor_V3[SomeDim]]):
     """Affine transform combining linear map and translation."""
 
-    def __init__(self, matrix: Matrix33[D.Dimless], translation: Tensor_V3[SomeDim]):
+    def __init__(self, matrix: Tensor_M33[D.Dimless], translation: Tensor_V3[SomeDim]):
         """Initialize with matrix and translation components."""
         self.matrix = matrix
         self.translation = translation

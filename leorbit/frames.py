@@ -2,9 +2,14 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING, ParamSpec, Callable, TypeAlias, TypeVar, cast
 
-from leorbit.m import D, Matrix33, Quantity, Vector3, cos
-from leorbit.transforms import Transform, TransformChain, TransformIdentify, TransformVector3Affine, TransformVector3RotationZ
-from leorbit.time import Time
+from leorbit.m import D, Matrix33, Matrix33Array, Quantity, Vector3, cos
+from leorbit.transforms import Transform, TransformChain, TransformIdentify, TransformVector3Affine, TransformVector3Linear
+from leorbit.time import Time, TimeInterval
+
+import numpy as np
+import numpy.typing as npt
+
+from leorbit.utils import unixepoch_to_j2000, j2000_to_stl0
 
 if TYPE_CHECKING:
     from leorbit.coordinates import Coordinates
@@ -23,14 +28,55 @@ class AbsoluteFrame(Enum):
     GCRF = "GCRF"
     ITRF = "ITRF"
 
-FrameTransformFactory = Callable[[Time], Transform[SomeDynamicVec, SomeDynamicVec]]
+FrameTransformFactory = Callable[[Time | TimeInterval], Transform[SomeDynamicVec, SomeDynamicVec]]
 
 @lru_cache(4096)
-def itrf2gcrf(epoch: Time) -> Transform[SomeDynamicVec, SomeDynamicVec]:
+def itrf2gcrf(epoch: Time | TimeInterval) -> Transform[SomeDynamicVec, SomeDynamicVec]:
     """NOTE: This rotation can transform any position or velocity"""
 
-    t = TransformVector3RotationZ[DynamicD](epoch.stl0)
-    return cast(Transform[SomeDynamicVec, SomeDynamicVec], t)
+    unixepoch: npt.NDArray
+    if isinstance(epoch, Time):
+        unixepoch = np.array(epoch._unixepoch)
+    elif isinstance(epoch, TimeInterval):
+        unixepoch = epoch.to_time_stamps()._values
+    else:
+        raise ValueError(...)
+    
+    stl0 = j2000_to_stl0(unixepoch_to_j2000(unixepoch))
+    cos_stl0 = np.cos(stl0)
+    sin_stl0 = np.sin(stl0)
+    one = np.ones_like(stl0)
+    zero = np.zeros_like(stl0)
+
+    if stl0.ndim == 0:
+        rot_mat = np.array(
+            [
+                [cos_stl0.item(), -sin_stl0.item(), zero.item()],
+                [sin_stl0.item(), cos_stl0.item(),  zero.item()],
+                [zero.item(),     zero.item(),      one.item() ],
+            ]
+        )
+        return cast(
+            Transform[SomeDynamicVec, SomeDynamicVec],
+            TransformVector3Linear[DynamicD](Matrix33[D.Dimless](rot_mat))
+        )
+    elif stl0.ndim == 1:
+        rot_mat = np.stack(
+            [
+                np.stack([cos_stl0, -sin_stl0, zero], axis=0),
+                np.stack([sin_stl0, cos_stl0,  zero], axis=0),
+                np.stack([zero,     zero,      one ], axis=0),
+            ], 
+            axis=0
+        )
+        return cast(
+            Transform[SomeDynamicVec, SomeDynamicVec],
+            TransformVector3Linear[DynamicD](Matrix33Array[D.Dimless](rot_mat))
+        )
+    else:
+        raise ValueError("Unsupported sidereal angle shape")
+
+    
 
 ABS_FRAME_TRANSFORMS: dict[tuple[AbsoluteFrame, AbsoluteFrame], FrameTransformFactory] = {
     (AbsoluteFrame.ITRF, AbsoluteFrame.GCRF): itrf2gcrf
@@ -110,7 +156,7 @@ def frame_transform_factory(from_frame: Frame, to_frame: Frame) -> FrameTransfor
     if isinstance(first, TransformIdentify) and isinstance(last, TransformIdentify):
         return abs_transform
     
-    def _factory(epoch: Time) -> TransformChain:
+    def _factory(epoch: Time | TimeInterval) -> TransformChain:
         return TransformChain(
             cast(Transform, first),
             cast(Transform, abs_transform(epoch)), 
