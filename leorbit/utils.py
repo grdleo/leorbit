@@ -2,6 +2,7 @@
 """
 
 import numpy as np
+import numpy.typing as npt
 
 from typing import Iterable, NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
 
@@ -34,6 +35,9 @@ RADIIE_A4 = square(RADIIE_AA)
 RADIIE_BB = square(6_356_752 * Quantity.meter)
 RADIIE_B4 = square(RADIIE_BB)
 
+TWOPI = 2 * np.pi
+TWELF_PI = np.pi / 12
+
 #####################################
 
 def angle2dms(angle: Scalar[D.Angle]) -> str:
@@ -48,6 +52,30 @@ def angle2dms(angle: Scalar[D.Angle]) -> str:
     sec, _ = divmod(min_dec * 60, 1)
     
     return f"{int(deg): 04}° {int(min):02}′ {int(sec):02}″"
+
+@overload
+def unixepoch_to_j2000(unixepoch: npt.NDArray) -> npt.NDArray: ...
+
+@overload
+def unixepoch_to_j2000(unixepoch: int | float) -> float: ...
+
+def unixepoch_to_j2000(unixepoch: npt.NDArray | Number) -> npt.NDArray | Number:
+    """Representation of this `Time` object as "Julian year (J2000)", aka 
+    the number of days since 2000/01/01T12:00:00."""
+    return unixepoch / 86_400 - 10_957.5
+
+@overload
+def j2000_to_stl0(j2000: npt.NDArray) -> npt.NDArray: ...
+
+@overload
+def j2000_to_stl0(j2000: float | int) -> float: ...
+
+def j2000_to_stl0(j2000: npt.NDArray | Number) -> npt.NDArray | Number:
+    """The 
+    [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
+    (angle) of Latitude 0 at this `Time`, in radians.
+    """
+    return ((np.longdouble(18.697374558) + np.longdouble(24.06570982441908) * j2000) * TWELF_PI) % TWOPI
 
 @overload
 def mean_motion_to_semi_major_axis_earth(mean_motion: Scalar[D.AngularVelocity]) -> Scalar[D.Length]: ...

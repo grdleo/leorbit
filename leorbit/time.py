@@ -9,7 +9,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from leorbit.m import D, Scalar, Number, Quantity, ScalarArray
-from leorbit.utils import humanize_duration
+from leorbit.utils import humanize_duration, j2000_to_stl0, unixepoch_to_j2000
 
 import numpy as np
 TWOPI = 2 * np.pi
@@ -170,8 +170,7 @@ class Time:
     def j2000(self: "Time") -> Scalar[D.Time]:
         """Representation of this `Time` object as "Julian year (J2000)", aka 
         the number of days since 2000/01/01T12:00:00."""
-        days = (self._unixepoch / 86_400 - 10_957.5)
-        return days * Quantity.day
+        return unixepoch_to_j2000(self._unixepoch) * Quantity.day
 
     @property
     def from_mil(self: "Time") -> Scalar[D.Time]:
@@ -199,9 +198,8 @@ class Time:
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Time`.
         """
-        d = self.j2000.magnitude("day")
-        angle_rad = ((np.longdouble(18.697374558) + np.longdouble(24.06570982441908) * d) * TWELF_PI) % TWOPI
-        return angle_rad * Quantity.rad
+        j2000 = cast(float, self.j2000.magnitude("day"))
+        return j2000_to_stl0(j2000) * Quantity.rad
 
 class TimeInterval:
     """A time interval between two `Time` objects. """
