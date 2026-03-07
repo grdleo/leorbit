@@ -187,6 +187,16 @@ SomeDim = TypeVar("SomeDim", bound=Dim)
 SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
 Numerator = TypeVar("Numerator", bound=int)
 Denominator = TypeVar("Denominator", bound=int)
+
+N4: TypeAlias = Literal[-4]
+N3: TypeAlias = Literal[-3]
+N2: TypeAlias = Literal[-2]
+N1: TypeAlias = Literal[-1]
+OO: TypeAlias = Literal[0]
+P1: TypeAlias = Literal[1]
+P2: TypeAlias = Literal[2]
+P3: TypeAlias = Literal[3]
+P4: TypeAlias = Literal[4]
     
 class ProductDim(Generic[SomeDim, SomeOtherDim], Dim):
     """Type-level marker representing a product of two dimensions."""
@@ -218,8 +228,10 @@ __UNITS_REGISTRY: dict[type[Dim], dict[str, float]] = {
     Dimless: dict(
         dimensionless=1,
         radian=1,
-        turn=1 / (2 * np.pi),
-        degree=np.pi / 180
+        rad=1,
+        turn=2 * np.pi,
+        degree=np.pi / 180,
+        deg=np.pi / 180,
     ),
     Length: dict(
         meter=1,
@@ -496,6 +508,32 @@ def ensure_tensor(o: Any | Tensor[SomeDim]) -> Tensor[Any]:
     """Return `o` as a tensor, wrapping numbers/arrays as dimensionless tensors."""
     if isinstance(o, Tensor):
         return o
+    if hasattr(o, "_values") and hasattr(o, "dim_coords"):
+        arr = np.asarray(getattr(o, "_values"), dtype=np.float64)
+        dim_coords = getattr(o, "dim_coords")
+        dim = _dimension_factory(
+            DimTriplet(
+                length=dim_coords.length,
+                time=dim_coords.time,
+                mass=dim_coords.mass,
+            )
+        )
+        size = getattr(o, "size", None)
+
+        if arr.ndim <= 1:
+            if size == 1:
+                return Scalar[dim](arr.reshape(-1)[0])  # type: ignore[index]
+            return ScalarArray[dim](arr.reshape(-1))  # type: ignore[index]
+        if arr.ndim == 2 and arr.shape[0] == 3:
+            if size == 1 and arr.shape[1] == 1:
+                return Vector3[dim](arr)  # type: ignore[index]
+            return Vector3Array[dim](arr)  # type: ignore[index]
+        if arr.ndim == 2 and arr.shape == (3, 3):
+            return Matrix33[dim](arr)  # type: ignore[index]
+        if arr.ndim == 3 and arr.shape[:2] == (3, 3):
+            return Matrix33Array[dim](arr)  # type: ignore[index]
+
+        raise RuntimeError("Unsupported legacy tensor shape for conversion")
     if isinstance(o, (float, int, np.floating)):
         return Scalar[Dimless](np.asarray(o))
     if isinstance(o, np.ndarray):
@@ -918,6 +956,7 @@ def cbrt(tensor: Tensor) -> Tensor:
 
 
 def cos(tensor: Tensor) -> Tensor:
+    tensor = ensure_tensor(tensor)
     if not tensor.check(Angle):
         raise ValueError("cos() expects an angle-typed tensor")
 
@@ -925,6 +964,7 @@ def cos(tensor: Tensor) -> Tensor:
 
 
 def sin(tensor: Tensor) -> Tensor:
+    tensor = ensure_tensor(tensor)
     if not tensor.check(Angle):
         raise ValueError("sin() expects an angle-typed tensor")
 
@@ -932,6 +972,7 @@ def sin(tensor: Tensor) -> Tensor:
 
 
 def tan(tensor: Tensor) -> Tensor:
+    tensor = ensure_tensor(tensor)
     if not tensor.check(Angle):
         raise ValueError("tan() expects an angle-typed tensor")
 
@@ -939,6 +980,7 @@ def tan(tensor: Tensor) -> Tensor:
 
 
 def acos(tensor: Tensor) -> Tensor:
+    tensor = ensure_tensor(tensor)
     if not tensor.check(Dimless):
         raise ValueError("acos() expects a dimensionless tensor")
 
@@ -946,6 +988,7 @@ def acos(tensor: Tensor) -> Tensor:
 
 
 def asin(tensor: Tensor) -> Tensor:
+    tensor = ensure_tensor(tensor)
     if not tensor.check(Dimless):
         raise ValueError("asin() expects a dimensionless tensor")
 
@@ -953,6 +996,7 @@ def asin(tensor: Tensor) -> Tensor:
 
 
 def atan(tensor: Tensor) -> Tensor:
+    tensor = ensure_tensor(tensor)
     if not tensor.check(Dimless):
         raise ValueError("atan() expects a dimensionless tensor")
 
@@ -961,6 +1005,8 @@ def atan(tensor: Tensor) -> Tensor:
 
 def atan2(y: Tensor, x: Tensor) -> Tensor:
     """Elementwise two-argument arctangent that returns an angle-typed tensor."""
+    y = ensure_tensor(y)
+    x = ensure_tensor(x)
     if not y.ensure_compatible_dimensions(x) or y._base_tensor_class is not x._base_tensor_class:
         raise ValueError("Incompatible dimensions or tensor types")
 
@@ -970,11 +1016,13 @@ def atan2(y: Tensor, x: Tensor) -> Tensor:
 
 def normalize_angle(angle: Tensor) -> Tensor:
     """Return the given angle in its `[0, 2π]` range."""
+    angle = ensure_tensor(angle)
     return angle._base_tensor_class[Angle](angle._values % (2 * np.pi))  # type: ignore[index]
 
 
 def normalize_angle_symmetric(angle: Tensor) -> Tensor:
     """Return the given angle in its `[-π, π]` range."""
+    angle = ensure_tensor(angle)
     normalized = np.asarray(angle._values) % (2 * np.pi)
     normalized = np.where(normalized > np.pi, normalized - 2 * np.pi, normalized)
     return angle._base_tensor_class[Angle](normalized)  # type: ignore[index]
@@ -1077,10 +1125,8 @@ class QuantityMeta(type):
 
     def __getattr__(cls, name: str) -> Scalar:
         """Resolve a unit name into its corresponding scalar quantity."""
-        global __UNITS_FACTORS_DIMENSIONS
-
         try:
-            dim, factor = __UNITS_FACTORS_DIMENSIONS[name]
+            dim, factor = globals()["__UNITS_FACTORS_DIMENSIONS"][name]
             return Scalar[dim](np.asarray(factor))
         except KeyError:
             raise ValueError(f"No unit named '{name}'")

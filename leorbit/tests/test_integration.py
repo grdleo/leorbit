@@ -3,7 +3,7 @@ import pytest
 from leorbit.coordinates import Coordinates
 from leorbit.ext import CelestrakDataGP
 from leorbit.frames import EarthLocalFrame
-from leorbit.m import Quantity, normalize_angle_symmetric
+from leorbit.mathematics import Quantity, normalize_angle_symmetric
 from leorbit.propagator import SGP4
 from leorbit.sky_object import Satellite
 from leorbit.time import Timestamp, TimeInterval
@@ -63,14 +63,14 @@ def test_event_visibility_integration():
     timeline = TimeInterval(t0, t1, 1 * Quantity.second)
 
     gre_coords = Coordinates.from_gps(
-        longitude=5.71667 * Quantity.deg,
-        latitude=45.166672 * Quantity.deg,
+        longitude=5.71667 * Quantity.degree,
+        latitude=45.166672 * Quantity.degree,
         altitude=0 * Quantity.meter,
         epoch=t0,
     )
     local_frame = EarthLocalFrame(gre_coords)
 
-    min_altitude = 10 * Quantity.deg
+    min_altitude = 10 * Quantity.degree
     windows = _find_visibility_windows(iss, local_frame, timeline, min_altitude)
     assert windows
 

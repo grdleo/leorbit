@@ -6,7 +6,7 @@ import pytest
 from leorbit.coordinates import OrbitalElements
 from leorbit.ext import CelestrakDataGP
 from leorbit.frames import AbsoluteFrame
-from leorbit.m import Quantity, normalize_angle
+from leorbit.mathematics import Quantity, normalize_angle
 from leorbit.propagator import NoPropagator, SGP4
 from leorbit.sky_object import Satellite
 
@@ -37,7 +37,7 @@ def _scalar_close(a, b, abs_tol: float) -> bool:
 
 
 def test_propagation():
-    full_angle = tau * Quantity.rad
+    full_angle = tau * Quantity.radian
     oe: OrbitalElements = CelestrakDataGP(**CELESTRAK_JSON).to_orbital_elements()
 
     period = oe.period

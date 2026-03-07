@@ -95,7 +95,9 @@ class Timestamp:
         if isinstance(other, timedelta):
             return other.total_seconds()
 
-        assert other.check(Time)
+        if not hasattr(other, "magnitude"):
+            raise TypeError("Unsupported duration type")
+
         delta_seconds = other.magnitude("second")
         return float(np.asarray(delta_seconds).reshape(-1)[0])
 
@@ -199,11 +201,14 @@ class Timestamp:
 class TimeInterval:
     """A time interval between two `Timestamp` objects. """
     def __init__(self, start: Timestamp, stop: Timestamp, dt=(1 * Quantity.second)):
+        dt_seconds = Timestamp._duration_seconds(dt)
+        dt = Scalar[Time](dt_seconds)
+
         if not stop > start:
             raise ValueError()
         if start + dt > stop:
             raise ValueError()
-        if dt < MIN_DURATION:
+        if dt_seconds < float(MIN_DURATION.magnitude("second")):
             raise ValueError(f"Time delta cannot be lower than minimal duration {MIN_DURATION}")
         
         self.start = start

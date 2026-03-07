@@ -8,25 +8,25 @@ from leorbit.frames import (
     absolute_frame_transform_factory,
     frame_transform_factory,
 )
-from leorbit.m import D, Matrix33, Scalar, Vector3
+from leorbit.mathematics import Dimless, Length, Matrix33, Scalar, Vector3, Velocity
 from leorbit.time import Timestamp
 from leorbit.transforms import TransformVector3Affine
 from leorbit.transforms import Transform
 
 
-def _vec_len(x: float, y: float, z: float) -> Vector3[D.Length]:
-    return Vector3[D.Length].from_components(
-        Scalar[D.Length](x),
-        Scalar[D.Length](y),
-        Scalar[D.Length](z),
+def _vec_len(x: float, y: float, z: float) -> Vector3[Length]:
+    return Vector3[Length].from_components(
+        Scalar[Length](x),
+        Scalar[Length](y),
+        Scalar[Length](z),
     )
 
 
-def _vec_vel(x: float, y: float, z: float) -> Vector3[D.Velocity]:
-    return Vector3[D.Velocity].from_components(
-        Scalar[D.Velocity](x),
-        Scalar[D.Velocity](y),
-        Scalar[D.Velocity](z),
+def _vec_vel(x: float, y: float, z: float) -> Vector3[Velocity]:
+    return Vector3[Velocity].from_components(
+        Scalar[Velocity](x),
+        Scalar[Velocity](y),
+        Scalar[Velocity](z),
     )
 
 
@@ -35,7 +35,7 @@ def _vec_vel(x: float, y: float, z: float) -> Vector3[D.Velocity]:
     [
         (
             _vec_len(0.0, 3.0, -3.0),
-            Matrix33[D.Dimless].from_elements(
+            Matrix33[Dimless].from_elements(
                 -1.0, 0.0, 1.0,
                 0.0, 1.0, 2.0,
                 -1.0, -2.0, 0.0,
@@ -44,7 +44,7 @@ def _vec_vel(x: float, y: float, z: float) -> Vector3[D.Velocity]:
         ),
         (
             _vec_len(1.0, 2.0, 3.0),
-            Matrix33[D.Dimless].from_elements(
+            Matrix33[Dimless].from_elements(
                 1.5, -0.5, -2.0,
                 2.0, 1.0, -5.0,
                 -1.0, 2.0, -6.0,
@@ -53,10 +53,10 @@ def _vec_vel(x: float, y: float, z: float) -> Vector3[D.Velocity]:
         ),
     ],
 )
-def test_relative_frame_roundtrip(pos: Vector3[D.Length], matrix: Matrix33[D.Dimless], tr: Vector3[D.Length]):
+def test_relative_frame_roundtrip(pos: Vector3[Length], matrix: Matrix33[Dimless], tr: Vector3[Length]):
     rel = RelativeFrame(
         AbsoluteFrame.ITRF,
-        cast(Transform, TransformVector3Affine[D.Length](matrix, tr)),
+        cast(Transform, TransformVector3Affine[Length](matrix, tr)),
     )
     epoch = Timestamp.fromisoformat("2024-02-11T18:00:00")
 
@@ -70,7 +70,7 @@ def test_relative_frame_roundtrip(pos: Vector3[D.Length], matrix: Matrix33[D.Dim
 
 
 def test_wrong_relative_frame_matrix_not_invertible():
-    singular = Matrix33[D.Dimless].from_elements(
+    singular = Matrix33[Dimless].from_elements(
         1.0, 0.0, 1.0,
         0.0, 1.0, 1.0,
         0.0, 0.0, 0.0,
@@ -79,7 +79,7 @@ def test_wrong_relative_frame_matrix_not_invertible():
         AbsoluteFrame.GCRF,
         cast(
             Transform,
-            TransformVector3Affine[D.Length](
+            TransformVector3Affine[Length](
                 singular,
                 _vec_len(0.0, 0.0, 0.0),
             ),
@@ -111,12 +111,12 @@ def test_absolute_frame_transform_factory_roundtrip_position_and_velocity():
 def test_frame_transform_factory_between_relative_frames_chain():
     epoch = Timestamp.fromisoformat("2024-02-11T18:00:00")
 
-    m1 = Matrix33[D.Dimless].from_elements(
+    m1 = Matrix33[Dimless].from_elements(
         1.0, 0.0, 0.0,
         0.0, 1.0, 0.0,
         0.0, 0.0, 1.0,
     )
-    m2 = Matrix33[D.Dimless].from_elements(
+    m2 = Matrix33[Dimless].from_elements(
         2.0, 0.0, 0.0,
         0.0, 2.0, 0.0,
         0.0, 0.0, 2.0,
@@ -124,11 +124,11 @@ def test_frame_transform_factory_between_relative_frames_chain():
 
     r1 = RelativeFrame(
         AbsoluteFrame.ITRF,
-        cast(Transform, TransformVector3Affine[D.Length](m1, _vec_len(1.0, 0.0, 0.0))),
+        cast(Transform, TransformVector3Affine[Length](m1, _vec_len(1.0, 0.0, 0.0))),
     )
     r2 = RelativeFrame(
         AbsoluteFrame.ITRF,
-        cast(Transform, TransformVector3Affine[D.Length](m2, _vec_len(0.0, 2.0, 0.0))),
+        cast(Transform, TransformVector3Affine[Length](m2, _vec_len(0.0, 2.0, 0.0))),
     )
 
     direct = frame_transform_factory(r1, r2)(epoch)

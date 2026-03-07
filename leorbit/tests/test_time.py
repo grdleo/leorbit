@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 
-from leorbit.m import Quantity
+from leorbit.mathematics import Quantity
 from leorbit.time import Timestamp, TimeInterval, get_intersections_timelines
 
 
