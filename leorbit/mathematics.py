@@ -1,7 +1,7 @@
 from fractions import Fraction
 from functools import cached_property
 import inspect
-from typing import Any, Callable, ClassVar, Generic, Literal, Self, TypeAlias, TypeIs, TypeVar, cast
+from typing import Any, Callable, ClassVar, Generic, Literal, Self, Type, TypeAlias, TypeIs, TypeVar, cast
 
 import numpy as np
 import numpy.typing as npt
@@ -180,6 +180,25 @@ class Dim(metaclass=_DimClassAlgebra):
             raise RuntimeError(f"`{cls.__name__}` is not a registered dimension class.")
         
         return cls.__triplet
+    
+Number: TypeAlias = float | int | np.floating[Any]
+TensorData: TypeAlias = npt.NDArray[np.float64]
+SomeDim = TypeVar("SomeDim", bound=Dim)
+SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
+Numerator = TypeVar("Numerator", bound=int)
+Denominator = TypeVar("Denominator", bound=int)
+    
+class ProductDim(Generic[SomeDim, SomeOtherDim], Dim):
+    """Type-level marker representing a product of two dimensions."""
+    ...
+
+class QuotientDim(Generic[SomeDim, SomeOtherDim], Dim):
+    """Type-level marker representing a quotient of two dimensions."""
+    ...
+    
+class PowerDim(Generic[SomeDim, Numerator, Denominator], Dim):
+    """Type-level marker representing a powered dimension."""
+    ...
 
 _ = Dimless = Angle = _dimension_factory(DimTriplet())
 _ = Length = _dimension_factory(DimTriplet(length=1))
@@ -226,12 +245,6 @@ __UNITS_FACTORS_DIMENSIONS: dict[str, tuple[type[Dim], float]] = {
     for dim, units in __UNITS_REGISTRY.items()
     for unit, factor in units.items()
 }
-
-
-Number: TypeAlias = float | int | np.floating[Any]
-TensorData: TypeAlias = npt.NDArray[np.float64]
-SomeDim = TypeVar("SomeDim", bound=Dim)
-SomeOtherDim = TypeVar("SomeOtherDim", bound=Dim)
 
 
 def _get_registered_unit(unit_name: str) -> tuple[type[Dim], float]:
@@ -877,23 +890,23 @@ class Matrix33Array(Tensor_M33[SomeDim], Generic[SomeDim]):
     """Convenience wrapper for many 3×3 matrices."""
 
 
-def abs(tensor: Tensor[Any]) -> Tensor[Any]:
+def abs(tensor: Tensor) -> Tensor:
     return tensor._base_tensor_class[tensor.dim](np.abs(tensor._values))  # type: ignore[index]
 
 
-def square(tensor: Tensor[Any]) -> Tensor[Any]:
+def square(tensor: Tensor) -> Tensor:
     return tensor._base_tensor_class[tensor.dim ** 2](np.square(tensor._values))  # type: ignore[index]
 
 
-def cube(tensor: Tensor[Any]) -> Tensor[Any]:
+def cube(tensor: Tensor) -> Tensor:
     return tensor._base_tensor_class[tensor.dim ** 3](np.power(tensor._values, 3))  # type: ignore[index]
 
 
-def sqrt(tensor: Tensor[Any]) -> Tensor[Any]:
+def sqrt(tensor: Tensor) -> Tensor:
     return tensor._base_tensor_class[tensor.dim ** Fraction(1, 2)](np.sqrt(tensor._values))  # type: ignore[index]
 
 
-def cbrt(tensor: Tensor[Any]) -> Tensor[Any]:
+def cbrt(tensor: Tensor) -> Tensor:
     return tensor._base_tensor_class[tensor.dim ** Fraction(1, 3)](np.cbrt(tensor._values))  # type: ignore[index]
 
 

@@ -131,6 +131,28 @@ class TransformVector3Affine(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Ten
             translation=self.translation.copy()
         )
         return cast(Self, t)
+
+
+class TransformVector3RotationZ(TransformVector3Linear[SomeDim], Generic[SomeDim]):
+    """Rotation around the Z axis by a given angle."""
+
+    def __init__(self, angle: Scalar[D.Angle]):
+        c = cos(angle)
+        s = sin(angle)
+        z = Scalar[D.Dimless](0)
+        o = Scalar[D.Dimless](1)
+        super().__init__(
+            Matrix33[D.Dimless].from_elements(
+                c, -s, z,
+                s, c, z,
+                z, z, o,
+            )
+        )
+        self.angle = angle
+
+    def copy(self) -> Self:
+        t = TransformVector3RotationZ[SomeDim](self.angle.copy())
+        return cast(Self, t)
     
 class TransformChain(Generic[T1, T2], Transform[T1, T2]):
     def __init__(self, *transforms: Transform[Any, Any]):

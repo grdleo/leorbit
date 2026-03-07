@@ -1,7 +1,6 @@
 """Time handling"""
 
 from datetime import datetime, timezone, timedelta
-from typing import cast
 from typing import Iterable, Self, Iterator, Optional
 from math import ceil
 
@@ -198,7 +197,7 @@ class Time:
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Time`.
         """
-        j2000 = cast(float, self.j2000.magnitude("day"))
+        j2000 = float(self.j2000.magnitude("day"))
         return j2000_to_stl0(j2000) * Quantity.rad
 
 class TimeInterval:
