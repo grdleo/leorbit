@@ -1,12 +1,9 @@
 from abc import ABC, abstractmethod
 from functools import lru_cache
-from leorbit.coordinates import Coordinates
-from leorbit.coordinates import Trajectory
-from leorbit.ext import OrbitalElements
-from leorbit.m import Scalar, D, Quantity, cos, atan, tan, sin, sqrt, normalize_angle
+from leorbit.coordinates import Coordinates, OrbitalElements, Trajectory
+from leorbit.mathematics import Angle, AngularVelocity, Dimless, Length, Mass, Quantity, Scalar, atan, cos, normalize_angle, sin, sqrt, tan
 from leorbit.propagator import NoPropagator, Propagator
-from leorbit.time import Timestamp
-from leorbit.time import TimeInterval
+from leorbit.time import TimeInterval, Timestamp
 from leorbit.utils import semi_major_axis_earth_to_mean_motion
 
 
@@ -44,8 +41,8 @@ class Body(SkyObject, ABC):
     """
     def __init__(self, 
         name: str, 
-        radius: Scalar[D.Length], 
-        mass: Scalar[D.Mass]
+        radius: Scalar[Length], 
+        mass: Scalar[Mass]
     ):
         self.name = name
         self.body_radius = radius
@@ -73,92 +70,92 @@ class Body(SkyObject, ABC):
         )
 
     @abstractmethod
-    def semi_major_axis(self, epoch: Timestamp) -> Scalar[D.Length]:
+    def semi_major_axis(self, epoch: Timestamp) -> Scalar[Length]:
         """Returns the semi major axis (a) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def a(self, epoch: Timestamp) -> Scalar[D.Length]:
+    def a(self, epoch: Timestamp) -> Scalar[Length]:
         """Returns the semi major axis (a) of this star at given epoch."""
         return self.semi_major_axis(epoch)
     
     @abstractmethod
-    def eccentricity(self, epoch: Timestamp) -> Scalar[D.Dimless]:
+    def eccentricity(self, epoch: Timestamp) -> Scalar[Dimless]:
         """Returns the eccentricity (e) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def e(self, epoch: Timestamp) -> Scalar[D.Dimless]:
+    def e(self, epoch: Timestamp) -> Scalar[Dimless]:
         """Returns the eccentricity (e) of this star at given epoch."""
         return self.eccentricity(epoch)
     
     @abstractmethod
-    def inclination(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def inclination(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the inclination (i) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def i(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def i(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the inclination (i) of this star at given epoch."""
         return self.inclination(epoch)
     
     @abstractmethod
-    def ra_of_asc_node(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def ra_of_asc_node(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def Ω(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def Ω(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         return self.ra_of_asc_node(epoch)
     
     @abstractmethod
-    def arg_of_pericenter(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def arg_of_pericenter(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def ω(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def ω(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         return self.arg_of_pericenter(epoch)
     
     @abstractmethod
-    def mean_anomaly(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def mean_anomaly(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def M(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def M(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         return self.mean_anomaly(epoch)
     
-    def mean_motion(self, epoch: Timestamp) -> Scalar[D.AngularVelocity]:
+    def mean_motion(self, epoch: Timestamp) -> Scalar[AngularVelocity]:
         """Returns the mean motion (n) of this star at given epoch."""
         return semi_major_axis_earth_to_mean_motion(self.semi_major_axis(epoch))
-    def n(self, epoch: Timestamp) -> Scalar[D.AngularVelocity]:
+    def n(self, epoch: Timestamp) -> Scalar[AngularVelocity]:
         """Returns the mean motion (n) of this star at given epoch."""
         return self.mean_motion(epoch)
     
-    def radius(self, epoch: Timestamp) -> Scalar[D.Length]:
+    def radius(self, epoch: Timestamp) -> Scalar[Length]:
         """Returns the radius from the focal of the ellipse's orbit 
         of this star at given epoch."""
         a = self.semi_major_axis(epoch)
         e = self.eccentricity(epoch)
         E = self.eccentric_anomaly(epoch)
         return a * (1 - e * cos(E))
-    def r(self, epoch: Timestamp) -> Scalar[D.Length]:
+    def r(self, epoch: Timestamp) -> Scalar[Length]:
         """Returns the radius from the focal of the ellipse's orbit 
         of this star at given epoch."""
         return self.radius(epoch)
 
-    def true_anomaly(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def true_anomaly(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the true anomaly (υ) of this star at given epoch."""
         e = self.eccentricity(epoch)
         E = self.eccentric_anomaly(epoch)
         tan_half_nu = sqrt((1 + e) / (1 - e)) * tan(.5 * E)
         nu = 2 * atan(tan_half_nu)
         return nu
-    def υ(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def υ(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the true anomaly (υ) of this star at given epoch."""
         return self.true_anomaly(epoch)
     
-    def eccentric_anomaly(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def eccentric_anomaly(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the eccentric anomaly (E) of this star at given epoch."""
         M = self.mean_anomaly(epoch)
         e = self.eccentricity(epoch)
         E = M.copy()
         for _ in range(5):  # compute excentric anomaly
-            E = e * sin(E).cast(D.Angle) + M
+            E = e * sin(E).cast(Angle) + M
         return E
-    def E(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def E(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the eccentric anomaly (E) of this star at given epoch."""
         return self.eccentric_anomaly(epoch)
     
@@ -169,37 +166,37 @@ class Moon(Body):
     Orbital elements for this object taken from here: https://stjarnhimlen.se/comp/ppcomp.html#4
     """
     def __init__(self):
-        super().__init__("Moon", 1737.4 * Quantity.kilo_meter, Scalar[D.Mass](7.342e22))
+        super().__init__("Moon", 1737.4 * Quantity.kilo_meter, Scalar[Mass](7.342e22))
 
-    def semi_major_axis(self, epoch: Timestamp) -> Scalar[D.Length]:
+    def semi_major_axis(self, epoch: Timestamp) -> Scalar[Length]:
         """Returns the semi major axis (a) of this star at given epoch."""
         return 60.2666 * Quantity.radii_earth
     
-    def inclination(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def inclination(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the inclination (i) of this star at given epoch."""
-        return 0.08980417133211624 * Quantity.rad
+        return 0.08980417133211624 * Quantity.radian
     
-    def eccentricity(self, epoch: Timestamp) -> Scalar[D.Dimless]:
+    def eccentricity(self, epoch: Timestamp) -> Scalar[Dimless]:
         """Returns the eccentricity (e) of this star at given epoch."""
-        return Scalar[D.Dimless](0.054900)
+        return Scalar[Dimless](0.054900)
     
-    def arg_of_pericenter(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def arg_of_pericenter(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         t = epoch.from_mil
         argp = 318.0634 + 0.1643573223 * t.magnitude("day")
-        return normalize_angle(argp * Quantity.deg)
+        return normalize_angle(argp * Quantity.degree)
     
-    def ra_of_asc_node(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def ra_of_asc_node(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         t = epoch.from_mil
         raan = 125.1228 - 0.0529538083 * t.magnitude("day")
-        return normalize_angle(raan * Quantity.deg)
+        return normalize_angle(raan * Quantity.degree)
     
-    def mean_anomaly(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def mean_anomaly(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         t = epoch.from_mil
         M = 115.3654 + 13.0649929509 * t.magnitude("day")
-        return normalize_angle(M * Quantity.deg)
+        return normalize_angle(M * Quantity.degree)
     
 class Sun(Body):
     """`Body` object representing the Sun.
@@ -208,34 +205,34 @@ class Sun(Body):
     """
 
     def __init__(self):
-        super().__init__("Sun", 696_340 * Quantity.kilo_meter, Scalar[D.Mass](1.988e30))
+        super().__init__("Sun", 696_340 * Quantity.kilo_meter, Scalar[Mass](1.988e30))
     
-    def semi_major_axis(self, epoch: Timestamp) -> Scalar[D.Length]:
+    def semi_major_axis(self, epoch: Timestamp) -> Scalar[Length]:
         """Returns the semi major axis (a) of this star at given epoch."""
         return 149_597_870_700 * Quantity.meter
     
-    def inclination(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def inclination(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the inclination (i) of this star at given epoch."""
-        return 0 * Quantity.rad
+        return 0 * Quantity.radian
     
-    def eccentricity(self, epoch: Timestamp) -> Scalar[D.Dimless]:
+    def eccentricity(self, epoch: Timestamp) -> Scalar[Dimless]:
         """Returns the eccentricity (e) of this star at given epoch."""
         t = epoch.from_mil
         e = 0.016709 - 1.151e-9 * t.magnitude("day")
-        return Scalar[D.Dimless](e)
+        return Scalar[Dimless](e)
     
-    def arg_of_pericenter(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def arg_of_pericenter(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         t = epoch.from_mil
         argp = 282.9404 + 4.70935e-5 * t.magnitude("day")
-        return normalize_angle(argp * Quantity.deg)
+        return normalize_angle(argp * Quantity.degree)
     
-    def ra_of_asc_node(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def ra_of_asc_node(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
-        return 0 * Quantity.rad
+        return 0 * Quantity.radian
     
-    def mean_anomaly(self, epoch: Timestamp) -> Scalar[D.Angle]:
+    def mean_anomaly(self, epoch: Timestamp) -> Scalar[Angle]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         t = epoch.from_mil
         M = 356.0470 + 0.9856002585 * t.magnitude("day")
-        return normalize_angle(M * Quantity.deg)
+        return normalize_angle(M * Quantity.degree)

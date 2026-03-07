@@ -1,10 +1,10 @@
-from abc import ABC, abstractmethod, abstractmethod
-from typing import Any
+from abc import ABC, abstractmethod
+from typing import Any, cast
 
 import numpy as np
 
 from leorbit.coordinates import GPS
-from leorbit.m import Scalar, D, acos, Quantity
+from leorbit.mathematics import Angle, Dimless, Quantity, Scalar, ScalarArray, acos
 from leorbit.propagator import Trajectory
 from leorbit.time import TimeInterval, Timestamp
 
@@ -65,7 +65,7 @@ class VisibleFromEarthLocationEvent(Event):
     def __init__(self, 
         trajectory: Trajectory, 
         gps_observer: GPS,
-        altitude_angle_min: Scalar[D.Angle] = 0 * Quantity.rad
+        altitude_angle_min: Scalar[Angle] = 0 * Quantity.radian
     ):
         self.gps_observer = gps_observer
         self.altitude_angle_min = altitude_angle_min
@@ -82,11 +82,11 @@ class VisibleFromEarthLocationEvent(Event):
         local_frame = self.gps_observer.earth_local_frame
         local_pos = self.trajectory.trajectory_pos(local_frame)
         
-        cos_ang_zenith = (local_pos.z / local_pos.length).cast(D.Dimless)
+        cos_ang_zenith = (local_pos.z / local_pos.length).cast(Dimless)
         ang_zenith = acos(cos_ang_zenith)
 
-        ang_zenith_np = ang_zenith.get_raw_array("rad").flatten()
-        visible = ang_zenith_np <= (np.pi / 2 - self.altitude_angle_min.magnitude("rad"))
+        ang_zenith_np = ang_zenith.get_raw_array("radian").flatten()
+        visible = ang_zenith_np <= (np.pi / 2 - self.altitude_angle_min.magnitude("radian"))
 
         return TimeMap(
             self.timeline,

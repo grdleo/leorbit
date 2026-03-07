@@ -5,5 +5,8 @@
 5. `frames`
 6. `coordinates`
 7. `ext`
+8. `propagator`
+9. `sky_object`
+10. `events`
 
 Independant: `algorithms`
