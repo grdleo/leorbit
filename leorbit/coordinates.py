@@ -1,26 +1,26 @@
-from dataclasses import dataclass
-from functools import cache, lru_cache
-from statistics import mean
-from typing import Literal, NamedTuple, Self
-
 from enum import Enum
 from functools import lru_cache
-from typing import ParamSpec, Callable, TypeVar, cast
+from functools import cached_property
+from typing import NamedTuple, Self, TypeVar, cast
 
 from leorbit.algorithms import OrbitalElementsComputeTuple
 from leorbit.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
-from leorbit.m import D, Dim, Quantity, Scalar, ScalarArray, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan, abs
+from leorbit.mathematics import Angle, AngularVelocity, Dim, Dimless, Length, N1, N2, N3, P1, PowerDim, Quantity, Scalar, ScalarArray, Time, Vector3, Vector3Array, Velocity, abs, normalize_angle, normalize_angle_symmetric, sqrt, square
 from leorbit.time import Timestamp, TimeInterval
-from leorbit.transforms import Transform, TransformVector3Affine
+from leorbit.transforms import Transform
 from leorbit.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, itrf2gps, itrf2horizontal, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
-PosVec = Vector3[D.Length]
-VelVec = Vector3[D.Velocity]
+PosVec = Vector3[Length]
+VelVec = Vector3[Velocity]
 
 SomeDim = TypeVar("SomeDim", bound=Dim)
-DynamicVec = Vector3[D.Length] | Vector3[D.Velocity]
-DynamicVecArray = Vector3Array[D.Length] | Vector3Array[D.Velocity]
-DynamicD = D.Length | D.Velocity
+DynamicVec = Vector3[Length] | Vector3[Velocity]
+DynamicVecArray = Vector3Array[Length] | Vector3Array[Velocity]
+DynamicD = Length | Velocity
+
+AngularAcc = Time ** -2
+AngularJerk = Time ** -3
+InvLength = Length ** -1
 
 class PosVel(NamedTuple):
 	pos: PosVec
@@ -91,15 +91,15 @@ class Coordinates:
     
     @staticmethod
     def from_gps(
-        longitude: Scalar[D.Angle], 
-        latitude: Scalar[D.Angle], 
-        altitude: Scalar[D.Length] = 0 * Quantity.meter, 
+        longitude: Scalar[Angle], 
+        latitude: Scalar[Angle], 
+        altitude: Scalar[Length] = 0 * Quantity.meter, 
         epoch: Timestamp | None = None
     ) -> Coordinates:
         theta = longitude
         delta = latitude
         rho = geocentric_radius_earth(delta) + altitude
-        pos = Vector3.from_spherical(theta, delta, rho)
+        pos = cast(PosVec, Vector3.from_spherical(theta, delta, rho))
         epoch = Timestamp.now() if epoch is None else epoch
 
         return Coordinates(epoch, AbsoluteFrame.ITRF, pos)
@@ -111,9 +111,9 @@ class Coordinates:
         tuple_gps = itrf2gps(itrf_pos)
 
         return GPS(
-            longitude=cast(Scalar[D.Angle], tuple_gps.longitude), 
-            latitude=cast(Scalar[D.Angle], tuple_gps.latitude), 
-            altitude=cast(Scalar[D.Length], tuple_gps.altitude)
+            longitude=cast(Scalar[Angle], tuple_gps.longitude), 
+            latitude=cast(Scalar[Angle], tuple_gps.latitude), 
+            altitude=cast(Scalar[Length], tuple_gps.altitude)
         )
     
     ### ### ###
@@ -123,15 +123,15 @@ class Coordinates:
 
     @staticmethod
     def from_horizontal(
-        azimuth: Scalar[D.Angle], 
-        altitude: Scalar[D.Angle], 
-        distance: Scalar[D.Length], 
+        azimuth: Scalar[Angle], 
+        altitude: Scalar[Angle], 
+        distance: Scalar[Length], 
         frame: EarthLocalFrame, 
         epoch: Timestamp | None = None
     ) -> Coordinates:
         assert isinstance(frame, EarthLocalFrame)
         
-        pos_local = Vector3.from_spherical(azimuth, altitude, distance)
+        pos_local = cast(PosVec, Vector3.from_spherical(azimuth, altitude, distance))
         epoch = Timestamp.now() if epoch is None else epoch
 
         return Coordinates(epoch, frame, pos_local)
@@ -146,9 +146,9 @@ class Coordinates:
         )
 
         return Horizontal(
-            azimuth=cast(Scalar[D.Angle], tuple_hor.azimuth),
-            altitude=cast(Scalar[D.Angle], tuple_hor.altitude),
-            distance=cast(Scalar[D.Length], tuple_hor.distance),
+            azimuth=cast(Scalar[Angle], tuple_hor.azimuth),
+            altitude=cast(Scalar[Angle], tuple_hor.altitude),
+            distance=cast(Scalar[Length], tuple_hor.distance),
         )
     
     ### ########## ###
@@ -194,21 +194,17 @@ class CoordinatesRepresentation:
         
         return hash(self) == hash(o)
 
-from dataclasses import dataclass
-from functools import cached_property, lru_cache
-
-
 class GPS(CoordinatesRepresentation):
     """Representation of a point on Earth (or around) using GPS standards.
     """
-    longitude: Scalar[D.Angle]
-    latitude: Scalar[D.Angle]
-    altitude: Scalar[D.Length]
+    longitude: Scalar[Angle]
+    latitude: Scalar[Angle]
+    altitude: Scalar[Length]
 
     def __init__(self,
-        longitude: Scalar[D.Angle],
-        latitude: Scalar[D.Angle],
-        altitude: Scalar[D.Length],
+        longitude: Scalar[Angle],
+        latitude: Scalar[Angle],
+        altitude: Scalar[Length],
     ):
         self.longitude = normalize_angle_symmetric(longitude)
         self.latitude = normalize_angle_symmetric(latitude)
@@ -258,14 +254,14 @@ class Horizontal(CoordinatesRepresentation):
     
     (see https://en.wikipedia.org/wiki/Horizontal_coordinate_system)"""
 
-    azimuth: Scalar[D.Angle]
-    altitude: Scalar[D.Angle]
-    distance: Scalar[D.Length] | None
+    azimuth: Scalar[Angle]
+    altitude: Scalar[Angle]
+    distance: Scalar[Length] | None
 
     def __init__(self,
-        azimuth: Scalar[D.Angle],
-        altitude: Scalar[D.Angle],
-        distance: Scalar[D.Length] | None = None
+        azimuth: Scalar[Angle],
+        altitude: Scalar[Angle],
+        distance: Scalar[Length] | None = None
     ):
         self.azimuth = azimuth
         self.altitude = altitude
@@ -304,19 +300,19 @@ class OrbitalElements(CoordinatesRepresentation):
 
     def __init__(self,
         epoch: Timestamp,
-        eccentricity: Scalar[D.Dimless],
-        inclination: Scalar[D.Angle],
-        ra_of_asc_node: Scalar[D.Angle],
-        arg_of_pericenter: Scalar[D.Angle],
-        mean_motion: Scalar[D.AngularVelocity],
-        mean_anomaly: Scalar[D.Angle],
-        mean_motion_dot: Scalar[D.AngularAcc] = Scalar[D.AngularAcc](0),
-        mean_motion_ddot: Scalar[D.AngularJerk] = Scalar[D.AngularJerk](0),
-        bstar: Scalar[D.InvLength] = Scalar[D.InvLength](0),
+        eccentricity: Scalar[Dimless],
+        inclination: Scalar[Angle],
+        ra_of_asc_node: Scalar[Angle],
+        arg_of_pericenter: Scalar[Angle],
+        mean_motion: Scalar[AngularVelocity],
+        mean_anomaly: Scalar[Angle],
+        mean_motion_dot: Scalar[PowerDim[Time, N2, P1]] = cast(Scalar[PowerDim[Time, N2, P1]], Scalar[AngularAcc](0)),
+        mean_motion_ddot: Scalar[PowerDim[Time, N3, P1]] = cast(Scalar[PowerDim[Time, N3, P1]], Scalar[AngularJerk](0)),
+        bstar: Scalar[PowerDim[Length, N1, P1]] = cast(Scalar[PowerDim[Length, N1, P1]], Scalar[InvLength](0)),
     ):
-        deg_0 = 0 * Quantity.deg
-        deg_180 = 180 * Quantity.deg
-        deg_360 = 360 * Quantity.deg
+        deg_0 = 0 * Quantity.degree
+        deg_180 = 180 * Quantity.degree
+        deg_360 = 360 * Quantity.degree
 
         self.epoch = epoch
 
@@ -337,7 +333,7 @@ class OrbitalElements(CoordinatesRepresentation):
             raise ValueError()
 
         self.mean_motion = n = mean_motion
-        if not n.check(D.AngularVelocity):
+        if not n.check(AngularVelocity):
             raise ValueError()
 
         self.mean_anomaly = M = mean_anomaly
@@ -345,15 +341,15 @@ class OrbitalElements(CoordinatesRepresentation):
             raise ValueError()
 
         self.mean_motion_dot = mean_motion_dot
-        if not mean_motion_dot.check(D.AngularAcc):
+        if not mean_motion_dot.check(AngularAcc):
             raise ValueError()
 
         self.mean_motion_ddot = mean_motion_ddot
-        if not mean_motion_ddot.check(D.AngularJerk):
+        if not mean_motion_ddot.check(AngularJerk):
             raise ValueError()
 
         self.bstar = bstar
-        if not bstar.check(D.InvLength):
+        if not bstar.check(InvLength):
             raise ValueError()
 
         e = self.eccentricity
@@ -362,33 +358,33 @@ class OrbitalElements(CoordinatesRepresentation):
         self.true_anomaly = eccentric2true_anomaly(e, E)
         self.semi_major_axis = mean_motion_to_semi_major_axis_earth(self.mean_motion)
         self.semi_minor_axis = self.semi_major_axis * sqrt(1 - square(e))
-        dt = (self.mean_anomaly / self.mean_motion).cast(D.Time)
+        dt = cast(Scalar[Time], (self.mean_anomaly / self.mean_motion).cast(Time))
         self.time_at_periaster = self.epoch - dt
 
     @cached_property
     def compute_tuple(self) -> OrbitalElementsComputeTuple:
-        n = self.mean_motion.base_unit_value # [rad/s]
+        n = float(self.mean_motion.base_unit_value) # [rad/s]
         n = n * 60 # [rad/min]
 
-        bstar = self.bstar.base_unit_value # [1/m]
-        bstar = bstar * Quantity.radii_earth.base_unit_value # [1/Earth radii]
+        bstar = float(self.bstar.base_unit_value) # [1/m]
+        bstar = bstar * float(Quantity.radii_earth.base_unit_value) # [1/Earth radii]
 
         return OrbitalElementsComputeTuple(
             n=n,
-            i=self.inclination.base_unit_value,
-            e=self.eccentricity.base_unit_value,
-            argp=self.arg_of_pericenter.base_unit_value,
-            raan=self.ra_of_asc_node.base_unit_value,
-            M=self.mean_anomaly.base_unit_value,
+            i=float(self.inclination.base_unit_value),
+            e=float(self.eccentricity.base_unit_value),
+            argp=float(self.arg_of_pericenter.base_unit_value),
+            raan=float(self.ra_of_asc_node.base_unit_value),
+            M=float(self.mean_anomaly.base_unit_value),
             bstar=bstar
         )
     
     @property
-    def period(self) -> Scalar[D.Time]:
+    def period(self) -> Scalar[Time]:
         """The period of a full revolution."""
         from math import tau
 
-        return ((tau * Quantity.rad) / self.mean_motion).cast(D.Time)
+        return cast(Scalar[Time], ((tau * Quantity.radian) / self.mean_motion).cast(Time))
     
     def to_coordinates(self) -> Coordinates:
         """Returns current orbital elements, at given epoch, 
@@ -431,9 +427,9 @@ class OrbitalElements(CoordinatesRepresentation):
             arg_of_pericenter=els.arg_of_pericenter,
             mean_motion=els.mean_motion,
             mean_anomaly=els.mean_anomaly,
-            mean_motion_dot=Scalar[D.AngularAcc](0),
-            mean_motion_ddot=Scalar[D.AngularJerk](0),
-            bstar=Scalar[D.InvLength](0)
+            mean_motion_dot=cast(Scalar[PowerDim[Time, N2, P1]], Scalar[AngularAcc](0)),
+            mean_motion_ddot=cast(Scalar[PowerDim[Time, N3, P1]], Scalar[AngularJerk](0)),
+            bstar=cast(Scalar[PowerDim[Length, N1, P1]], Scalar[InvLength](0))
         )
 
     @staticmethod
@@ -454,8 +450,8 @@ class Interpolation(Enum):
     LINEAR = "linear"
     """Linear interpolation between two closest"""
 
-PosVecArray = Vector3Array[D.Length]
-VelVecArray = Vector3Array[D.Velocity]
+PosVecArray = Vector3Array[Length]
+VelVecArray = Vector3Array[Velocity]
 
 class PosVelArray(NamedTuple):
     pos: PosVecArray
@@ -563,9 +559,9 @@ class Trajectory:
         return cast(VelVecArray, vel)
     
     class _GPSArray(NamedTuple):
-        longitude: ScalarArray[D.Angle]
-        latitude: ScalarArray[D.Angle]
-        altitude: ScalarArray[D.Length]
+        longitude: ScalarArray[Angle]
+        latitude: ScalarArray[Angle]
+        altitude: ScalarArray[Length]
     
     @lru_cache(16)
     def gps(self) -> _GPSArray:
@@ -594,9 +590,9 @@ class Trajectory:
         )
     
     class _HorizontalArray(NamedTuple):
-        azimuth: ScalarArray[D.Angle]
-        altitude: ScalarArray[D.Angle]
-        distance: ScalarArray[D.Length]
+        azimuth: ScalarArray[Angle]
+        altitude: ScalarArray[Angle]
+        distance: ScalarArray[Length]
 
     @lru_cache(16)
     def horizontal(self, local_frame: EarthLocalFrame) -> _HorizontalArray:

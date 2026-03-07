@@ -1,5 +1,8 @@
 1. `mathematics`
 2. `transforms`
 3. `utils`
-2. `time`
-3. `frames`
+4. `time`
+5. `frames`
+6. `coordinates`
+
+Independant: `algorithms`

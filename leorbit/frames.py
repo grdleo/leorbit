@@ -1,8 +1,8 @@
 from enum import Enum
 from functools import lru_cache
-from typing import TYPE_CHECKING, ParamSpec, Callable, TypeAlias, TypeVar, cast
+from typing import TYPE_CHECKING, Callable, TypeVar, cast
 
-from leorbit.m import D, Matrix33, Matrix33Array, Quantity, Vector3, cos
+from leorbit.mathematics import Angle, Dim, Dimless, Length, Quantity, Scalar, Tensor_M33, Tensor_V3, Vector3, Velocity, cos
 from leorbit.transforms import Transform, TransformChain, TransformIdentify, TransformVector3Affine, TransformVector3Linear
 from leorbit.time import Timestamp, TimeInterval
 
@@ -14,13 +14,13 @@ from leorbit.utils import unixepoch_to_j2000, j2000_to_stl0
 if TYPE_CHECKING:
     from leorbit.coordinates import Coordinates
 
-PosVec = Vector3[D.Length]
-VelVec = Vector3[D.Velocity]
+PosVec = Vector3[Length]
+VelVec = Vector3[Velocity]
 
-DynamicVec = Vector3[D.Length] | Vector3[D.Velocity]
+DynamicVec = Vector3[Length] | Vector3[Velocity]
 SomeDynamicVec = TypeVar("SomeDynamicVec", bound=DynamicVec)
-DynamicD = D.Length | D.Velocity
-SomeDynamicD = TypeVar("SomeDynamicD", bound=DynamicD)
+DynamicD = Length | Velocity
+SomeDynamicD = TypeVar("SomeDynamicD", bound=Dim)
 
 class AbsoluteFrame(Enum):
     """Absolute frame"""
@@ -58,7 +58,7 @@ def itrf2gcrf(epoch: Timestamp | TimeInterval) -> Transform[SomeDynamicVec, Some
         )
         return cast(
             Transform[SomeDynamicVec, SomeDynamicVec],
-            TransformVector3Linear[DynamicD](Matrix33[D.Dimless](rot_mat))
+            TransformVector3Linear(Tensor_M33[Dimless](rot_mat))
         )
     elif stl0.ndim == 1:
         rot_mat = np.stack(
@@ -71,7 +71,7 @@ def itrf2gcrf(epoch: Timestamp | TimeInterval) -> Transform[SomeDynamicVec, Some
         )
         return cast(
             Transform[SomeDynamicVec, SomeDynamicVec],
-            TransformVector3Linear[DynamicD](Matrix33Array[D.Dimless](rot_mat))
+            TransformVector3Linear(Tensor_M33[Dimless](rot_mat))
         )
     else:
         raise ValueError("Unsupported sidereal angle shape")
@@ -105,8 +105,8 @@ def absolute_frame_transform_factory(from_frame: AbsoluteFrame, to_frame: Absolu
 
 ### RELATIVE FRAMES
 
-_AbsPos = TypeVar("_AbsPos", bound=PosVec)
-_RelPos = TypeVar("_RelPos", bound=PosVec)
+_AbsPos = TypeVar("_AbsPos")
+_RelPos = TypeVar("_RelPos")
 
 class RelativeFrame:
     transform: Transform
@@ -176,37 +176,42 @@ class EarthLocalFrame(RelativeFrame):
         - `x × y = -z`
     """
     location: "Coordinates"
-    transform: TransformVector3Affine[DynamicD]
+    transform: Transform[Tensor_V3[Length], Tensor_V3[Length]]
 
     def __init__(self, location: "Coordinates"):
         itrf = location.get_pos(AbsoluteFrame.ITRF)
-        
-        z = itrf.normalized() # towards zenith
+
+        z = itrf.normalized()
         north = Vector3.Z
         ang = z.angle(north)
 
-        half_turn = 180 * Quantity.deg
-        quart_turn = 90 * Quantity.deg
+        half_turn = 180 * Quantity.degree
+        quart_turn = 90 * Quantity.degree
+        x: Vector3[Dimless]
 
         if ang % half_turn == 0: # FIXME
             raise ValueError("Cannot create `EarthLocalFrame` in Earth's poles!")
         elif ang == quart_turn: # FIXME
             x = north
         else:
-            x = (north / cos(ang) - z).normalized()
+            cos_ang = cos(ang)
+            x = (north / cos_ang - z).normalized()
             if ang > quart_turn:
                 x = -x
         
         y = x.cross(z) # towards "east"
 
-        mat = Matrix33[D.Dimless].from_elements(
+        mat = Tensor_M33[Dimless].from_elements(
             x.x, y.x, z.x,
             x.y, y.y, z.y,
             x.z, y.z, z.z
         )
 
         # Transform : Local @ v -> ITRF @ v
-        transform_local2itrf = TransformVector3Affine(mat, itrf)
+        transform_local2itrf = TransformVector3Affine[Length](
+            mat,
+            itrf,
+        )
 
         # FIXME: please check that this is correct... And could optimize
         # Transform : ITRF @ v -> Local @ v

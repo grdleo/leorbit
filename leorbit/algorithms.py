@@ -10,25 +10,25 @@ from leorbit.time import Timestamp, TimeInterval
 ### ############## ###
 
 class OrbitalElementsComputeTuple(NamedTuple):
-    n: Number
+    n: int | float
     """Mean motion [rad/min]"""
 
-    i: Number
+    i: int | float
     """Inclination [rad]"""
 
-    e: Number
+    e: int | float
     """Eccentricity [1]"""
 
-    argp: Number
+    argp: int | float
     """Argument of pericenter [rad]"""
 
-    raan: Number
+    raan: int | float
     """Right ascension of ascending node [rad]"""
 
-    M: Number
+    M: int | float
     """Mean anomaly [rad]"""
 
-    bstar: Number
+    bstar: int | float
     """BSTAR drag term [1/earthRadii]"""
 
 PI = np.float64(3.141592653589793)
