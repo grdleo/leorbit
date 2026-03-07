@@ -179,7 +179,7 @@ class Dim(metaclass=_DimClassAlgebra):
         if not hasattr(cls, "__triplet"):
             raise RuntimeError(f"`{cls.__name__}` is not a registered dimension class.")
         
-        return cls.__triplet
+        return getattr(cls, "__triplet")
     
 Number: TypeAlias = float | int | np.floating[Any]
 TensorData: TypeAlias = npt.NDArray[np.float64]
@@ -1070,6 +1070,8 @@ class QuantityMeta(type):
 
     def __getattr__(cls, name: str) -> Scalar:
         """Resolve a unit name into its corresponding scalar quantity."""
+        global __UNITS_FACTORS_DIMENSIONS
+        
         try:
             dim, factor = __UNITS_FACTORS_DIMENSIONS[name]
             return Scalar[dim](np.asarray(factor))
