@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Generic, Self, TypeVar, cast, overload
 
-from leorbit.m import D, Dim, Matrix33, Scalar, Tensor_M33, Tensor_V3, Vector3, Vector3Array, cos, sin
+from leorbit.mathematics import Angle, Dim, Dimless, Matrix33, Scalar, Tensor_M33, Tensor_V3, Vector3, Vector3Array, cos, sin
 
 
 T1 = TypeVar("T1")
@@ -53,7 +53,7 @@ class TransformIdentify(Generic[T1], Transform[T1, T1]):
 class TransformVector3Linear(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Tensor_V3[SomeDim]]):
     """Linear transform for vectors using a dimensionless 3×3 matrix."""
 
-    def __init__(self, matrix: Tensor_M33[D.Dimless]):
+    def __init__(self, matrix: Tensor_M33[Dimless]):
         """Initialize with the transformation matrix."""
         self.matrix = matrix
 
@@ -93,7 +93,7 @@ class TransformVector3Linear(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Ten
 class TransformVector3Affine(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Tensor_V3[SomeDim]]):
     """Affine transform combining linear map and translation."""
 
-    def __init__(self, matrix: Tensor_M33[D.Dimless], translation: Tensor_V3[SomeDim]):
+    def __init__(self, matrix: Tensor_M33[Dimless], translation: Tensor_V3[SomeDim]):
         """Initialize with matrix and translation components."""
         self.matrix = matrix
         self.translation = translation
@@ -136,14 +136,15 @@ class TransformVector3Affine(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Ten
 class TransformVector3RotationZ(TransformVector3Linear[SomeDim], Generic[SomeDim]):
     """Rotation around the Z axis by a given angle."""
 
-    def __init__(self, angle: Scalar[D.Angle]):
-        c = cos(angle)
-        s = sin(angle)
-        z = Scalar[D.Dimless](0)
-        o = Scalar[D.Dimless](1)
+    def __init__(self, angle: Scalar[Angle]):
+        c = cast(Scalar[Dimless], cos(angle))
+        s = cast(Scalar[Dimless], sin(angle))
+        ns = cast(Scalar[Dimless], -s)
+        z = Scalar[Dimless](0)
+        o = Scalar[Dimless](1)
         super().__init__(
-            Matrix33[D.Dimless].from_elements(
-                c, -s, z,
+            Matrix33[Dimless].from_elements(
+                c, ns, z,
                 s, c, z,
                 z, z, o,
             )

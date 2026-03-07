@@ -593,6 +593,10 @@ class Tensor_S(Tensor[SomeDim], Generic[SomeDim]):
 
         return cast(Scalar[SomeDim], Scalar[self.dim](np.array(self._values)[index]))
 
+    def __pow__(self, p: Fraction | int | float) -> Tensor_S:
+        p = float(p)
+        return Tensor_S[self.dim ** p](self._values ** p)
+
 
 Tensor_S._base_tensor_class = Tensor_S
 
@@ -1071,7 +1075,7 @@ class QuantityMeta(type):
     def __getattr__(cls, name: str) -> Scalar:
         """Resolve a unit name into its corresponding scalar quantity."""
         global __UNITS_FACTORS_DIMENSIONS
-        
+
         try:
             dim, factor = __UNITS_FACTORS_DIMENSIONS[name]
             return Scalar[dim](np.asarray(factor))
