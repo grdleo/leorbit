@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from leorbit.frames import EarthLocalFrame
     import pint
 
-from leorbit.mathematics import Angle, AngularVelocity, Dim, Dimless, Length, Number, P1, P2, P3, ProductDim, PowerDim, Quantity, QuotientDim, Scalar, ScalarArray, Tensor_S, Tensor_V3, Time, Vector3, Vector3Array, Velocity, abs, atan2, cos, cube, ensure_tensor, normalize_angle, sin, sqrt, square
+from leorbit.mathematics import Angle, AngularVelocity, Dim, Dimless, Length, Number, P1, P2, P3, ProductDim, PowerDim, Quantity, QuotientDim, Scalar, ScalarArray, Tensor_S, Tensor_V3, Time, Vector3, Vector3Array, Velocity, abs, atan2, cos, cube, ensure_tensor, normalize_angle, sin, sqrt, square, cbrt
 
 MU_EARTH = 398_600_441_800_000 * (Quantity.meter ** 3 / Quantity.second ** 2)
 """Gravitational parameter for planet Earth (µ🜨) 
@@ -79,8 +79,8 @@ def mean_motion_to_semi_major_axis_earth(mean_motion: Scalar[AngularVelocity]) -
 def mean_motion_to_semi_major_axis_earth(mean_motion: ScalarArray[AngularVelocity]) -> ScalarArray[Length]: ...
 
 def mean_motion_to_semi_major_axis_earth(mean_motion: Tensor_S[AngularVelocity]) -> Tensor_S[Length]:
-    sma = np.cbrt(MU_EARTH._values / np.square(mean_motion._values))
-    return Tensor_S[Length](sma)
+    mu_earth = cast(Tensor_S, MU_EARTH)
+    return cbrt(mu_earth / mean_motion ** 2).cast(Length)
 
 @overload
 def semi_major_axis_earth_to_mean_motion(sma: Scalar[Length]) -> Scalar[AngularVelocity]: ...
@@ -89,8 +89,8 @@ def semi_major_axis_earth_to_mean_motion(sma: Scalar[Length]) -> Scalar[AngularV
 def semi_major_axis_earth_to_mean_motion(sma: ScalarArray[Length]) -> ScalarArray[AngularVelocity]: ...
 
 def semi_major_axis_earth_to_mean_motion(sma: Tensor_S[Length]) -> Tensor_S[AngularVelocity]:
-    mm = np.sqrt(MU_EARTH._values / sma._values ** 3)
-    return Tensor_S[AngularVelocity](mm)
+    mu_earth = cast(Tensor_S, MU_EARTH)
+    return sqrt(mu_earth / sma ** 3).cast(AngularVelocity)
 
 @overload
 def geocentric_radius_earth(latitude: Scalar[Angle]) -> Scalar[Length]: ...
