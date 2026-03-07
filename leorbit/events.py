@@ -81,12 +81,8 @@ class VisibleFromEarthLocationEvent(Event):
     def compute(self) -> TimeMap:
         local_frame = self.gps_observer.earth_local_frame
         local_pos = self.trajectory.trajectory_pos(local_frame)
-        
-        cos_ang_zenith = (local_pos.z / local_pos.length).cast(Dimless)
-        ang_zenith = acos(cos_ang_zenith)
-
-        ang_zenith_np = ang_zenith.get_raw_array("radian").flatten()
-        visible = ang_zenith_np <= (np.pi / 2 - self.altitude_angle_min.magnitude("radian"))
+    
+        visible = local_pos.z.get_raw_array("meter") > 0 # visible if satellite is above the horizon
 
         return TimeMap(
             self.timeline,
