@@ -6,7 +6,8 @@
 
 import json
 
-from leorbit import get_sat, Time, OrbitalElements
+from leorbit import get_sat, OrbitalElements
+from leorbit.time import Timestamp
 
 import requests
 from time import sleep
@@ -31,7 +32,7 @@ for _ in range(60):
     )
 
     # Get ISS coordinates using LEOrbit
-    epoch = Time(ts)
+    epoch = Timestamp(ts)
     gps = iss.coordinates(epoch).to_gps()
 
     # ... And print difference between true position and our computed position.

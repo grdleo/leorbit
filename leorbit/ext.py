@@ -9,7 +9,7 @@ from requests import HTTPError, get
 
 from leorbit.coordinates import OrbitalElements
 from leorbit.m import D, Quantity, Scalar, cube, square
-from leorbit.time import Time
+from leorbit.time import Timestamp
 
 from leorbit.utils import convert_quantity_units
 
@@ -71,7 +71,7 @@ class CelestrakDataGP(BaseModel):
         bstar = Scalar[D.InvLength](self.bstar * inv_radiiearth_to_inv_meter)
 
         return OrbitalElements(
-            epoch=Time.fromisoformat(self.epoch),
+            epoch=Timestamp.fromisoformat(self.epoch),
             eccentricity=e,
             inclination=i,
             ra_of_asc_node=Ω,
@@ -109,8 +109,8 @@ def get_celestrak_gpdata(catnr: int, log: bool = False) -> CelestrakDataGP:
 
     if store_path.exists():
         unixepoch_last_modified = int(getmtime(store_path))
-        last_modified = Time(unixepoch_last_modified)
-        if Time.now().delta(last_modified) < (MINIMAL_DURATION_UPDATE_HOURS * Quantity.hour):
+        last_modified = Timestamp(unixepoch_last_modified)
+        if Timestamp.now().delta(last_modified) < (MINIMAL_DURATION_UPDATE_HOURS * Quantity.hour):
             try:
                 return CelestrakDataGP(
                     **json.loads(store_path.read_text())

@@ -3,7 +3,7 @@ from leorbit.math import Q_
 from leorbit.orbit.objects import Satellite
 from leorbit.orbit.orbital_elements import OrbitalElements
 from leorbit.orbit.propagator import SGP4
-from leorbit.time import Timeline, Time
+from leorbit.time import Timeline, Timestamp
 from leorbit.simulation.event import VisibleFromLocation
 
 from pytest import approx
@@ -30,8 +30,8 @@ def test_event_visibility():
     }
     oe_iss: OrbitalElements = OrbitalElements.from_celestrak_json(oe_09fev24)
     iss = Satellite(SGP4(oe_iss), "ISS")
-    t0 = Time.fromisoformat("2024-02-09T08:15:00")
-    t1: Time = Time.fromisoformat("2024-02-09T08:30:00")
+    t0 = Timestamp.fromisoformat("2024-02-09T08:15:00")
+    t1: Timestamp = Timestamp.fromisoformat("2024-02-09T08:30:00")
     tl = Timeline(t0, t1, Q_("1s"))
     gre_gps = GPSCoordinates(
         longitude_deg=5.71667,
@@ -49,8 +49,8 @@ def test_event_visibility():
     iss_visible_gre = VisibleFromLocation(iss, gre_gps, Q_("10°"))
     event, *_ = iss_visible_gre.compute_intervals(tl)
 
-    assert event.start == Time.fromisoformat("2024-02-09T08:17:15")
-    assert event.stop == Time.fromisoformat("2024-02-09T08:22:57")
+    assert event.start == Timestamp.fromisoformat("2024-02-09T08:17:15")
+    assert event.stop == Timestamp.fromisoformat("2024-02-09T08:22:57")
 
     c0 = iss.coordinates(event.start)
     hor0 = iss_visible_gre.local_frame.get_horizontal_coordinates(c0)

@@ -6,7 +6,7 @@ import numpy as np
 from leorbit.coordinates import GPS
 from leorbit.m import Scalar, D, acos, Quantity
 from leorbit.propagator import Trajectory
-from leorbit.time import TimeInterval, Time
+from leorbit.time import TimeInterval, Timestamp
 
 import numpy.typing as npt
 
@@ -39,7 +39,7 @@ class TimeMap:
         
         return values
 
-    def get_value(self, epoch: Time, value_name: str) -> Any:
+    def get_value(self, epoch: Timestamp, value_name: str) -> Any:
         if epoch not in self.interval:
             raise ValueError(f"Epoch {epoch} not contained in TimeMap interval {self.interval}")
         

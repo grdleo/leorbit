@@ -6,11 +6,11 @@ from leorbit.frames import EarthLocalFrame
 from leorbit.m import Quantity, normalize_angle_symmetric
 from leorbit.propagator import SGP4
 from leorbit.sky_object import Satellite
-from leorbit.time import Time, TimeInterval
+from leorbit.time import Timestamp, TimeInterval
 
 
 def _find_visibility_windows(sat: Satellite, local_frame: EarthLocalFrame, timeline: TimeInterval, min_altitude):
-    windows: list[tuple[Time, Time]] = []
+    windows: list[tuple[Timestamp, Timestamp]] = []
 
     start = None
     stop = None
@@ -58,8 +58,8 @@ def test_event_visibility_integration():
     oe_iss = CelestrakDataGP(**oe_09fev24).to_orbital_elements()
     iss = Satellite("ISS", oe_iss, SGP4)
 
-    t0 = Time.fromisoformat("2024-02-09T08:15:00")
-    t1 = Time.fromisoformat("2024-02-09T08:30:00")
+    t0 = Timestamp.fromisoformat("2024-02-09T08:15:00")
+    t1 = Timestamp.fromisoformat("2024-02-09T08:30:00")
     timeline = TimeInterval(t0, t1, 1 * Quantity.second)
 
     gre_coords = Coordinates.from_gps(
@@ -76,8 +76,8 @@ def test_event_visibility_integration():
 
     event_start, event_stop = windows[0]
 
-    assert event_start.unixepoch == pytest.approx(Time.fromisoformat("2024-02-09T08:17:15").unixepoch, abs=2)
-    assert event_stop.unixepoch == pytest.approx(Time.fromisoformat("2024-02-09T08:22:57").unixepoch, abs=2)
+    assert event_start.unixepoch == pytest.approx(Timestamp.fromisoformat("2024-02-09T08:17:15").unixepoch, abs=2)
+    assert event_stop.unixepoch == pytest.approx(Timestamp.fromisoformat("2024-02-09T08:22:57").unixepoch, abs=2)
 
     c0 = iss.coordinates(event_start)
     hor0 = c0.horizontal(local_frame)

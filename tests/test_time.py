@@ -1,4 +1,4 @@
-from leorbit.time import Time
+from leorbit.time import Timestamp
 from leorbit.math import Q_
 
 import pytest
@@ -14,7 +14,7 @@ import pytest
     ),
 )
 def test_instance(unix: float, iso: str):
-    assert Time(unix) == Time.fromisoformat(iso)
+    assert Timestamp(unix) == Timestamp.fromisoformat(iso)
 
 
 @pytest.mark.parametrize(
@@ -26,7 +26,7 @@ def test_instance(unix: float, iso: str):
     ),
 )
 def test_shift(unix: float, shift: Q_):
-    assert (Time(unix) + shift).unixepoch == (unix + shift.m_as("s"))
+    assert (Timestamp(unix) + shift).unixepoch == (unix + shift.m_as("s"))
 
 
 @pytest.mark.parametrize(
@@ -38,7 +38,7 @@ def test_shift(unix: float, shift: Q_):
     ),
 )
 def test_yearday(inp: str, outp: str):
-    t: Time = Time.fromisoformat(inp)
+    t: Timestamp = Timestamp.fromisoformat(inp)
     assert t.year_day == outp
 
 @pytest.mark.parametrize(
@@ -48,5 +48,5 @@ def test_yearday(inp: str, outp: str):
     )
 )
 def test_stl0(iso: str, stl0: Q_):
-    t: Time = Time.fromisoformat(iso)
+    t: Timestamp = Timestamp.fromisoformat(iso)
     assert t.stl0 == stl0

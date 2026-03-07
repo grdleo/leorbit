@@ -10,7 +10,7 @@ from typing import ParamSpec, Callable, TypeVar, cast
 from leorbit.algorithms import OrbitalElementsComputeTuple
 from leorbit.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
 from leorbit.m import D, Dim, Quantity, Scalar, ScalarArray, Vector3, Vector3Array, atan, normalize_angle, normalize_angle_symmetric, sqrt, square, tan, abs
-from leorbit.time import Time, TimeInterval
+from leorbit.time import Timestamp, TimeInterval
 from leorbit.transforms import Transform, TransformVector3Affine
 from leorbit.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, itrf2gps, itrf2horizontal, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
 
@@ -28,7 +28,7 @@ class PosVel(NamedTuple):
 
 
 class Coordinates:
-    def __init__(self, epoch: Time, frame: Frame, pos: PosVec, vel: VelVec | None = None):
+    def __init__(self, epoch: Timestamp, frame: Frame, pos: PosVec, vel: VelVec | None = None):
         self.epoch = epoch
         self.positions: dict[Frame, PosVel] = {frame: PosVel(pos, vel)}
         self.privileged_frame = frame
@@ -94,13 +94,13 @@ class Coordinates:
         longitude: Scalar[D.Angle], 
         latitude: Scalar[D.Angle], 
         altitude: Scalar[D.Length] = 0 * Quantity.meter, 
-        epoch: Time | None = None
+        epoch: Timestamp | None = None
     ) -> Coordinates:
         theta = longitude
         delta = latitude
         rho = geocentric_radius_earth(delta) + altitude
         pos = Vector3.from_spherical(theta, delta, rho)
-        epoch = Time.now() if epoch is None else epoch
+        epoch = Timestamp.now() if epoch is None else epoch
 
         return Coordinates(epoch, AbsoluteFrame.ITRF, pos)
     
@@ -127,12 +127,12 @@ class Coordinates:
         altitude: Scalar[D.Angle], 
         distance: Scalar[D.Length], 
         frame: EarthLocalFrame, 
-        epoch: Time | None = None
+        epoch: Timestamp | None = None
     ) -> Coordinates:
         assert isinstance(frame, EarthLocalFrame)
         
         pos_local = Vector3.from_spherical(azimuth, altitude, distance)
-        epoch = Time.now() if epoch is None else epoch
+        epoch = Timestamp.now() if epoch is None else epoch
 
         return Coordinates(epoch, frame, pos_local)
     
@@ -232,7 +232,7 @@ class GPS(CoordinatesRepresentation):
         return f"<GPS: {self.dms}>"
     
     @lru_cache(4096)
-    def to_coordinates(self, epoch: Time) -> "Coordinates":
+    def to_coordinates(self, epoch: Timestamp) -> "Coordinates":
         coordinates = Coordinates.from_gps(
             longitude=self.longitude,
             latitude=self.latitude,
@@ -284,7 +284,7 @@ class Horizontal(CoordinatesRepresentation):
     def __repr__(self) -> str:
         return f"<Horizontal: {self.dms}>"
     
-    def to_coordinates(self, frame: EarthLocalFrame, epoch: Time) -> "Coordinates":
+    def to_coordinates(self, frame: EarthLocalFrame, epoch: Timestamp) -> "Coordinates":
         if self.distance is None:
             raise ValueError("Cannot convert `Horizontal` representation with unset `distance` to `Coordinates`.")
         
@@ -303,7 +303,7 @@ class OrbitalElements(CoordinatesRepresentation):
     (also known as GP data)"""
 
     def __init__(self,
-        epoch: Time,
+        epoch: Timestamp,
         eccentricity: Scalar[D.Dimless],
         inclination: Scalar[D.Angle],
         ra_of_asc_node: Scalar[D.Angle],
@@ -411,7 +411,7 @@ class OrbitalElements(CoordinatesRepresentation):
         )
 
     @staticmethod
-    def from_state_vectors(epoch: Time, pos: PosVec, vel: VelVec) -> "OrbitalElements":
+    def from_state_vectors(epoch: Timestamp, pos: PosVec, vel: VelVec) -> "OrbitalElements":
         """
         From the state vectors of a given satellite (position and velocity, both condensed in a `Coordinates` object),
         returns a `OrbitalElements` object corresponding to its orbit.
@@ -497,7 +497,7 @@ class Trajectory:
             self.privileged_frame = frame
 
     @lru_cache(4096)
-    def coordinates_at(self, epoch: Time, interpolation: Interpolation = Interpolation.CONSTANT) -> Coordinates:
+    def coordinates_at(self, epoch: Timestamp, interpolation: Interpolation = Interpolation.CONSTANT) -> Coordinates:
         if interpolation != Interpolation.CONSTANT:
             raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")
         
@@ -515,7 +515,7 @@ class Trajectory:
         )
 
     @lru_cache(4096)
-    def get_pos(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> PosVec: 
+    def get_pos(self, epoch: Timestamp, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> PosVec: 
         if interpolation != Interpolation.CONSTANT:
             raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")
         
@@ -530,7 +530,7 @@ class Trajectory:
         return pos[idx]
     
     @lru_cache(4096)
-    def get_vel(self, epoch: Time, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> VelVec:
+    def get_vel(self, epoch: Timestamp, frame: Frame, interpolation: Interpolation = Interpolation.CONSTANT) -> VelVec:
         if self.vel_available is False:
             raise ValueError("Velocity data is not available for this trajectory.")
          
@@ -576,7 +576,7 @@ class Trajectory:
         return cast(Trajectory._GPSArray, tuple_gps)
     
     @lru_cache(4096)
-    def gps_at(self, epoch: Time, interpolation: Interpolation = Interpolation.CONSTANT) -> GPS:
+    def gps_at(self, epoch: Timestamp, interpolation: Interpolation = Interpolation.CONSTANT) -> GPS:
         """Returns the GPS coordinates of this trajectory at a given epoch."""
         if interpolation != Interpolation.CONSTANT:
             raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")
@@ -607,7 +607,7 @@ class Trajectory:
         return cast(Trajectory._HorizontalArray, tuple_hor)
     
     @lru_cache(4096)
-    def horizontal_at(self, epoch: Time, local_frame: EarthLocalFrame, interpolation: Interpolation = Interpolation.CONSTANT) -> Horizontal:
+    def horizontal_at(self, epoch: Timestamp, local_frame: EarthLocalFrame, interpolation: Interpolation = Interpolation.CONSTANT) -> Horizontal:
         """Returns the horizontal coordinates of this trajectory at a given epoch, in the given local frame."""
         if interpolation != Interpolation.CONSTANT:
             raise NotImplementedError("Only `CONSTANT` interpolation is implemented for now.")

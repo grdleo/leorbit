@@ -9,7 +9,7 @@ from leorbit.frames import (
     frame_transform_factory,
 )
 from leorbit.m import D, Matrix33, Scalar, Vector3
-from leorbit.time import Time
+from leorbit.time import Timestamp
 from leorbit.transforms import TransformVector3Affine
 from leorbit.transforms import Transform
 
@@ -58,7 +58,7 @@ def test_relative_frame_roundtrip(pos: Vector3[D.Length], matrix: Matrix33[D.Dim
         AbsoluteFrame.ITRF,
         cast(Transform, TransformVector3Affine[D.Length](matrix, tr)),
     )
-    epoch = Time.fromisoformat("2024-02-11T18:00:00")
+    epoch = Timestamp.fromisoformat("2024-02-11T18:00:00")
 
     to_rel = frame_transform_factory(AbsoluteFrame.ITRF, rel)(epoch)
     to_abs = frame_transform_factory(rel, AbsoluteFrame.ITRF)(epoch)
@@ -86,7 +86,7 @@ def test_wrong_relative_frame_matrix_not_invertible():
         ),
     )
 
-    epoch = Time.fromisoformat("2024-02-11T18:00:00")
+    epoch = Timestamp.fromisoformat("2024-02-11T18:00:00")
     to_abs = frame_transform_factory(rel, AbsoluteFrame.GCRF)(epoch)
 
     with pytest.raises(np.linalg.LinAlgError):
@@ -94,7 +94,7 @@ def test_wrong_relative_frame_matrix_not_invertible():
 
 
 def test_absolute_frame_transform_factory_roundtrip_position_and_velocity():
-    epoch = Time.fromisoformat("2024-02-11T18:00:00")
+    epoch = Timestamp.fromisoformat("2024-02-11T18:00:00")
     itrf_to_gcrf = absolute_frame_transform_factory(AbsoluteFrame.ITRF, AbsoluteFrame.GCRF)(epoch)
     gcrf_to_itrf = absolute_frame_transform_factory(AbsoluteFrame.GCRF, AbsoluteFrame.ITRF)(epoch)
 
@@ -109,7 +109,7 @@ def test_absolute_frame_transform_factory_roundtrip_position_and_velocity():
 
 
 def test_frame_transform_factory_between_relative_frames_chain():
-    epoch = Time.fromisoformat("2024-02-11T18:00:00")
+    epoch = Timestamp.fromisoformat("2024-02-11T18:00:00")
 
     m1 = Matrix33[D.Dimless].from_elements(
         1.0, 0.0, 0.0,

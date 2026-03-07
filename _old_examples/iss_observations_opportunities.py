@@ -8,7 +8,7 @@ from leorbit.orbit.objects import Satellite
 from leorbit.orbit.orbital_elements import OrbitalElements
 from leorbit.orbit.propagator import SGP4
 from leorbit.simulation.utils import compute_magnitude
-from leorbit.time import Time
+from leorbit.time import Timestamp
 from leorbit.time import Timeline
 from leorbit.simulation.event import VisibleFromLocation, NightTime, AstroEvent
 from leorbit.math.coordinate import GPSCoordinates

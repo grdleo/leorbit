@@ -13,7 +13,7 @@ from leorbit import get_satellite
 from leorbit.coordinates import Coordinates
 from leorbit.frames import EarthLocalFrame
 from leorbit.m import Quantity
-from leorbit.time import Time, TimeInterval
+from leorbit.time import Timestamp, TimeInterval
 
 
 NORAD_ID = 25544 # ISS
@@ -32,7 +32,7 @@ def _equatorial_to_horizontal(
     eq_vectors: np.ndarray,
     latitude_deg: float,
     longitude_deg: float,
-    epoch: Time,
+    epoch: Timestamp,
 ) -> tuple[np.ndarray, np.ndarray]:
     lat = np.deg2rad(latitude_deg)
     lon = np.deg2rad(longitude_deg)
@@ -63,7 +63,7 @@ def _plane_horizontal_curve(
     plane: str,
     latitude_deg: float,
     longitude_deg: float,
-    epoch: Time,
+    epoch: Timestamp,
     n_samples: int = 721,
 ) -> tuple[np.ndarray, np.ndarray]:
     angle = np.linspace(0.0, 2 * np.pi, n_samples)
@@ -167,13 +167,13 @@ def plot_horizontal_trajectory(
     #     "ecliptic",
     #     latitude_deg=OBS_LAT_DEG,
     #     longitude_deg=OBS_LON_DEG,
-    #     epoch=Time.fromisoformat(EPOCH_DT.isoformat()),
+    #     epoch=Timestamp.fromisoformat(EPOCH_DT.isoformat()),
     # )
     # gal_az_deg, gal_el_deg = _plane_horizontal_curve(
     #     "galactic",
     #     latitude_deg=OBS_LAT_DEG,
     #     longitude_deg=OBS_LON_DEG,
-    #     epoch=Time.fromisoformat(EPOCH_DT.isoformat()),
+    #     epoch=Timestamp.fromisoformat(EPOCH_DT.isoformat()),
     # )
 
     ax.set_theta_zero_location("S")
@@ -227,7 +227,7 @@ def main() -> None:
     start_dt = EPOCH_DT - timedelta(minutes=2)
     stop_dt = EPOCH_DT + timedelta(minutes=2)
 
-    tmax = Time.fromisoformat(EPOCH_DT.isoformat())
+    tmax = Timestamp.fromisoformat(EPOCH_DT.isoformat())
     timeline = TimeInterval(
         tmax - (2 * Quantity.minute), 
         tmax + (2 * Quantity.minute), 

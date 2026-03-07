@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING, ParamSpec, Callable, TypeAlias, TypeVar, cast
 
 from leorbit.m import D, Matrix33, Matrix33Array, Quantity, Vector3, cos
 from leorbit.transforms import Transform, TransformChain, TransformIdentify, TransformVector3Affine, TransformVector3Linear
-from leorbit.time import Time, TimeInterval
+from leorbit.time import Timestamp, TimeInterval
 
 import numpy as np
 import numpy.typing as npt
@@ -28,14 +28,14 @@ class AbsoluteFrame(Enum):
     GCRF = "GCRF"
     ITRF = "ITRF"
 
-FrameTransformFactory = Callable[[Time | TimeInterval], Transform[SomeDynamicVec, SomeDynamicVec]]
+FrameTransformFactory = Callable[[Timestamp | TimeInterval], Transform[SomeDynamicVec, SomeDynamicVec]]
 
 @lru_cache(4096)
-def itrf2gcrf(epoch: Time | TimeInterval) -> Transform[SomeDynamicVec, SomeDynamicVec]:
+def itrf2gcrf(epoch: Timestamp | TimeInterval) -> Transform[SomeDynamicVec, SomeDynamicVec]:
     """NOTE: This rotation can transform any position or velocity"""
 
     unixepoch: npt.NDArray
-    if isinstance(epoch, Time):
+    if isinstance(epoch, Timestamp):
         unixepoch = np.array(epoch._unixepoch)
     elif isinstance(epoch, TimeInterval):
         unixepoch = epoch.to_time_stamps()._values
@@ -156,7 +156,7 @@ def frame_transform_factory(from_frame: Frame, to_frame: Frame) -> FrameTransfor
     if isinstance(first, TransformIdentify) and isinstance(last, TransformIdentify):
         return abs_transform
     
-    def _factory(epoch: Time | TimeInterval) -> TransformChain:
+    def _factory(epoch: Timestamp | TimeInterval) -> TransformChain:
         return TransformChain(
             cast(Transform, first),
             cast(Transform, abs_transform(epoch)), 

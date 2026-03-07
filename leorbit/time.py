@@ -15,7 +15,7 @@ TWOPI = 2 * np.pi
 TWELF_PI = np.pi / 12
 MIN_DURATION = Scalar[D.Time](1e-9)
 
-class Time:
+class Timestamp:
     """Class representing a time instant."""
     def __init__(self, unixepoch: Number):
         """
@@ -32,22 +32,22 @@ class Time:
         return self._unixepoch
     
     def __repr__(self) -> str:
-        return f"Time(unixepoch={self._unixepoch})"
+        return f"Timestamp(unixepoch={self._unixepoch})"
     
     def __hash__(self) -> int:
         return hash(self.__repr__())
 
     @staticmethod
-    def now() -> "Time":
-        """Returns a `Time` object corresponding to when 
+    def now() -> "Timestamp":
+        """Returns a `Timestamp` object corresponding to when 
         this function was executed (aka: now)"""
-        return Time(
+        return Timestamp(
             datetime.now().timestamp()
         )
 
     @classmethod
-    def fromisoformat(cls, iso_date: str) -> "Time":
-        """Creates a `Time` object from a date given in ISO format as a string
+    def fromisoformat(cls, iso_date: str) -> "Timestamp":
+        """Creates a `Timestamp` object from a date given in ISO format as a string
 
         Parameters:
         -----------
@@ -57,41 +57,41 @@ class Time:
             iso_date += "+00:00"
         return cls(datetime.fromisoformat(iso_date).timestamp())
 
-    def __eq__(self: "Time", other: object) -> bool:
-        if not isinstance(other, Time):
+    def __eq__(self: "Timestamp", other: object) -> bool:
+        if not isinstance(other, Timestamp):
             raise TypeError()
         
         return self._unixepoch == other._unixepoch
     
-    def __contains__(self: "Time", other: "Time") -> bool:
+    def __contains__(self: "Timestamp", other: "Timestamp") -> bool:
         return self.__eq__(other)
 
-    def __ne__(self: "Time", other: object) -> bool:
-        if not isinstance(other, Time):
+    def __ne__(self: "Timestamp", other: object) -> bool:
+        if not isinstance(other, Timestamp):
             raise TypeError()
         
         return self._unixepoch != other._unixepoch
 
-    def __lt__(self: "Time", other: "Time") -> bool:
+    def __lt__(self: "Timestamp", other: "Timestamp") -> bool:
         return self._unixepoch < other._unixepoch
 
-    def __le__(self: "Time", other: "Time") -> bool:
+    def __le__(self: "Timestamp", other: "Timestamp") -> bool:
         return self._unixepoch <= other._unixepoch
 
-    def __gt__(self: "Time", other: "Time") -> bool:
+    def __gt__(self: "Timestamp", other: "Timestamp") -> bool:
         return self._unixepoch > other._unixepoch
 
-    def __ge__(self: "Time", other: "Time") -> bool:
+    def __ge__(self: "Timestamp", other: "Timestamp") -> bool:
         return self._unixepoch >= other._unixepoch
 
-    def copy(self: "Time") -> "Time":
-        """Returns a copy of this `Time` object."""
+    def copy(self: "Timestamp") -> "Timestamp":
+        """Returns a copy of this `Timestamp` object."""
         return self.__class__(self._unixepoch)
     
-    def __copy__(self, *args, **kwargs) -> "Time":
+    def __copy__(self, *args, **kwargs) -> "Timestamp":
         return self.copy()
     
-    def __deepcopy__(self, *args, **kwargs) -> "Time":
+    def __deepcopy__(self, *args, **kwargs) -> "Timestamp":
         return self.copy()
 
     @staticmethod
@@ -103,7 +103,7 @@ class Time:
         delta_seconds = other.magnitude("second")
         return float(np.asarray(delta_seconds).reshape(-1)[0])
 
-    def __add__(self: "Time", other: Scalar[D.Time] | timedelta) -> "Time":
+    def __add__(self: "Timestamp", other: Scalar[D.Time] | timedelta) -> "Timestamp":
         try:
             delta_seconds = self._duration_seconds(other)
             return self.__class__(self._unixepoch + delta_seconds)
@@ -112,7 +112,7 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def __iadd__(self: "Time", other: Scalar[D.Time] | timedelta) -> "Time":
+    def __iadd__(self: "Timestamp", other: Scalar[D.Time] | timedelta) -> "Timestamp":
         try:
             self._unixepoch += self._duration_seconds(other)
             return self
@@ -121,7 +121,7 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
         
-    def __sub__(self: "Time", other: Scalar[D.Time] | timedelta) -> "Time":
+    def __sub__(self: "Timestamp", other: Scalar[D.Time] | timedelta) -> "Timestamp":
         try:
             delta_seconds = self._duration_seconds(other)
             return self.__class__(self._unixepoch - delta_seconds)
@@ -130,7 +130,7 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a duration"
             ) from ex
 
-    def __isub__(self: "Time", other: Scalar[D.Time] | timedelta) -> "Time":
+    def __isub__(self: "Timestamp", other: Scalar[D.Time] | timedelta) -> "Timestamp":
         try:
             self._unixepoch -= self._duration_seconds(other)
             return self
@@ -139,70 +139,70 @@ class Time:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def delta(self: "Time", other: "Time") -> Scalar[D.Time]:
-        """Return the duration between two given `Time` objects (i.e `self - other`), as a `pint.Quantity`.
+    def delta(self: "Timestamp", other: "Timestamp") -> Scalar[D.Time]:
+        """Return the duration between two given `Timestamp` objects (i.e `self - other`), as a `pint.Quantity`.
 
         If `other > self`, the returned duration will be negative. 
         """
         return Scalar[D.Time](self._unixepoch - other._unixepoch)
 
     @property
-    def isoformat(self: "Time") -> str:
-        """Representation of this `Time` object in 
+    def isoformat(self: "Timestamp") -> str:
+        """Representation of this `Timestamp` object in 
         [ISO format.](https://en.wikipedia.org/wiki/ISO_8601)"""
         return datetime.fromtimestamp(self._unixepoch, timezone.utc).isoformat()
     
     @property
     def human(self) -> str:
-        """Representation of this `Time` object in human readable format."""
+        """Representation of this `Timestamp` object in human readable format."""
         date = datetime.fromtimestamp(self._unixepoch, timezone.utc)
         return date.strftime("%Y-%m-%d at %H:%M:%S")
 
     @property
-    def jd(self: "Time") -> Scalar[D.Time]:
-        """Representation of this `Time` object as "Julian day (JD)", aka 
+    def jd(self: "Timestamp") -> Scalar[D.Time]:
+        """Representation of this `Timestamp` object as "Julian day (JD)", aka 
         the number of days since -4712/01/01."""
         days = (self._unixepoch / 86_400 + 2_440_587.5)
         return days * Quantity.day
 
     @property
-    def j2000(self: "Time") -> Scalar[D.Time]:
-        """Representation of this `Time` object as "Julian year (J2000)", aka 
+    def j2000(self: "Timestamp") -> Scalar[D.Time]:
+        """Representation of this `Timestamp` object as "Julian year (J2000)", aka 
         the number of days since 2000/01/01T12:00:00."""
         return unixepoch_to_j2000(self._unixepoch) * Quantity.day
 
     @property
-    def from_mil(self: "Time") -> Scalar[D.Time]:
-        """Representation of this `Time` object as a fraction of days since 1 january 2000 00:00.
+    def from_mil(self: "Timestamp") -> Scalar[D.Time]:
+        """Representation of this `Timestamp` object as a fraction of days since 1 january 2000 00:00.
 
         Taken from: https://stjarnhimlen.se/comp/ppcomp.html#3"""
         days = (self._unixepoch / 86_400 - 10_957.5) - .5
         return days * Quantity.day
 
     @property
-    def year_day(self: "Time") -> str:
-        """Representation of this `Time` object as a `yyddd.dddddddd` string  
+    def year_day(self: "Timestamp") -> str:
+        """Representation of this `Timestamp` object as a `yyddd.dddddddd` string  
         where `yy` is the last two digits of the year and 
         `ddd.dddddddd` is the fractionnal day of the year."""
         iso = self.isoformat
         full_y = iso[0:4]
-        newyear = Time.fromisoformat(f"{full_y}-01-01T00:00:00")
+        newyear = Timestamp.fromisoformat(f"{full_y}-01-01T00:00:00")
         from_newyear = self.delta(newyear)
         days = from_newyear.magnitude("second") / 86_400
         return f"{full_y[2:4]}{days:012.8f}"
 
     @property
-    def stl0(self: "Time") -> Scalar[D.Angle]: # FIXME: better algorithm on the Wiki page
+    def stl0(self: "Timestamp") -> Scalar[D.Angle]: # FIXME: better algorithm on the Wiki page
         """The 
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
-        (angle) of Latitude 0 at this `Time`.
+        (angle) of Latitude 0 at this `Timestamp`.
         """
         j2000 = float(self.j2000.magnitude("day"))
         return j2000_to_stl0(j2000) * Quantity.rad
 
 class TimeInterval:
-    """A time interval between two `Time` objects. """
-    def __init__(self, start: Time, stop: Time, dt=(1 * Quantity.second)):
+    """A time interval between two `Timestamp` objects. """
+    def __init__(self, start: Timestamp, stop: Timestamp, dt=(1 * Quantity.second)):
         if not stop > start:
             raise ValueError()
         if start + dt > stop:
@@ -232,7 +232,7 @@ class TimeInterval:
     def __hash__(self) -> int:
         return hash(self.__repr__())
 
-    def __iter__(self) -> Iterator[Time]:
+    def __iter__(self) -> Iterator[Timestamp]:
         for i in range(self.steps):
             yield self.start + i * self.dt
     
@@ -242,7 +242,7 @@ class TimeInterval:
         dt = dt if dt is not None else self.dt
         return TimeInterval(self.start, self.stop, dt)
     
-    def _idx2time(self, idx: int) -> Time:
+    def _idx2time(self, idx: int) -> Timestamp:
         if not isinstance(idx, int):
             raise TypeError()
         t = self.start + self.dt * idx
@@ -250,13 +250,13 @@ class TimeInterval:
             return t
         raise ValueError()
     
-    def _time2idx(self, time: Time) -> int:
+    def _time2idx(self, time: Timestamp) -> int:
         if not (self.start <= time <= self.stop):
             raise ValueError()
         i = (time.unixepoch - self.start.unixepoch) / self.dt.magnitude("second")
         return round(i)
     
-    def snap_to_discretization(self, time: Time) -> Time:
+    def snap_to_discretization(self, time: Timestamp) -> Timestamp:
         """Returns the time closest to given time, that would be part of the interval's discretization"""
         if time <= self.start:
             return self.start
@@ -265,16 +265,16 @@ class TimeInterval:
         i = self._time2idx(time)
         return self._idx2time(i)
     
-    def __contains__(self, t: Time | Self) -> bool:
-        """Returns `True` if given `Time` or `TimeInterval` is **fully** contained in this `TimeInterval.`"""
-        if isinstance(t, Time):
+    def __contains__(self, t: Timestamp | Self) -> bool:
+        """Returns `True` if given `Timestamp` or `TimeInterval` is **fully** contained in this `TimeInterval.`"""
+        if isinstance(t, Timestamp):
             return (self.start <= t <= self.stop)
         elif isinstance(t, type(self)):
             return self.start <= t.start <= t.stop <= self.stop
         raise TypeError()
     
-    def intersects(self, t: Time | Self) -> bool:
-        if isinstance(t, Time):
+    def intersects(self, t: Timestamp | Self) -> bool:
+        if isinstance(t, Timestamp):
             return (self.start <= t <= self.stop)
         
         return (
@@ -299,7 +299,7 @@ class TimeInterval:
             return TimeInterval(biggest.start, smallest.stop, dt)
         return None
     
-    def progress(self, t: Time) -> float | None:
+    def progress(self, t: Timestamp) -> float | None:
         """Returns the proportion of given time over the current timeline"""
         p = float((t.delta(self.start) / self.duration).magnitude("1"))
         if not (0 <= p <= 1):
@@ -330,9 +330,11 @@ class TimeInterval:
         return ScalarArray[D.Time](np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps))
     
     @staticmethod
-    def make_ponctual(time: Time) -> "TimeInterval":
-        """Creates a ponctual `TimeInterval` at given `Time`"""
+    def make_ponctual(time: Timestamp) -> "TimeInterval":
+        """Creates a ponctual `TimeInterval` at given `Timestamp`"""
         return TimeInterval(time, time + MIN_DURATION, MIN_DURATION)
+
+Timeline = TimeInterval
     
 def get_intersections_timelines(first_set: Iterable[TimeInterval], second_set: Iterable[TimeInterval]) -> list[TimeInterval]:
     """Returns the intersections of the two sets of timelines"""
@@ -346,7 +348,7 @@ def get_intersections_timelines(first_set: Iterable[TimeInterval], second_set: I
             all_pairs[k] = t.intersection(tt)
     return list(tl for tl in all_pairs.values() if tl is not None)
     
-if Time.now() >= Time.fromisoformat("2100-01-01T00:00:00"):
+if Timestamp.now() >= Timestamp.fromisoformat("2100-01-01T00:00:00"):
     raise RuntimeError(f"Nobody will ever see this but considering you "
                        f"are living in the 22th century, parts of this "
                        f"code will no longer work properly. Please check "

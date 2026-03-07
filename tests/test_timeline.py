@@ -1,17 +1,17 @@
 import pytest
-from leorbit.time import Time
+from leorbit.time import Timestamp
 from leorbit.time import Timeline, get_intersections_timelines
 from leorbit.math import Q_
 
 @pytest.mark.parametrize(
     "start, stop, dt",
     [
-        (Time.fromisoformat("2024-02-11T18:00:00"), Time.fromisoformat("2024-02-11T18:05:00"), Q_("1min")),
-        (Time.fromisoformat("2023-11-29T03:23:59"), Time.fromisoformat("2023-11-29T04:05:05"), Q_("42.3s")),
-        (Time.fromisoformat("2012-01-13T14:44:09"), Time.fromisoformat("2018-12-29T01:02:03"), Q_("3.44 week")),
+        (Timestamp.fromisoformat("2024-02-11T18:00:00"), Timestamp.fromisoformat("2024-02-11T18:05:00"), Q_("1min")),
+        (Timestamp.fromisoformat("2023-11-29T03:23:59"), Timestamp.fromisoformat("2023-11-29T04:05:05"), Q_("42.3s")),
+        (Timestamp.fromisoformat("2012-01-13T14:44:09"), Timestamp.fromisoformat("2018-12-29T01:02:03"), Q_("3.44 week")),
     ] 
 )
-def test_iter(start: Time, stop: Time, dt: Q_):
+def test_iter(start: Timestamp, stop: Timestamp, dt: Q_):
     timeline = Timeline(start, stop, dt)
     for i, t in enumerate(timeline):
         assert t.unixepoch == pytest.approx((start + dt * i).unixepoch)
@@ -20,27 +20,27 @@ def test_iter(start: Time, stop: Time, dt: Q_):
     "tl, iters",
     [
         (
-            Timeline(Time.fromisoformat("2024-02-11T18:00:12.34"), Time.fromisoformat("2024-02-11T18:00:16.44"), Q_("1s")),
+            Timeline(Timestamp.fromisoformat("2024-02-11T18:00:12.34"), Timestamp.fromisoformat("2024-02-11T18:00:16.44"), Q_("1s")),
             [
-                Time.fromisoformat("2024-02-11T18:00:12.34"),
-                Time.fromisoformat("2024-02-11T18:00:13.34"),
-                Time.fromisoformat("2024-02-11T18:00:14.34"),
-                Time.fromisoformat("2024-02-11T18:00:15.34"),
-                Time.fromisoformat("2024-02-11T18:00:16.34")
+                Timestamp.fromisoformat("2024-02-11T18:00:12.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:13.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:14.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:15.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:16.34")
             ]
         ),
         (
-            Timeline(Time.fromisoformat("2024-02-11T19:45:25.92"), Time.fromisoformat("2024-02-11T19:45:29.11"), Q_("1s")),
+            Timeline(Timestamp.fromisoformat("2024-02-11T19:45:25.92"), Timestamp.fromisoformat("2024-02-11T19:45:29.11"), Q_("1s")),
             [
-                Time.fromisoformat("2024-02-11T19:45:25.92"),
-                Time.fromisoformat("2024-02-11T19:45:26.92"),
-                Time.fromisoformat("2024-02-11T19:45:27.92"),
-                Time.fromisoformat("2024-02-11T19:45:28.92")
+                Timestamp.fromisoformat("2024-02-11T19:45:25.92"),
+                Timestamp.fromisoformat("2024-02-11T19:45:26.92"),
+                Timestamp.fromisoformat("2024-02-11T19:45:27.92"),
+                Timestamp.fromisoformat("2024-02-11T19:45:28.92")
             ]
         ),
     ]
 )
-def test_iter2(tl: Timeline, iters: list[Time]):
+def test_iter2(tl: Timeline, iters: list[Timestamp]):
     assert tl.steps == len(iters)
     for t, tt in zip(tl, iters):
         assert t == tt
@@ -49,13 +49,13 @@ def test_iter2(tl: Timeline, iters: list[Time]):
     "tl1, tl2, intersect",
     [
         (
-            Timeline(Time.fromisoformat("2024-02-11T18:01:23"), Time.fromisoformat("2024-02-11T18:14:44"), Q_("1s")),
-            Timeline(Time.fromisoformat("2024-02-11T18:08:08"), Time.fromisoformat("2024-02-11T18:35:22"), Q_("2.5s")),
-            Timeline(Time.fromisoformat("2024-02-11T18:08:08"), Time.fromisoformat("2024-02-11T18:14:44"), Q_("1s"))
+            Timeline(Timestamp.fromisoformat("2024-02-11T18:01:23"), Timestamp.fromisoformat("2024-02-11T18:14:44"), Q_("1s")),
+            Timeline(Timestamp.fromisoformat("2024-02-11T18:08:08"), Timestamp.fromisoformat("2024-02-11T18:35:22"), Q_("2.5s")),
+            Timeline(Timestamp.fromisoformat("2024-02-11T18:08:08"), Timestamp.fromisoformat("2024-02-11T18:14:44"), Q_("1s"))
         ),
         (
-            Timeline(Time.fromisoformat("2024-02-09T14:00:00"), Time.fromisoformat("2024-02-10T15:00:00"), Q_("30s")),
-            Timeline(Time.fromisoformat("2024-02-10T18:00:30"), Time.fromisoformat("2024-02-12T09:00:00"), Q_("4s")),
+            Timeline(Timestamp.fromisoformat("2024-02-09T14:00:00"), Timestamp.fromisoformat("2024-02-10T15:00:00"), Q_("30s")),
+            Timeline(Timestamp.fromisoformat("2024-02-10T18:00:30"), Timestamp.fromisoformat("2024-02-12T09:00:00"), Q_("4s")),
             None
         ),
     ] 
@@ -64,7 +64,7 @@ def test_intersection(tl1: Timeline, tl2: Timeline, intersect: Timeline | None):
     dt = Q_("1s")
     assert intersect == tl1.intersection(tl2, dt) == tl2.intersection(tl1, dt)
 
-A_DATE = Time.fromisoformat("2024-02-11T18:01:23")
+A_DATE = Timestamp.fromisoformat("2024-02-11T18:01:23")
 S = Q_("1s")
 @pytest.mark.parametrize(
     "tls1, tls2, inters",

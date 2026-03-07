@@ -13,7 +13,7 @@ from cartopy.mpl.geoaxes import GeoAxes
 
 from leorbit import get_satellite
 from leorbit.m import Quantity
-from leorbit.time import Time, TimeInterval
+from leorbit.time import Timestamp, TimeInterval
 
 
 def _to_deg(angle) -> float:
@@ -33,7 +33,7 @@ def main() -> None:
 
     iss = get_satellite(25544, log=True)
 
-    start = Time.now()
+    start = Timestamp.now()
     timeline = TimeInterval(
         start,
         start + 72 * Quantity.hour,

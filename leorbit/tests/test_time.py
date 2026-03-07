@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 
 from leorbit.m import Quantity
-from leorbit.time import Time, TimeInterval, get_intersections_timelines
+from leorbit.time import Timestamp, TimeInterval, get_intersections_timelines
 
 
 @pytest.mark.parametrize(
@@ -16,7 +16,7 @@ from leorbit.time import Time, TimeInterval, get_intersections_timelines
     ),
 )
 def test_instance(unix: float, iso: str):
-    assert Time(unix) == Time.fromisoformat(iso)
+    assert Timestamp(unix) == Timestamp.fromisoformat(iso)
 
 
 @pytest.mark.parametrize(
@@ -28,11 +28,11 @@ def test_instance(unix: float, iso: str):
     ),
 )
 def test_shift(unix: float, shift):
-    assert (Time(unix) + shift).unixepoch == pytest.approx(unix + shift.magnitude("second"))
+    assert (Timestamp(unix) + shift).unixepoch == pytest.approx(unix + shift.magnitude("second"))
 
 
 def test_shift_with_timedelta():
-    t = Time(1_700_000_000)
+    t = Timestamp(1_700_000_000)
     delta = timedelta(seconds=12.5)
 
     assert (t + delta).unixepoch == pytest.approx(1_700_000_012.5)
@@ -40,7 +40,7 @@ def test_shift_with_timedelta():
 
 
 def test_inplace_shift_with_timedelta():
-    t = Time(1_700_000_000)
+    t = Timestamp(1_700_000_000)
     delta = timedelta(minutes=2)
 
     t += delta
@@ -59,7 +59,7 @@ def test_inplace_shift_with_timedelta():
     ),
 )
 def test_yearday(inp: str, outp: str):
-    t = Time.fromisoformat(inp)
+    t = Timestamp.fromisoformat(inp)
     assert t.year_day == outp
 
 
@@ -70,7 +70,7 @@ def test_yearday(inp: str, outp: str):
     ),
 )
 def test_stl0(iso: str, stl0_deg: float):
-    t = Time.fromisoformat(iso)
+    t = Timestamp.fromisoformat(iso)
     assert t.stl0.magnitude("deg") == pytest.approx(stl0_deg)
 
 
@@ -78,23 +78,23 @@ def test_stl0(iso: str, stl0_deg: float):
     "start, stop, dt",
     [
         (
-            Time.fromisoformat("2024-02-11T18:00:00"),
-            Time.fromisoformat("2024-02-11T18:05:00"),
+            Timestamp.fromisoformat("2024-02-11T18:00:00"),
+            Timestamp.fromisoformat("2024-02-11T18:05:00"),
             1 * Quantity.minute,
         ),
         (
-            Time.fromisoformat("2023-11-29T03:23:59"),
-            Time.fromisoformat("2023-11-29T04:05:05"),
+            Timestamp.fromisoformat("2023-11-29T03:23:59"),
+            Timestamp.fromisoformat("2023-11-29T04:05:05"),
             42.3 * Quantity.second,
         ),
         (
-            Time.fromisoformat("2012-01-13T14:44:09"),
-            Time.fromisoformat("2018-12-29T01:02:03"),
+            Timestamp.fromisoformat("2012-01-13T14:44:09"),
+            Timestamp.fromisoformat("2018-12-29T01:02:03"),
             3.44 * 7 * Quantity.day,
         ),
     ],
 )
-def test_iter(start: Time, stop: Time, dt):
+def test_iter(start: Timestamp, stop: Timestamp, dt):
     timeline = TimeInterval(start, stop, dt)
     for i, t in enumerate(timeline):
         assert t.unixepoch == pytest.approx((start + dt * i).unixepoch)
@@ -105,34 +105,34 @@ def test_iter(start: Time, stop: Time, dt):
     [
         (
             TimeInterval(
-                Time.fromisoformat("2024-02-11T18:00:12.34"),
-                Time.fromisoformat("2024-02-11T18:00:16.44"),
+                Timestamp.fromisoformat("2024-02-11T18:00:12.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:16.44"),
                 1 * Quantity.second,
             ),
             [
-                Time.fromisoformat("2024-02-11T18:00:12.34"),
-                Time.fromisoformat("2024-02-11T18:00:13.34"),
-                Time.fromisoformat("2024-02-11T18:00:14.34"),
-                Time.fromisoformat("2024-02-11T18:00:15.34"),
-                Time.fromisoformat("2024-02-11T18:00:16.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:12.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:13.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:14.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:15.34"),
+                Timestamp.fromisoformat("2024-02-11T18:00:16.34"),
             ],
         ),
         (
             TimeInterval(
-                Time.fromisoformat("2024-02-11T19:45:25.92"),
-                Time.fromisoformat("2024-02-11T19:45:29.11"),
+                Timestamp.fromisoformat("2024-02-11T19:45:25.92"),
+                Timestamp.fromisoformat("2024-02-11T19:45:29.11"),
                 1 * Quantity.second,
             ),
             [
-                Time.fromisoformat("2024-02-11T19:45:25.92"),
-                Time.fromisoformat("2024-02-11T19:45:26.92"),
-                Time.fromisoformat("2024-02-11T19:45:27.92"),
-                Time.fromisoformat("2024-02-11T19:45:28.92"),
+                Timestamp.fromisoformat("2024-02-11T19:45:25.92"),
+                Timestamp.fromisoformat("2024-02-11T19:45:26.92"),
+                Timestamp.fromisoformat("2024-02-11T19:45:27.92"),
+                Timestamp.fromisoformat("2024-02-11T19:45:28.92"),
             ],
         ),
     ],
 )
-def test_iter2(tl: TimeInterval, iters: list[Time]):
+def test_iter2(tl: TimeInterval, iters: list[Timestamp]):
     assert tl.steps == len(iters)
     for t, tt in zip(tl, iters):
         assert t.unixepoch == pytest.approx(tt.unixepoch)
@@ -143,30 +143,30 @@ def test_iter2(tl: TimeInterval, iters: list[Time]):
     [
         (
             TimeInterval(
-                Time.fromisoformat("2024-02-11T18:01:23"),
-                Time.fromisoformat("2024-02-11T18:14:44"),
+                Timestamp.fromisoformat("2024-02-11T18:01:23"),
+                Timestamp.fromisoformat("2024-02-11T18:14:44"),
                 1 * Quantity.second,
             ),
             TimeInterval(
-                Time.fromisoformat("2024-02-11T18:08:08"),
-                Time.fromisoformat("2024-02-11T18:35:22"),
+                Timestamp.fromisoformat("2024-02-11T18:08:08"),
+                Timestamp.fromisoformat("2024-02-11T18:35:22"),
                 2.5 * Quantity.second,
             ),
             TimeInterval(
-                Time.fromisoformat("2024-02-11T18:08:08"),
-                Time.fromisoformat("2024-02-11T18:14:44"),
+                Timestamp.fromisoformat("2024-02-11T18:08:08"),
+                Timestamp.fromisoformat("2024-02-11T18:14:44"),
                 1 * Quantity.second,
             ),
         ),
         (
             TimeInterval(
-                Time.fromisoformat("2024-02-09T14:00:00"),
-                Time.fromisoformat("2024-02-10T15:00:00"),
+                Timestamp.fromisoformat("2024-02-09T14:00:00"),
+                Timestamp.fromisoformat("2024-02-10T15:00:00"),
                 30 * Quantity.second,
             ),
             TimeInterval(
-                Time.fromisoformat("2024-02-10T18:00:30"),
-                Time.fromisoformat("2024-02-12T09:00:00"),
+                Timestamp.fromisoformat("2024-02-10T18:00:30"),
+                Timestamp.fromisoformat("2024-02-12T09:00:00"),
                 4 * Quantity.second,
             ),
             None,
@@ -178,7 +178,7 @@ def test_intersection(tl1: TimeInterval, tl2: TimeInterval, intersect: TimeInter
     assert intersect == tl1.intersection(tl2, dt) == tl2.intersection(tl1, dt)
 
 
-A_DATE = Time.fromisoformat("2024-02-11T18:01:23")
+A_DATE = Timestamp.fromisoformat("2024-02-11T18:01:23")
 S = 1 * Quantity.second
 
 

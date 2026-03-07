@@ -19,7 +19,7 @@ import requests
 
 from leorbit.coordinates import GPS
 from leorbit.m import Quantity
-from leorbit.time import Time, TimeInterval
+from leorbit.time import Timestamp, TimeInterval
 from leorbit import get_satellite
 
 class OpenNotifyIssResponse(BaseModel):
@@ -43,9 +43,9 @@ class OpenNotifyIssResponse(BaseModel):
         return OpenNotifyIssResponse(**response.json())
     
     @property
-    def epoch(self) -> Time:
+    def epoch(self) -> Timestamp:
         """UTC epoch associated with this sample."""
-        return Time(self.timestamp)
+        return Timestamp(self.timestamp)
 
     @property
     def gps(self) -> GPS:
@@ -66,7 +66,7 @@ def _delta_deg(a, b) -> float:
     return abs(float(np.asarray((a - b).magnitude("deg")).reshape(-1)[0]))
 
 
-def _print_sample(sample_idx: int, epoch: Time, open_notify_gps: GPS, leorbit_gps: GPS) -> None:
+def _print_sample(sample_idx: int, epoch: Timestamp, open_notify_gps: GPS, leorbit_gps: GPS) -> None:
     """Pretty-print one comparison sample."""
     dlat = _delta_deg(leorbit_gps.latitude, open_notify_gps.latitude)
     dlon = _delta_deg(leorbit_gps.longitude, open_notify_gps.longitude)
@@ -85,7 +85,7 @@ def main():
 
     iss = get_satellite(25544, log=True)
 
-    t0 = Time.now() - timedelta(hours=2)
+    t0 = Timestamp.now() - timedelta(hours=2)
     timeline = TimeInterval(
         t0,
         t0 + timedelta(hours=4),
