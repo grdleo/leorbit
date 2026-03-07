@@ -203,7 +203,8 @@ __UNITS_REGISTRY: dict[type[Dim], dict[str, float]] = {
         meter=1,
         kilo_meter=1e3,
         radii_earth=6378135,
-        radii_sun=6.957e8
+        radii_sun=6.957e8,
+        astronomical_unit=149597870700,
     ),
     Time: dict(
         second=1,
@@ -1105,6 +1106,9 @@ class Quantity(metaclass=QuantityMeta):
 
     `R☉ = 6.957e8 m`
     """
+
+    astronomical_unit: Scalar[Length]
+    """Astronomical unit (au)."""
 
     # DURATIONS
 
