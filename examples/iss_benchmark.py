@@ -18,7 +18,7 @@ from pydantic import BaseModel
 import requests
 
 from leorbit.coordinates import GPS
-from leorbit.m import Quantity
+from leorbit.mathematics import Quantity
 from leorbit.time import Timestamp, TimeInterval
 from leorbit import get_satellite
 
@@ -55,8 +55,8 @@ class OpenNotifyIssResponse(BaseModel):
         to build a full GPS point for display/comparison purposes.
         """
         return GPS(
-            latitude=float(self.iss_position.latitude) * Quantity.deg,
-            longitude=float(self.iss_position.longitude) * Quantity.deg,
+            latitude=float(self.iss_position.latitude) * Quantity.degree,
+            longitude=float(self.iss_position.longitude) * Quantity.degree,
             altitude=400 * Quantity.kilo_meter
         )
 

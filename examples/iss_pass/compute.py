@@ -12,7 +12,7 @@ import numpy as np
 from leorbit import get_satellite
 from leorbit.coordinates import Coordinates
 from leorbit.frames import EarthLocalFrame
-from leorbit.m import Quantity
+from leorbit.mathematics import Quantity
 from leorbit.time import Timestamp, TimeInterval
 
 

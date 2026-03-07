@@ -12,7 +12,7 @@ import certifi
 from cartopy.mpl.geoaxes import GeoAxes
 
 from leorbit import get_satellite
-from leorbit.m import Quantity
+from leorbit.mathematics import Quantity
 from leorbit.time import Timestamp, TimeInterval
 
 

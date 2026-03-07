@@ -3,7 +3,7 @@ from typing import NamedTuple
 import numpy as np
 import numpy.typing as npt
 
-from leorbit.m import Number
+from leorbit.mathematics import Number
 from leorbit.time import Timestamp, TimeInterval
 
 ### SGP4 ALGORITHM ###
