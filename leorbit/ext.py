@@ -8,7 +8,7 @@ from pydantic import BaseModel, Field
 from requests import HTTPError, get
 
 from leorbit.coordinates import OrbitalElements
-from leorbit.m import D, Quantity, Scalar, cube, square
+from leorbit.mathematics import InvLength, Quantity, Dimless, AngularVelocity, AngularAcceleration, AngularJerk
 from leorbit.time import Timestamp
 
 from leorbit.utils import convert_quantity_units
@@ -56,20 +56,15 @@ class CelestrakDataGP(BaseModel):
         turn_per_day_cub_to_rad_per_second_cub = turn_per_day_sqr_to_rad_per_second_sqr / (24 * 3600)
         inv_radiiearth_to_inv_meter = float(1 / Quantity.radii_earth.magnitude("meter"))
 
-        e = Scalar[D.Dimless](self.eccentricity)
-        i = Scalar[D.Angle](self.inclination * deg_to_rad)
-        Ω = Scalar[D.Angle](self.ra_of_asc_node * deg_to_rad)
-        ω = Scalar[D.Angle](self.arg_of_pericenter * deg_to_rad)
-        n = Scalar[D.AngularVelocity](self.mean_motion * turn_per_day_to_rad_per_second)
-        M = Scalar[D.Angle](self.mean_anomaly * deg_to_rad)
-        n_dot = Scalar[D.AngularAcc](
-            self.mean_motion_dot * turn_per_day_sqr_to_rad_per_second_sqr
-        )
-        n_ddot = Scalar[D.AngularJerk](
-            self.mean_motion_ddot * turn_per_day_cub_to_rad_per_second_cub
-        )
-        bstar = Scalar[D.InvLength](self.bstar * inv_radiiearth_to_inv_meter)
-
+        e = self.eccentricity * Quantity.dimensionless 
+        i = self.inclination * Quantity.degree
+        Ω = self.ra_of_asc_node * Quantity.degree
+        ω = self.arg_of_pericenter * Quantity.degree
+        n = self.mean_motion * (Quantity.turn / Quantity.day).cast(AngularVelocity)
+        M = self.mean_anomaly * Quantity.degree
+        n_dot = self.mean_motion_dot * (Quantity.turn / Quantity.day ** 2).cast(AngularAcceleration)
+        n_ddot = self.mean_motion_ddot * (Quantity.turn / Quantity.day ** 3).cast(AngularJerk)
+        bstar = self.bstar * (1 / Quantity.radii_earth).cast(InvLength)
         return OrbitalElements(
             epoch=Timestamp.fromisoformat(self.epoch),
             eccentricity=e,

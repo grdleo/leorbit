@@ -208,6 +208,9 @@ _ = Velocity = Length / Time
 _ = Acceleration = Velocity / Time
 _ = Force = Mass * Acceleration
 _ = Frequency = AngularVelocity = 1 / Time
+_ = AngularAcceleration = AngularVelocity / Time
+_ = AngularJerk = AngularAcceleration / Time
+_ = InvLength = 1 / Length
 # NOTE: This is a trick discovered accidentally for Pyright to recognize these dimensions as "real types"
 # instead of just `type[Dim]` which would be the case if we directly assigned the result of the operations to the variables.
 

@@ -43,19 +43,42 @@ class Dim(metaclass=_DimClassAlgebra):
     def triplet(cls) -> DimTriplet: ...
 
 
-class Dimless(Dim): ...
+class Dimless(Dim):
+    """L⁰ T⁰ M⁰"""
 Angle = Dimless
 
 
-class Length(Dim): ...
-class Time(Dim): ...
-class Mass(Dim): ...
-class Velocity(Dim): ...
-class Acceleration(Dim): ...
-class Force(Dim): ...
-class Frequency(Dim): ...
+class Length(Dim):
+    """L¹ T⁰ M⁰"""
+
+class Time(Dim):
+    """L⁰ T¹ M⁰"""
+
+class Mass(Dim):
+    """L⁰ T⁰ M¹"""
+
+class Velocity(Dim):
+    """L¹ T⁻¹ M⁰"""
+
+class Acceleration(Dim):
+    """L¹ T⁻² M⁰"""
+
+class Force(Dim):
+    """L¹ T⁻² M¹"""
+
+class Frequency(Dim):
+    """L⁰ T⁻¹ M⁰"""
+
 AngularVelocity = Frequency
 
+class AngularAcceleration(Dim):
+    """L⁰ T⁻² M⁰"""
+
+class AngularJerk(Dim):
+    """L⁰ T⁻³ M⁰"""
+
+class InvLength(Dim):
+    """L⁻¹ T⁰ M⁰"""
 
 ExponentNumerator = TypeVar("ExponentNumerator", bound=int)
 ExponentDenominator = TypeVar("ExponentDenominator", bound=int)

@@ -5,7 +5,7 @@ from typing import NamedTuple, Self, TypeVar, cast
 
 from leorbit.algorithms import OrbitalElementsComputeTuple
 from leorbit.frames import AbsoluteFrame, EarthLocalFrame, frame_transform_factory, Frame
-from leorbit.mathematics import Angle, AngularVelocity, Dim, Dimless, Length, N1, N2, N3, P1, PowerDim, Quantity, Scalar, ScalarArray, Time, Vector3, Vector3Array, Velocity, abs, normalize_angle, normalize_angle_symmetric, sqrt, square
+from leorbit.mathematics import Angle, AngularAcceleration, AngularJerk, AngularVelocity, Dim, Dimless, InvLength, Length, N1, N2, N3, P1, PowerDim, Quantity, Scalar, ScalarArray, Time, Vector3, Vector3Array, Velocity, abs, normalize_angle, normalize_angle_symmetric, sqrt, square
 from leorbit.time import Timestamp, TimeInterval
 from leorbit.transforms import Transform
 from leorbit.utils import angle2dms, eccentric2true_anomaly, elements2orthogonal_gcrf, gcrf_state_vectors2elements, geocentric_radius_earth, itrf2gps, itrf2horizontal, mean2eccentric_anomaly, mean_motion_to_semi_major_axis_earth
@@ -17,10 +17,6 @@ SomeDim = TypeVar("SomeDim", bound=Dim)
 DynamicVec = Vector3[Length] | Vector3[Velocity]
 DynamicVecArray = Vector3Array[Length] | Vector3Array[Velocity]
 DynamicD = Length | Velocity
-
-AngularAcc = Time ** -2
-AngularJerk = Time ** -3
-InvLength = Length ** -1
 
 class PosVel(NamedTuple):
 	pos: PosVec
@@ -306,9 +302,9 @@ class OrbitalElements(CoordinatesRepresentation):
         arg_of_pericenter: Scalar[Angle],
         mean_motion: Scalar[AngularVelocity],
         mean_anomaly: Scalar[Angle],
-        mean_motion_dot: Scalar[PowerDim[Time, N2, P1]] = cast(Scalar[PowerDim[Time, N2, P1]], Scalar[AngularAcc](0)),
-        mean_motion_ddot: Scalar[PowerDim[Time, N3, P1]] = cast(Scalar[PowerDim[Time, N3, P1]], Scalar[AngularJerk](0)),
-        bstar: Scalar[PowerDim[Length, N1, P1]] = cast(Scalar[PowerDim[Length, N1, P1]], Scalar[InvLength](0)),
+        mean_motion_dot: Scalar[AngularAcceleration] = 0 * (Quantity.radian / Quantity.second ** 2).cast(AngularAcceleration),
+        mean_motion_ddot: Scalar[AngularJerk] = 0 * (Quantity.radian / Quantity.second ** 3).cast(AngularJerk),
+        bstar: Scalar[InvLength] = 0 * (1 / Quantity.radii_earth).cast(InvLength),
     ):
         deg_0 = 0 * Quantity.degree
         deg_180 = 180 * Quantity.degree
@@ -341,7 +337,7 @@ class OrbitalElements(CoordinatesRepresentation):
             raise ValueError()
 
         self.mean_motion_dot = mean_motion_dot
-        if not mean_motion_dot.check(AngularAcc):
+        if not mean_motion_dot.check(AngularAcceleration):
             raise ValueError()
 
         self.mean_motion_ddot = mean_motion_ddot
@@ -427,9 +423,9 @@ class OrbitalElements(CoordinatesRepresentation):
             arg_of_pericenter=els.arg_of_pericenter,
             mean_motion=els.mean_motion,
             mean_anomaly=els.mean_anomaly,
-            mean_motion_dot=cast(Scalar[PowerDim[Time, N2, P1]], Scalar[AngularAcc](0)),
-            mean_motion_ddot=cast(Scalar[PowerDim[Time, N3, P1]], Scalar[AngularJerk](0)),
-            bstar=cast(Scalar[PowerDim[Length, N1, P1]], Scalar[InvLength](0))
+            mean_motion_dot=0 * (Quantity.radian / Quantity.second ** 2).cast(AngularAcceleration),
+            mean_motion_ddot=0 * (Quantity.radian / Quantity.second ** 3).cast(AngularJerk),
+            bstar=0 * (1 / Quantity.radii_earth).cast(InvLength)
         )
 
     @staticmethod
