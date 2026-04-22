@@ -1,5 +1,6 @@
 from copy import copy
 from dataclasses import dataclass
+from decimal import Decimal
 from enum import Enum
 from fractions import Fraction
 from functools import cached_property, wraps
@@ -7,6 +8,7 @@ import inspect
 from itertools import chain, repeat
 from types import EllipsisType
 from typing import Any, Callable, ClassVar, Generic, Literal, NamedTuple, Self, Type, TypeAlias, TypeIs, TypeVar, cast
+import operator
 
 import numpy as np
 import numpy.typing as npt
@@ -232,7 +234,45 @@ class U:
         return getattr(cls, units)
 
 type TensorUnaryOperator = Literal["+", "-"]
-type TensorBinaryOperator = Literal["+", "-", "*", "/", "@"]
+
+class TensorBinaryOperator(Enum):
+    ADD = "+"
+    SUB = "-"
+    MUL = "*"
+    TRUEDIV = "/"
+    FLOORDIV = "//"
+    MODULO = "%"
+    MATMUL = "@"
+    POW = "**"
+
+    @property
+    def addition(self) -> bool:
+        return self in (TensorBinaryOperator.ADD, TensorBinaryOperator.SUB)
+    
+    @property
+    def multiplication(self) -> bool:
+        return self in (TensorBinaryOperator.MUL, TensorBinaryOperator.TRUEDIV, TensorBinaryOperator.FLOORDIV, TensorBinaryOperator.MATMUL)
+    
+    @property
+    def operator(self) -> Callable[[object, object], object]:
+        if self == TensorBinaryOperator.ADD:
+            return operator.add
+        elif self == TensorBinaryOperator.SUB:
+            return operator.sub
+        elif self == TensorBinaryOperator.MUL:
+            return operator.mul
+        elif self == TensorBinaryOperator.TRUEDIV:
+            return operator.truediv
+        elif self == TensorBinaryOperator.FLOORDIV:
+            return operator.floordiv
+        elif self == TensorBinaryOperator.MODULO:
+            return operator.mod
+        elif self == TensorBinaryOperator.MATMUL:
+            return operator.matmul
+        elif self == TensorBinaryOperator.POW:
+            return operator.pow
+        
+        raise NotImplementedError(f"Unsupported operator '{self.value}'.")
 
 class TensorKind(Enum):
     SCALAR = "scalar"
@@ -246,14 +286,14 @@ class Tensor:
     _data: npt.NDArray[np.float64]
     _phy_dimension: type[Dim]
 
-    def __init__(self, data: npt.NDArray[np.float64], dimension: type[Dim] | None = None):
+    def __init__(self, data: npt.NDArray[np.float64] | float | int, dimension: type[Dim] | None = None):
         """Initialize a tensor with the given data and dimension.
         Data units are default SI units corresponding to dimension."""
         if dimension is None:
             dimension = Dimless
         assert dimension.triplet() is not None
 
-        self._data = data
+        self._data = np.asarray(data, dtype=np.float64)
         self._phy_dimension = dimension
 
     def __hash__(self) -> int:
@@ -357,25 +397,98 @@ class Tensor:
         assert tensor.size == 1
 
         return tensor
+
+    def __pos__(self) -> Tensor:
+        return Tensor(
+            data=self._data.copy(),
+            dimension=self.phy_dimension
+        )
+    
+    def __neg__(self) -> Tensor:
+        return Tensor(
+            data=-self._data.copy(),
+            dimension=self.phy_dimension
+        )
+    
+    def __pow__(self, exponent: float | int | Fraction) -> Tensor:
+        return Tensor(
+            data=self._data ** float(exponent),
+            dimension=self.phy_dimension ** exponent
+        )
+
+    def __add__(self, right: Tensor | float | int) -> Tensor:
+        return self.perform_binary_operation(right, TensorBinaryOperator.ADD)
+    
+    def __radd__(self, left: float | int) -> Tensor:
+        return scalar(left).perform_binary_operation(self, TensorBinaryOperator.ADD)
+    
+    def __sub__(self, right: Tensor | float | int) -> Tensor:
+        return self.perform_binary_operation(right, TensorBinaryOperator.SUB)
+    
+    def __rsub__(self, left: float | int) -> Tensor:
+        return scalar(left).perform_binary_operation(self, TensorBinaryOperator.SUB)
+    
+    def __mul__(self, right: Tensor | float | int) -> Tensor:
+        return self.perform_binary_operation(right, TensorBinaryOperator.MUL)
+    
+    def __rmul__(self, left: float | int) -> Tensor:
+        return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MUL)
+    
+    def __truediv__(self, right: Tensor | float | int) -> Tensor:
+        return self.perform_binary_operation(right, TensorBinaryOperator.TRUEDIV)
+    
+    def __rtruediv__(self, left: float | int) -> Tensor:
+        return scalar(left).perform_binary_operation(self, TensorBinaryOperator.TRUEDIV)
+    
+    def __floordiv__(self, right: Tensor | float | int) -> Tensor:
+        return self.perform_binary_operation(right, TensorBinaryOperator.FLOORDIV)
+    
+    def __rfloordiv__(self, left: float | int) -> Tensor:
+        return scalar(left).perform_binary_operation(self, TensorBinaryOperator.FLOORDIV)
+    
+    def __mod__(self, right: Tensor | float | int) -> Tensor:
+        return self.perform_binary_operation(right, TensorBinaryOperator.MODULO)
+    
+    def __rmod__(self, left: float | int) -> Tensor:
+        return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MODULO)
+    
+    def __matmul__(self, right: Tensor | float | int) -> Tensor:
+        return self.perform_binary_operation(right, TensorBinaryOperator.MATMUL)
+    
+    def __rmatmul__(self, left: float | int) -> Tensor:
+        return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MATMUL)
     
     
-    def perform_binary_operation(self, other: Tensor, operator: TensorBinaryOperator) -> Tensor:
+    def perform_binary_operation(self, other: Tensor | float | int, op: TensorBinaryOperator) -> Tensor:
         """Perform the given binary operation with another tensor, checking dimension compatibility."""
-        if operator in ("+", "-"):
-            if self.phy_dimension != other.phy_dimension:
-                raise ValueError(f"Cannot perform '{operator}' on tensors with different dimensions: {self.phy_dimension.triplet().representation} and {other.phy_dimension.triplet().representation}.")
-            data = self._data + other._data if operator == "+" else self._data - other._data
+        other_data = other._data if isinstance(other, Tensor) else other
+        other_is_number = isinstance(other, (float, int))
+        other_is_tensor = isinstance(other, Tensor)
+        is_dimensionless = self.phy_dimension.triplet().dimensionless
+
+        dimension: type[Dim]
+        if not other_is_number and not other_is_tensor:
+            raise ValueError(f"Unsupported operand type(s) for {op.value}: 'Tensor' and '{type(other).__name__}'.")
+
+        if op.addition:
+            if other_is_number and not is_dimensionless:
+                raise ValueError(f"Cannot add a number to a non-dimensionless tensor.")
+            elif other_is_tensor and self.phy_dimension != other.phy_dimension:
+                raise ValueError(f"Cannot add tensors with different dimensions.")
+            
             dimension = self.phy_dimension
-        elif operator in ("*", "@"):
-            data = self._data * other._data if operator == "*" else self._data @ other._data
-            dimension = self.phy_dimension * other.phy_dimension if operator == "*" else self.phy_dimension / other.phy_dimension
-        elif operator == "/":
-            data = self._data / other._data
-            dimension = self.phy_dimension / other.phy_dimension
+        elif op.multiplication:
+            dimension = op.operator(
+                self.phy_dimension,
+                other.phy_dimension if other_is_tensor else Dimless
+            )
         else:
-            raise NotImplementedError(f"Unsupported operator '{operator}'.")
+            raise RuntimeError("Unreachable code")
         
-        return Tensor(data=data, dimension=dimension)
+        return Tensor(
+            data=op.operator(self._data, other_data), 
+            dimension=dimension
+        )
 
     @property
     def scalar(self) -> float:
@@ -477,3 +590,12 @@ def tensor_output(output: TensorBound | type[float]):
         return wrapped
 
     return wrapper
+
+def scalar(value: float | int | Fraction | Decimal) -> Tensor:
+    """Create a dimensionless scalar tensor with the given value."""
+    assert isinstance(value, (float, int, Fraction, Decimal))
+
+    return Tensor(
+        data=np.asarray(value, dtype=np.float64), 
+        dimension=Dimless
+    )
