@@ -549,12 +549,12 @@ def tensor_check(f: Callable) -> Callable:
     # Then use all this information to check the inputs/outputs, and raises if inconsistency detected
     ...
 
-def scalar(value: RealNumber, dimension: type[Dim] = Dimless) -> Tensor:
+def scalar(value: RealNumber) -> Tensor:
     """Create a dimensionless scalar tensor with the given value."""
     assert isinstance(value, RealNumber)
 
     return Tensor(
-        data=np.asarray(value, dtype=np.float64), 
+        data=np.asarray(value, dtype=np.float64).reshape((1,)), 
         dimension=Dimless
     )
 
@@ -563,7 +563,10 @@ __UNITS_REGISTRY: dict[str, Tensor] = dict()
 def _units_register(units: list[str], dim: type[Dim], base_factor: RealNumber):
     global __UNITS_REGISTRY
     __UNITS_REGISTRY |= {
-        u: scalar(base_factor, dim)
+        u: Tensor(
+            data=np.asarray(base_factor, dtype=np.float64).reshape((1,)), 
+            dimension=dim
+        )
         for u in units
     }
 class Quantity(type):
