@@ -15,6 +15,8 @@ from numbers import Rational as RationalNumber
 import numpy as np
 import numpy.typing as npt
 
+type NumpyFloatArray = npt.NDArray[np.float64]
+
 
 class DimTriplet:
     """Exponent triplet describing a physical dimension.
@@ -239,37 +241,46 @@ class TensorBinaryOperator(Enum):
     ADD = "+"
     SUB = "-"
     MUL = "*"
+    MATMUL = "@"
     TRUEDIV = "/"
     FLOORDIV = "//"
     MODULO = "%"
-    MATMUL = "@"
-
-    @property
-    def addition(self) -> bool:
-        return self in (TensorBinaryOperator.ADD, TensorBinaryOperator.SUB)
     
     @property
-    def multiplication(self) -> bool:
-        return self in (TensorBinaryOperator.MUL, TensorBinaryOperator.TRUEDIV, TensorBinaryOperator.FLOORDIV, TensorBinaryOperator.MATMUL)
-    
-    @property
-    def operator(self) -> Callable[[object, object], object]:
+    def operator(self) -> Callable[[NumpyFloatArray, NumpyFloatArray], NumpyFloatArray]:
         if self == TensorBinaryOperator.ADD:
             return operator.add
         elif self == TensorBinaryOperator.SUB:
             return operator.sub
         elif self == TensorBinaryOperator.MUL:
             return operator.mul
+        elif self == TensorBinaryOperator.MATMUL:
+            return operator.matmul
         elif self == TensorBinaryOperator.TRUEDIV:
             return operator.truediv
         elif self == TensorBinaryOperator.FLOORDIV:
             return operator.floordiv
         elif self == TensorBinaryOperator.MODULO:
             return operator.mod
-        elif self == TensorBinaryOperator.MATMUL:
-            return operator.matmul
         
         raise NotImplementedError(f"Unsupported operator '{self.value}'.")
+    
+    def dimension_result(self, left_dim: type[Dim], right_dim: type[Dim]) -> type[Dim] | None:
+        """Return the resulting dimension of applying this operator to quantities of the given dimensions."""
+        if self in (TensorBinaryOperator.ADD, TensorBinaryOperator.SUB):
+            if left_dim != right_dim:
+                return None
+            return left_dim
+        elif self == TensorBinaryOperator.MODULO:
+            if left_dim != right_dim and not right_dim.triplet().dimensionless:
+                return None
+            return left_dim
+        elif self in (TensorBinaryOperator.MUL, TensorBinaryOperator.MATMUL):
+            return left_dim * right_dim
+        elif self in (TensorBinaryOperator.TRUEDIV, TensorBinaryOperator.FLOORDIV):
+            return left_dim / right_dim
+        
+        raise NotImplementedError(f"Unsupported operator '{self.value}' for dimension composition.")
 
 class TensorKind(Enum):
     SCALAR = "scalar"
@@ -280,10 +291,10 @@ class TensorKind(Enum):
 class Tensor:
     """Generic n-dimensional tensor carrying a physical dimension.
     """
-    _data: npt.NDArray[np.float64]
+    _data: NumpyFloatArray
     _phy_dimension: type[Dim]
 
-    def __init__(self, data: npt.NDArray[np.float64] | RealNumber, dimension: type[Dim] | None = None):
+    def __init__(self, data: NumpyFloatArray | RealNumber, dimension: type[Dim] | None = None):
         """Initialize a tensor with the given data and dimension.
         Data units are default SI units corresponding to dimension."""
         if dimension is None:
@@ -370,7 +381,7 @@ class Tensor:
         
         return self
     
-    def raw_data_array(self, units: float | str) -> npt.NDArray[np.float64]:
+    def raw_data_array(self, units: float | str) -> NumpyFloatArray:
         """Return the raw data array of this tensor, converted to the given units."""
         if isinstance(units, str):
             factor = U.get_factor(units)
@@ -458,32 +469,15 @@ class Tensor:
     
     def perform_binary_operation(self, other: Tensor | RealNumber, op: TensorBinaryOperator) -> Tensor:
         """Perform the given binary operation with another tensor, checking dimension compatibility."""
-        other_data = other._data if isinstance(other, Tensor) else other
-        other_is_number = isinstance(other, RealNumber)
-        other_is_tensor = isinstance(other, Tensor)
-        is_dimensionless = self.phy_dimension.triplet().dimensionless
+        if not isinstance(other, Tensor):
+            other = scalar(other)
 
-        dimension: type[Dim]
-        if not other_is_number and not other_is_tensor:
-            raise ValueError(f"Unsupported operand type(s) for {op.value}: 'Tensor' and '{type(other).__name__}'.")
-
-        if op.addition:
-            if other_is_number and not is_dimensionless:
-                raise ValueError(f"Cannot add a number to a non-dimensionless tensor.")
-            elif other_is_tensor and self.phy_dimension != other.phy_dimension:
-                raise ValueError(f"Cannot add tensors with different dimensions.")
-            
-            dimension = self.phy_dimension
-        elif op.multiplication:
-            dimension = op.operator(
-                self.phy_dimension,
-                other.phy_dimension if other_is_tensor else Dimless
-            )
-        else:
-            raise RuntimeError("Unreachable code")
+        dimension = op.dimension_result(self.phy_dimension, other.phy_dimension)
+        if dimension is None:
+            raise ValueError("Dimensions incompatible for given operator")
         
         return Tensor(
-            data=op.operator(self._data, other_data), 
+            data=op.operator(self._data, other._data), 
             dimension=dimension
         )
 
@@ -560,7 +554,7 @@ def scalar(value: RealNumber) -> Tensor:
 
 __UNITS_REGISTRY: dict[str, Tensor] = dict()
 
-def _units_register(units: list[str], dim: type[Dim], base_factor: RealNumber):
+def _units_register(units: list[str], dim: type[Dim], base_factor: float):
     global __UNITS_REGISTRY
     __UNITS_REGISTRY |= {
         u: Tensor(
