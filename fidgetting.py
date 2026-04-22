@@ -9,6 +9,8 @@ from itertools import chain, repeat
 from types import EllipsisType
 from typing import Any, Callable, ClassVar, Generic, Literal, NamedTuple, Self, Type, TypeAlias, TypeIs, TypeVar, cast
 import operator
+from numbers import Real as RealNumber
+from numbers import Rational as RationalNumber
 
 import numpy as np
 import numpy.typing as npt
@@ -22,9 +24,9 @@ class DimTriplet:
     """
 
     def __init__(self,
-        length: Fraction | int = 0,
-        time: Fraction | int = 0,
-        mass: Fraction | int = 0,
+        length: RationalNumber | float | int = 0,
+        time: RationalNumber | float | int = 0,
+        mass: RationalNumber | float | int = 0,
     ):
         """Build dimension coordinates from base-axis exponents."""
         self.__length = Fraction(length)
@@ -111,7 +113,7 @@ class DimTriplet:
             mass=self.mass - o.mass
         )
     
-    def __pow__(self, p: Fraction | int | float) -> DimTriplet:
+    def __pow__(self, p: RationalNumber | int) -> DimTriplet:
         """Raise a dimension to a scalar power."""
         p = Fraction(p)
 
@@ -154,10 +156,10 @@ class _DimClassAlgebra(type):
             cls.triplet() ** -1
         )
     
-    def __pow__(cls, p: Fraction | int | float) -> type[Dim]:
+    def __pow__(cls, p: RationalNumber | int) -> type[Dim]:
         """Raise a dimension to a scalar power."""
         cls = cast(type[Dim], cls)
-        if not isinstance(p, (Fraction, int, float)):
+        if not isinstance(p, (RationalNumber, int)):
             raise NotImplementedError()
         
         return _dimension_factory(
@@ -286,7 +288,7 @@ class Tensor:
     _data: npt.NDArray[np.float64]
     _phy_dimension: type[Dim]
 
-    def __init__(self, data: npt.NDArray[np.float64] | float | int, dimension: type[Dim] | None = None):
+    def __init__(self, data: npt.NDArray[np.float64] | RealNumber, dimension: type[Dim] | None = None):
         """Initialize a tensor with the given data and dimension.
         Data units are default SI units corresponding to dimension."""
         if dimension is None:
@@ -410,59 +412,59 @@ class Tensor:
             dimension=self.phy_dimension
         )
     
-    def __pow__(self, exponent: float | int | Fraction) -> Tensor:
+    def __pow__(self, exponent: RationalNumber) -> Tensor:
         return Tensor(
             data=self._data ** float(exponent),
             dimension=self.phy_dimension ** exponent
         )
 
-    def __add__(self, right: Tensor | float | int) -> Tensor:
+    def __add__(self, right: Tensor | RealNumber) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.ADD)
     
-    def __radd__(self, left: float | int) -> Tensor:
+    def __radd__(self, left: RealNumber) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.ADD)
     
-    def __sub__(self, right: Tensor | float | int) -> Tensor:
+    def __sub__(self, right: Tensor | RealNumber) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.SUB)
     
-    def __rsub__(self, left: float | int) -> Tensor:
+    def __rsub__(self, left: RealNumber) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.SUB)
     
-    def __mul__(self, right: Tensor | float | int) -> Tensor:
+    def __mul__(self, right: Tensor | RealNumber) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.MUL)
     
-    def __rmul__(self, left: float | int) -> Tensor:
+    def __rmul__(self, left: RealNumber) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MUL)
     
-    def __truediv__(self, right: Tensor | float | int) -> Tensor:
+    def __truediv__(self, right: Tensor | RealNumber) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.TRUEDIV)
     
-    def __rtruediv__(self, left: float | int) -> Tensor:
+    def __rtruediv__(self, left: RealNumber) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.TRUEDIV)
     
-    def __floordiv__(self, right: Tensor | float | int) -> Tensor:
+    def __floordiv__(self, right: Tensor | RealNumber) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.FLOORDIV)
     
-    def __rfloordiv__(self, left: float | int) -> Tensor:
+    def __rfloordiv__(self, left: RealNumber) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.FLOORDIV)
     
-    def __mod__(self, right: Tensor | float | int) -> Tensor:
+    def __mod__(self, right: Tensor | RealNumber) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.MODULO)
     
-    def __rmod__(self, left: float | int) -> Tensor:
+    def __rmod__(self, left: RealNumber) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MODULO)
     
-    def __matmul__(self, right: Tensor | float | int) -> Tensor:
+    def __matmul__(self, right: Tensor | RealNumber) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.MATMUL)
     
-    def __rmatmul__(self, left: float | int) -> Tensor:
+    def __rmatmul__(self, left: RealNumber) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MATMUL)
     
     
-    def perform_binary_operation(self, other: Tensor | float | int, op: TensorBinaryOperator) -> Tensor:
+    def perform_binary_operation(self, other: Tensor | RealNumber, op: TensorBinaryOperator) -> Tensor:
         """Perform the given binary operation with another tensor, checking dimension compatibility."""
         other_data = other._data if isinstance(other, Tensor) else other
-        other_is_number = isinstance(other, (float, int))
+        other_is_number = isinstance(other, RealNumber)
         other_is_tensor = isinstance(other, Tensor)
         is_dimensionless = self.phy_dimension.triplet().dimensionless
 
@@ -556,7 +558,7 @@ def tensor_inputs(**inputs: TensorBound | type[float]):
                 bound = inputs[param.name]
                 value: Any = args[i]
                 if bound is float:
-                    if not isinstance(value, float | int):
+                    if not isinstance(value, RealNumber):
                         raise ValueError(f"Argument '{param.name}' is expected to be a number.")
                 elif isinstance(bound, TensorBound):
                     if not bound.check(value):
@@ -577,10 +579,10 @@ def tensor_output(output: TensorBound | type[float]):
             o: Tensor | float = f(*args)
 
             if output is float:
-                if not isinstance(o, float | int):
+                if not isinstance(o, RealNumber):
                     raise ValueError(f"Output is expected to be a number.")
             elif isinstance(output, TensorBound):
-                if isinstance(o, float | int):
+                if isinstance(o, RealNumber):
                     raise ValueError(f"Output is expected to be a tensor, but got a number.")
                 if not output.check(o):
                     raise ValueError(f"Output does not match the expected tensor bound.")
@@ -591,9 +593,9 @@ def tensor_output(output: TensorBound | type[float]):
 
     return wrapper
 
-def scalar(value: float | int | Fraction | Decimal) -> Tensor:
+def scalar(value: RealNumber) -> Tensor:
     """Create a dimensionless scalar tensor with the given value."""
-    assert isinstance(value, (float, int, Fraction, Decimal))
+    assert isinstance(value, RealNumber)
 
     return Tensor(
         data=np.asarray(value, dtype=np.float64), 
