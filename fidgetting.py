@@ -7,7 +7,7 @@ from functools import cached_property, wraps
 import inspect
 from itertools import chain, repeat
 from types import EllipsisType
-from typing import Any, Callable, ClassVar, Generic, Literal, NamedTuple, Self, Type, TypeAlias, TypeIs, TypeVar, cast
+from typing import Annotated, Any, Callable, ClassVar, Generic, Literal, NamedTuple, Self, Type, TypeAlias, TypeIs, TypeVar, cast, get_args, get_origin, get_type_hints
 import operator
 from numbers import Real as RealNumber
 from numbers import Rational as RationalNumber
@@ -537,11 +537,73 @@ class TensorBound:
 
 def tensor_check(f: Callable) -> Callable:
     """Wrapper that checks tensor inputs and outputs of a function based on type annotations."""
-    # How to implement : `f` should have this signature : all inputs of the form `Annotated[Tensor, TensorBound(...)]`
-    # If not of this form, raises.
-    # And the return annotation should also be `Annotated[Tensor, TensorBound(...)]`
-    # Then use all this information to check the inputs/outputs, and raises if inconsistency detected
-    ...
+    signature = inspect.signature(f)
+    hints = get_type_hints(f, include_extras=True)
+
+    def _bound_from_annotation(name: str, annotation: Any, where: str) -> TensorBound:
+        if get_origin(annotation) is not Annotated:
+            raise TypeError(
+                f"{where} '{name}' must be annotated as Annotated[Tensor, TensorBound(...)]."
+            )
+
+        args = get_args(annotation)
+        if len(args) != 2:
+            raise TypeError(
+                f"{where} '{name}' must be annotated as Annotated[Tensor, TensorBound(...)]."
+            )
+
+        tensor_type, bound = args
+        if tensor_type is not Tensor or not isinstance(bound, TensorBound):
+            raise TypeError(
+                f"{where} '{name}' must be annotated as Annotated[Tensor, TensorBound(...)]."
+            )
+
+        return bound
+
+    parameter_bounds: dict[str, TensorBound] = {}
+    for name in signature.parameters:
+        if name not in hints:
+            raise TypeError(
+                f"Parameter '{name}' must be annotated as Annotated[Tensor, TensorBound(...)]."
+            )
+        parameter_bounds[name] = _bound_from_annotation(name, hints[name], "Parameter")
+
+    if "return" not in hints:
+        raise TypeError("Return annotation must be Annotated[Tensor, TensorBound(...)].")
+    return_bound = _bound_from_annotation("return", hints["return"], "Return annotation")
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        bound_arguments = signature.bind(*args, **kwargs)
+        bound_arguments.apply_defaults()
+
+        for name, value in bound_arguments.arguments.items():
+            bound = parameter_bounds[name]
+            parameter = signature.parameters[name]
+
+            if parameter.kind is inspect.Parameter.VAR_POSITIONAL:
+                values_to_check = value
+            elif parameter.kind is inspect.Parameter.VAR_KEYWORD:
+                values_to_check = value.values()
+            else:
+                values_to_check = (value,)
+
+            for checked_value in values_to_check:
+                if not isinstance(checked_value, Tensor):
+                    raise TypeError(f"Argument '{name}' must be a Tensor.")
+                if not bound.check(checked_value):
+                    raise ValueError(f"Argument '{name}' does not satisfy declared TensorBound.")
+
+        result = f(*args, **kwargs)
+
+        if not isinstance(result, Tensor):
+            raise TypeError("Return value must be a Tensor.")
+        if not return_bound.check(result):
+            raise ValueError("Return value does not satisfy declared TensorBound.")
+
+        return result
+
+    return wrapper
 
 def scalar(value: RealNumber) -> Tensor:
     """Create a dimensionless scalar tensor with the given value."""
