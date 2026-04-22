@@ -235,8 +235,6 @@ class U:
         
         return getattr(cls, units)
 
-type TensorUnaryOperator = Literal["+", "-"]
-
 class TensorBinaryOperator(Enum):
     ADD = "+"
     SUB = "-"
@@ -245,7 +243,6 @@ class TensorBinaryOperator(Enum):
     FLOORDIV = "//"
     MODULO = "%"
     MATMUL = "@"
-    POW = "**"
 
     @property
     def addition(self) -> bool:
@@ -271,8 +268,6 @@ class TensorBinaryOperator(Enum):
             return operator.mod
         elif self == TensorBinaryOperator.MATMUL:
             return operator.matmul
-        elif self == TensorBinaryOperator.POW:
-            return operator.pow
         
         raise NotImplementedError(f"Unsupported operator '{self.value}'.")
 
@@ -593,7 +588,7 @@ def tensor_output(output: TensorBound | type[float]):
 
     return wrapper
 
-def scalar(value: RealNumber) -> Tensor:
+def scalar(value: RealNumber, dimension: type[Dim] = Dimless) -> Tensor:
     """Create a dimensionless scalar tensor with the given value."""
     assert isinstance(value, RealNumber)
 
@@ -601,3 +596,116 @@ def scalar(value: RealNumber) -> Tensor:
         data=np.asarray(value, dtype=np.float64), 
         dimension=Dimless
     )
+
+__UNITS_REGISTRY: dict[str, Tensor] = dict()
+
+def _units_register(units: list[str], dim: type[Dim], base_factor: RealNumber):
+    global __UNITS_REGISTRY
+    __UNITS_REGISTRY |= {
+        u: scalar(base_factor, dim)
+        for u in units
+    }
+class Quantity(type):
+    """Metaclass exposing registered units as class attributes.
+
+    Example:
+        ``Quantity.km`` returns a ``Scalar[D.Length]`` with value ``1000``.
+    """
+    @classmethod
+    def get(cls, name: str) -> Tensor:
+        """Resolve a unit name into its corresponding scalar quantity."""
+        global __UNITS_REGISTRY
+        qt = __UNITS_REGISTRY.get(name)
+        if qt is None:
+            raise AttributeError(f"Unknown quantity '{name}'.")
+        
+        return copy(qt)
+    
+
+    dimensionless: ClassVar[Tensor]
+    """dimensionless (1)"""
+    _units_register(["dimensionless", "dimless"], Dimless, 1.)
+
+    # ANGLES
+
+    radian: ClassVar[Tensor]
+    """radian"""
+    _units_register(["radian", "rad"], Angle, 1.)
+
+    turn: ClassVar[Tensor]
+    """turns (360°)"""
+    _units_register(["turn", "rev"], Angle, 2 * np.pi)
+
+    degree: ClassVar[Tensor]
+    """degree"""
+    _units_register(["degree", "deg"], Angle, np.pi / 180)
+
+    # DISTANCES
+
+    meter: ClassVar[Tensor]
+    """meter"""
+    _units_register(["meter", "m"], Length, 1.)
+
+    kilo_meter: ClassVar[Tensor]
+    """kilometer"""
+    _units_register(["kilometer", "km"], Length, 1e3)
+
+    radii_earth: ClassVar[Tensor]
+    """Mean radius of planet Earth (R🜨). 
+
+    `R🜨 = 6378135 m`
+    """
+    _units_register(["radii_earth", "R🜨"], Length, 6378135)
+
+    radii_sun: ClassVar[Tensor]
+    """Mean radius of Sun (R☉). 
+
+    `R☉ = 6.957e8 m`
+    """
+    _units_register(["radii_sun", "R☉"], Length, 6.957e8)
+
+
+    astronomical_unit: ClassVar[Tensor]
+    """Astronomical unit (au)."""
+    _units_register(["astronomical_unit", "au"], Length, 149597870700)
+
+    # DURATIONS
+
+    second: ClassVar[Tensor]
+    """second"""
+    _units_register(["second", "s"], Time, 1.)
+
+
+    minute: ClassVar[Tensor]
+    """minute"""
+    _units_register(["minute", "min"], Time, 60.)
+
+    hour: ClassVar[Tensor]
+    """hour"""
+    _units_register(["hour", "h"], Time, 3600.)
+
+    day: ClassVar[Tensor]
+    """day"""
+    _units_register(["day", "d"], Time, 86400.)
+
+    month: ClassVar[Tensor]
+    """month (30 days)"""
+    _units_register(["month", "mo"], Time, 30 * 86400)
+
+    year: ClassVar[Tensor]
+    """year (365 days)"""
+    _units_register(["year", "y"], Time, 365 * 86400)
+
+    # MASSES
+
+    kilo_gram: ClassVar[Tensor]
+    """kilogram"""
+    _units_register(["kilogram", "kg"], Mass, 1.)
+
+    gram: ClassVar[Tensor]
+    """gram"""
+    _units_register(["gram", "g"], Mass, 1e-3)
+
+    metric_ton: ClassVar[Tensor]
+    """metric ton (1000 kg)"""
+    _units_register(["metric_ton", "ton"], Mass, 1e3)
