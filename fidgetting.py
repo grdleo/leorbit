@@ -541,52 +541,13 @@ class TensorBound:
             size=self.size
         )
 
-def tensor_inputs(**inputs: TensorBound | type[float]):
-    def wrapper(f: Callable) -> Callable:
-        @wraps(f)
-        def wrapped(*args: Tensor) -> Tensor:
-            sig = inspect.signature(f)
-            for i, param in enumerate(sig.parameters.values()):
-                if param.name not in inputs.keys():
-                    raise ValueError(f"Parameter '{param.name}' is not declared in the tensor input specification.")
-                
-                bound = inputs[param.name]
-                value: Any = args[i]
-                if bound is float:
-                    if not isinstance(value, RealNumber):
-                        raise ValueError(f"Argument '{param.name}' is expected to be a number.")
-                elif isinstance(bound, TensorBound):
-                    if not bound.check(value):
-                        raise ValueError(f"Argument '{param.name}' does not match the expected tensor bound.")
-                else:
-                    raise ValueError(f"Invalid tensor input specification for parameter '{param.name}'.")
-            
-            return f(*args)
-        
-        return wrapped
-
-    return wrapper
-
-def tensor_output(output: TensorBound | type[float]):
-    def wrapper(f: Callable) -> Callable:
-        @wraps(f)
-        def wrapped(*args: Tensor) -> Tensor | float:
-            o: Tensor | float = f(*args)
-
-            if output is float:
-                if not isinstance(o, RealNumber):
-                    raise ValueError(f"Output is expected to be a number.")
-            elif isinstance(output, TensorBound):
-                if isinstance(o, RealNumber):
-                    raise ValueError(f"Output is expected to be a tensor, but got a number.")
-                if not output.check(o):
-                    raise ValueError(f"Output does not match the expected tensor bound.")
-            
-            return o
-        
-        return wrapped
-
-    return wrapper
+def tensor_check(f: Callable) -> Callable:
+    """Wrapper that checks tensor inputs and outputs of a function based on type annotations."""
+    # How to implement : `f` should have this signature : all inputs of the form `Annotated[Tensor, TensorBound(...)]`
+    # If not of this form, raises.
+    # And the return annotation should also be `Annotated[Tensor, TensorBound(...)]`
+    # Then use all this information to check the inputs/outputs, and raises if inconsistency detected
+    ...
 
 def scalar(value: RealNumber, dimension: type[Dim] = Dimless) -> Tensor:
     """Create a dimensionless scalar tensor with the given value."""
