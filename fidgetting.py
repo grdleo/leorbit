@@ -402,13 +402,13 @@ class Tensor:
 
     def __pos__(self) -> Tensor:
         return Tensor(
-            data=self._data.copy(),
+            data=+self._data,
             dimension=self.phy_dimension
         )
     
     def __neg__(self) -> Tensor:
         return Tensor(
-            data=-self._data.copy(),
+            data=-self._data,
             dimension=self.phy_dimension
         )
     
