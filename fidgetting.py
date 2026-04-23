@@ -218,25 +218,6 @@ _ = InvLength = 1 / Length
 # NOTE: This is a trick discovered accidentally for Pyright to recognize these dimensions as "real types"
 # instead of just `type[Dim]` which would be the case if we directly assigned the result of the operations to the variables.
 
-@dataclass(frozen=True)
-class U:
-    second = s = 1.
-    minute = min = 60. * second
-    hour = h = 60. * minute
-    day = 24. * hour
-
-    meter = m = 1.
-
-    kilogram = kg = 1.
-
-    @classmethod
-    def get_factor(cls, units: str) -> float:
-        """Return the conversion factor from the given units to SI units."""
-        if not hasattr(cls, units):
-            raise ValueError(f"Unknown unit '{units}'.")
-        
-        return getattr(cls, units)
-
 class TensorBinaryOperator(Enum):
     ADD = "+"
     SUB = "-"
@@ -384,7 +365,7 @@ class Tensor:
     def raw_data_array(self, units: float | str) -> NumpyFloatArray:
         """Return the raw data array of this tensor, converted to the given units."""
         if isinstance(units, str):
-            factor = U.get_factor(units)
+            factor = Quantity.get(units).scalar
         else:
             factor = units
         return self._data * factor
