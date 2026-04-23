@@ -7,7 +7,7 @@ from functools import cached_property, wraps
 import inspect
 from itertools import chain, repeat
 from types import EllipsisType
-from typing import Annotated, Any, Callable, ClassVar, Generic, Literal, NamedTuple, Self, Type, TypeAlias, TypeIs, TypeVar, cast, get_args, get_origin, get_type_hints
+from typing import Annotated, Any, Callable, ClassVar, Generic, Iterable, Literal, NamedTuple, Self, Type, TypeAlias, TypeIs, TypeVar, TypedDict, cast, get_args, get_origin, get_type_hints
 import operator
 from numbers import Real as RealNumber
 from numbers import Rational as RationalNumber
@@ -489,10 +489,7 @@ class Tensor:
 
         return self._data.item()
     
-    class ElementsVector3(NamedTuple):
-        x: float
-        y: float
-        z: float
+    
     
     @property
     def vec3(self) -> ElementsVector3:
@@ -500,19 +497,9 @@ class Tensor:
         assert self.kind == TensorKind.VECTOR3
         assert self.size == 1
 
-        return Tensor.ElementsVector3(*self._data.flatten())
-    
-    class ElementsMatrix33(NamedTuple):
-        """(a_ij) i: col; j: row"""
-        a11: float
-        a21: float
-        a31: float
-        a12: float
-        a22: float
-        a32: float
-        a13: float
-        a23: float
-        a33: float
+        x, y, z = self._data.flatten()
+
+        return ElementsVector3(x=x, y=y, z=z)
     
     @property
     def mat33(self) -> ElementsMatrix33:
@@ -520,7 +507,30 @@ class Tensor:
         assert self.kind == TensorKind.MATRIX33
         assert self.size == 1
 
-        return Tensor.ElementsMatrix33(*self._data.flatten())
+        a11, a21, a31, a12, a22, a32, a13, a23, a33 = self._data.flatten()
+
+        return ElementsMatrix33(
+            a11=a11, a21=a21, a31=a31,
+            a12=a12, a22=a22, a32=a32,
+            a13=a13, a23=a23, a33=a33
+        )
+    
+class ElementsVector3(TypedDict):
+    x: float
+    y: float
+    z: float
+
+class ElementsMatrix33(TypedDict):
+    """(a_ij) i: col; j: row"""
+    a11: float
+    a21: float
+    a31: float
+    a12: float
+    a22: float
+    a32: float
+    a13: float
+    a23: float
+    a33: float
 
 @dataclass
 class TensorBound:
@@ -604,15 +614,6 @@ def tensor_check(f: Callable) -> Callable:
         return result
 
     return wrapper
-
-def scalar(value: RealNumber) -> Tensor:
-    """Create a dimensionless scalar tensor with the given value."""
-    assert isinstance(value, RealNumber)
-
-    return Tensor(
-        data=np.asarray(value, dtype=np.float64).reshape((1,)), 
-        dimension=Dimless
-    )
 
 __UNITS_REGISTRY: dict[str, Tensor] = dict()
 
@@ -729,3 +730,63 @@ class Quantity(type):
     metric_ton: ClassVar[Tensor]
     """metric ton (1000 kg)"""
     _units_register(["metric_ton", "ton"], Mass, 1e3)
+
+### CONVENIENCE FACTORY FUNCTIONS ###
+### ############################# ###
+
+def scalar(value: RealNumber) -> Tensor:
+    """Create a dimensionless scalar tensor with the given value."""
+    assert isinstance(value, RealNumber)
+
+    return Tensor(
+        data=np.asarray(value, dtype=np.float64).reshape((1,)), 
+        dimension=Dimless
+    )
+
+def scalar_array(values: Iterable[RealNumber]) -> Tensor:
+    """Create a dimensionless scalar tensor with the given values."""
+    values = np.asarray(values, dtype=np.float64)
+    assert values.ndim == 1
+
+    return Tensor(
+        data=values,
+        dimension=Dimless
+    )
+
+def vec3(**elements: ElementsVector3) -> Tensor:
+    """Create a dimensionless vector3 tensor with the given values."""
+    return Tensor(
+        data=np.asarray((elements["x"], elements["y"], elements["z"]), dtype=np.float64).reshape((3, 1)), 
+        dimension=Dimless
+    )
+
+def vec3_array(values: Iterable[ElementsVector3]) -> Tensor:
+    """Create a dimensionless vector3 tensor with the given values."""
+    values = np.asarray(values, dtype=np.float64)
+    assert values.ndim == 2 and values.shape[1] == 3
+
+    return Tensor(
+        data=values.transpose((1, 0)), 
+        dimension=Dimless
+    )
+
+def mat33(**elements: ElementsMatrix33) -> Tensor:
+    """Create a dimensionless matrix33 tensor with the given values."""
+    return Tensor(
+        data=np.asarray((
+            elements["a11"], elements["a21"], elements["a31"],
+            elements["a12"], elements["a22"], elements["a32"],
+            elements["a13"], elements["a23"], elements["a33"]
+        ), dtype=np.float64).reshape((3, 3, 1)), 
+        dimension=Dimless
+    )
+
+def mat33_array(values: Iterable[ElementsMatrix33]) -> Tensor:
+    """Create a dimensionless matrix33 tensor with the given values."""
+    values = np.asarray(values, dtype=np.float64)
+    assert values.ndim == 3 and values.shape[1:] == (3, 3)
+
+    return Tensor(
+        data=values.transpose((1, 2, 0)), 
+        dimension=Dimless
+    )
