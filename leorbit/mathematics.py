@@ -6,6 +6,7 @@ from fractions import Fraction
 from functools import cached_property, wraps
 import inspect
 from itertools import chain, repeat
+from multiprocessing import Value
 from re import M
 from types import EllipsisType
 from typing import Annotated, Any, Callable, ClassVar, Generic, Iterable, Literal, NamedTuple, Self, Type, TypeAlias, TypeIs, TypeVar, TypedDict, cast, get_args, get_origin, get_type_hints
@@ -224,7 +225,6 @@ class TensorBinaryOperator(Enum):
     ADD = "+"
     SUB = "-"
     MUL = "*"
-    MATMUL = "@"
     TRUEDIV = "/"
     FLOORDIV = "//"
     MODULO = "%"
@@ -237,8 +237,6 @@ class TensorBinaryOperator(Enum):
             return operator.sub
         elif self == TensorBinaryOperator.MUL:
             return operator.mul
-        elif self == TensorBinaryOperator.MATMUL:
-            return operator.matmul
         elif self == TensorBinaryOperator.TRUEDIV:
             return operator.truediv
         elif self == TensorBinaryOperator.FLOORDIV:
@@ -258,7 +256,7 @@ class TensorBinaryOperator(Enum):
             if left_dim != right_dim and not right_dim.triplet().dimensionless:
                 return None
             return left_dim
-        elif self in (TensorBinaryOperator.MUL, TensorBinaryOperator.MATMUL):
+        elif self in (TensorBinaryOperator.MUL, ):
             return left_dim * right_dim
         elif self in (TensorBinaryOperator.TRUEDIV, TensorBinaryOperator.FLOORDIV):
             return left_dim / right_dim
@@ -387,6 +385,17 @@ class Tensor:
         
         return self
     
+    def concatenate(self, other: Tensor) -> Tensor:
+        """Concatenate this tensor with another one along the first axis, checking dimension compatibility."""
+        if self.kind != other.kind:
+            raise ValueError("Cannot concatenate tensors of different kinds.")
+        if self.phy_dimension != other.phy_dimension:
+            raise ValueError("Cannot concatenate tensors of different dimensions.")
+        return Tensor(
+            np.concatenate((self._data, other._data)),
+            self.phy_dimension
+        )
+    
     def raw_data_array(self, units: float | str) -> NumpyFloatArray:
         """Return the raw data array of this tensor, converted to the given units."""
         if isinstance(units, str):
@@ -421,6 +430,12 @@ class Tensor:
     def __neg__(self) -> Tensor:
         return Tensor(
             data=-self._data,
+            dimension=self.phy_dimension
+        )
+    
+    def __abs__(self) -> Tensor:
+        return Tensor(
+            data=np.abs(self._data),
             dimension=self.phy_dimension
         )
     
@@ -478,11 +493,9 @@ class Tensor:
     def __rmod__(self, left: RealNumber) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MODULO)
     
-    def __matmul__(self, right: Tensor | RealNumber) -> Tensor:
-        return self.perform_binary_operation(right, TensorBinaryOperator.MATMUL)
-    
-    def __rmatmul__(self, left: RealNumber) -> Tensor:
-        return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MATMUL)
+    def __or__(self, right: Tensor) -> Tensor:
+        """Concatenation operator, only works for tensors of the same kind and dimension."""
+        return self.concatenate(right)
     
     def perform_binary_operation(self, other: Tensor | RealNumber, op: TensorBinaryOperator) -> Tensor:
         """Perform the given binary operation with another tensor, checking dimension compatibility."""
@@ -500,11 +513,12 @@ class Tensor:
         )
 
     @cached_property
-    def scalar(self) -> float:
+    def scalar(self) -> TensorAsScalar:
         """Return the scalar value of this tensor if it is a scalar, otherwise raise a ValueError."""
         if self.kind != TensorKind.SCALAR:
             raise ValueError("Tensor is not a scalar.")
-        return self._data.item()
+        
+        return TensorAsScalar(self._data, self.phy_dimension)
     
     @cached_property
     def vector3(self) -> TensorAsVector3:
@@ -522,12 +536,38 @@ class Tensor:
         
         return TensorAsMatrix33(self._data, self.phy_dimension)
     
+class TensorAsScalar(Tensor):
+    def __init__(self, data: NumpyFloatArray | RealNumber, dimension: type[Dim] | None = None):
+        super().__init__(data, dimension)
+
+        if self.kind != TensorKind.SCALAR:
+            raise ValueError("Tensor is not a scalar.")
+        
+    @property
+    def scalar(self) -> TensorAsScalar:
+        return self
+        
+    @property
+    def value(self) -> float:
+        try:
+            return self._data.item()
+        except AttributeError:
+            raise ValueError("Tensor data is not a single scalar value.")
+        
+    @property
+    def values(self) -> list[float]:
+        return self._data.tolist()
+    
 class TensorAsVector3(Tensor):
     def __init__(self, data: NumpyFloatArray | RealNumber, dimension: type[Dim] | None = None):
         super().__init__(data, dimension)
 
         if self.kind != TensorKind.VECTOR3:
             raise ValueError("Tensor is not a vector3.")
+        
+    @property
+    def vector3(self) -> TensorAsVector3:
+        return self
         
     @property
     def length_squared(self) -> Annotated[Tensor, TensorBound(kind=TensorKind.SCALAR)]:
@@ -641,6 +681,11 @@ class TensorAsMatrix33(Tensor):
         if self.kind != TensorKind.MATRIX33:
             raise ValueError("...")
         
+    @property
+    def matrix33(self) -> TensorAsMatrix33:
+        """Return the matrix data of this tensor if it is a matrix33, otherwise raise a ValueError."""
+        return self
+        
     def inverse(self) -> Tensor:
         if self.kind != TensorKind.MATRIX33:
             raise RuntimeError("inverse only applies to matrix tensors")
@@ -650,6 +695,25 @@ class TensorAsMatrix33(Tensor):
             inv = np.stack([np.linalg.inv(self._data[:, :, i]) for i in range(self._data.shape[2])], axis=2)
         inv = np.where(np.abs(inv) < 1e-15, 0.0, inv)
         return Tensor(inv, 1 / self.phy_dimension)
+    
+    def matrix_product(self, other: Tensor) -> Tensor:
+        if other.kind == TensorKind.SCALAR:
+            return self * other
+        elif other.kind == TensorKind.VECTOR3:
+            return Tensor(
+                np.einsum('bij,bj->bi', self._data, other._data),
+                self.phy_dimension * other.phy_dimension
+            )
+        elif other.kind == TensorKind.MATRIX33:
+            return Tensor(
+                np.einsum('bij,bjk->bik', self._data, other._data),
+                self.phy_dimension * other.phy_dimension
+            )
+        
+        raise RuntimeError("Unsupported tensor kind for matrix product.")
+    
+    def __matmul__(self, other: Tensor) -> Tensor:
+        return self.matrix_product(other)
     
     @classmethod
     def from_elements(
@@ -679,7 +743,7 @@ class TensorBound:
             size=self.size
         )
 
-def tensor_check(f: Callable) -> Callable:
+def tensor_check(f):
     """Wrapper that checks tensor inputs and outputs of a function based on type annotations."""
     signature = inspect.signature(f)
     hints = get_type_hints(f, include_extras=True)
@@ -765,28 +829,33 @@ def _units_register(units: list[str], dim: type[Dim], base_factor: float):
         )
         for u in units
     }
-class Quantity(type):
+
+class QuantityMeta(type):
+    """Metaclass exposing registered units as class attributes.
+
+    Example:
+        ``Quantity.km`` returns a ``Scalar[D.Length]`` with value ``1000``.
+    """
+
+    def __getattr__(cls, name: str) -> Annotated[Tensor, TensorBound(kind=TensorKind.SCALAR)]:
+        """Resolve a unit name into its corresponding scalar quantity."""
+        try:
+            global _UNITS_REGISTRY
+            return _UNITS_REGISTRY[name].copy()
+        except KeyError:
+            raise ValueError(f"No unit named '{name}'")
+
+
+class Quantity(metaclass=QuantityMeta):
     """Metaclass exposing registered units as class attributes.
 
     Example:
         ``Quantity.km`` returns a ``Scalar[D.Length]`` with value ``1000``.
     """
     @classmethod
-    def get(cls, name: str) -> Tensor:
-        """Resolve a unit name into its corresponding scalar quantity."""
-        parts = name.strip().split()
-        if len(parts) == 2:
-            return float(parts[0]) * cls.get(parts[1])
-        global _UNITS_REGISTRY
-        qt = _UNITS_REGISTRY.get(name)
-        if qt is None:
-            raise AttributeError(f"Unknown quantity '{name}'.")
-        
-        return copy(qt)
-
-    def __getattr__(cls, name: str) -> Tensor:
-        return cls.get(name)
-    
+    def get(cls, value: str) -> Annotated[Tensor, TensorBound(kind=TensorKind.SCALAR)]:
+        """Return the scalar unit associated with ``value``."""
+        return cls.__getattr__(value)
 
     dimensionless: ClassVar[Tensor]
     """dimensionless (1)"""
@@ -888,32 +957,13 @@ def scalar(value: RealNumber) -> Tensor:
 
     return Tensor(data=np.asarray(value, dtype=np.float64), dimension=Dimless)
 
-def scalar_array(values: Iterable[RealNumber]) -> Tensor:
-    """Create a dimensionless scalar tensor with the given values."""
-    values = np.asarray(values, dtype=np.float64)
-    assert values.ndim == 1
-
-    return Tensor(
-        data=values,
-        dimension=Dimless
-    )
-
-def vec3(**elements: ElementsVector3) -> Tensor:
+def vector3(x: RealNumber, y: RealNumber, z: RealNumber) -> Tensor:
     """Create a dimensionless vector3 tensor with the given values."""
     return Tensor(
-        data=np.asarray((elements["x"], elements["y"], elements["z"]), dtype=np.float64).reshape((3, 1)), 
+        data=np.asarray((x, y, z), dtype=np.float64).reshape((3, 1)), 
         dimension=Dimless
     )
 
-def vec3_array(values: Iterable[ElementsVector3]) -> Tensor:
-    """Create a dimensionless vector3 tensor with the given values."""
-    values = np.asarray(values, dtype=np.float64)
-    assert values.ndim == 2 and values.shape[1] == 3
-
-    return Tensor(
-        data=values.transpose((1, 0)), 
-        dimension=Dimless
-    )
 
 def mat33(**elements: ElementsMatrix33) -> Tensor:
     """Create a dimensionless matrix33 tensor with the given values."""
@@ -923,16 +973,6 @@ def mat33(**elements: ElementsMatrix33) -> Tensor:
             elements["a12"], elements["a22"], elements["a32"],
             elements["a13"], elements["a23"], elements["a33"]
         ), dtype=np.float64).reshape((3, 3, 1)), 
-        dimension=Dimless
-    )
-
-def mat33_array(values: Iterable[ElementsMatrix33]) -> Tensor:
-    """Create a dimensionless matrix33 tensor with the given values."""
-    values = np.asarray(values, dtype=np.float64)
-    assert values.ndim == 3 and values.shape[1:] == (3, 3)
-
-    return Tensor(
-        data=values.transpose((1, 2, 0)), 
         dimension=Dimless
     )
 
@@ -953,27 +993,6 @@ def ensure_same_dimensions(*tensors: Tensor) -> bool:
     if not all(t.phy_dimension.triplet() == d0 for t in tensors):
         raise RuntimeError("Dimensions are not compatible")
     return True
-
-
-def abs(t: Tensor) -> Tensor:
-    return Tensor(np.abs(t._data), t.phy_dimension)
-
-
-def square(t: Tensor) -> Tensor:
-    return t ** 2
-
-
-def cube(t: Tensor) -> Tensor:
-    return t ** 3
-
-
-def sqrt(t: Tensor) -> Tensor:
-    return t ** Fraction(1, 2)
-
-
-def cbrt(t: Tensor) -> Tensor:
-    return t ** Fraction(1, 3)
-
 
 @tensor_check
 def sin(
