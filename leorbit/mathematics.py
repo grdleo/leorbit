@@ -500,7 +500,7 @@ class Tensor:
             dimension=self.phy_dimension
         )
     
-    def __pow__(self, exponent: RationalNumber) -> Tensor:
+    def __pow__(self, exponent: RationalNumber | int) -> Tensor:
         return Tensor(
             data=self._data ** float(exponent),
             dimension=self.phy_dimension ** exponent
@@ -742,6 +742,8 @@ class TensorBound:
     size: int | None = None
 
     def check(self, tensor: Tensor) -> bool:
+        if self.dimension is None and self.kind is None and self.size is None:
+            return True
         return tensor.check(
             dimension=self.dimension,
             kind=self.kind,
@@ -775,11 +777,14 @@ def tensor_check(f: Callable) -> Callable:
 
     parameter_bounds: dict[str, TensorBound] = {}
     for name in signature.parameters:
-        if name not in hints:
-            raise TypeError(
-                f"Parameter '{name}' must be annotated as Annotated[Tensor, TensorBound(...)]."
-            )
-        parameter_bounds[name] = _bound_from_annotation(name, hints[name], "Parameter")
+        annotation = hints.get(name, None)
+        if annotation is None:
+            continue
+
+        if get_origin(annotation) is not Annotated:
+            continue
+
+        parameter_bounds[name] = _bound_from_annotation(name, annotation, "Parameter")
 
     if "return" not in hints:
         raise TypeError("Return annotation must be Annotated[Tensor, TensorBound(...)].")
@@ -791,7 +796,9 @@ def tensor_check(f: Callable) -> Callable:
         bound_arguments.apply_defaults()
 
         for name, value in bound_arguments.arguments.items():
-            bound = parameter_bounds[name]
+            bound = parameter_bounds.get(name)
+            if bound is None:
+                continue
             parameter = signature.parameters[name]
 
             if parameter.kind is inspect.Parameter.VAR_POSITIONAL:
@@ -1075,44 +1082,77 @@ def cbrt(t: Tensor) -> Tensor:
     return t ** Fraction(1, 3)
 
 
-def sin(t: Tensor) -> Tensor:
+@tensor_check
+def sin(
+    t: Annotated[Tensor, TensorBound(dimension=Angle)]
+) -> Annotated[Tensor, TensorBound(dimension=Dimless)]:
     return Tensor(np.sin(t._data), Dimless)
 
 
-def cos(t: Tensor) -> Tensor:
+@tensor_check
+def cos(
+    t: Annotated[Tensor, TensorBound(dimension=Angle)]
+) -> Annotated[Tensor, TensorBound(dimension=Dimless)]:
     return Tensor(np.cos(t._data), Dimless)
 
 
-def tan(t: Tensor) -> Tensor:
+@tensor_check
+def tan(
+    t: Annotated[Tensor, TensorBound(dimension=Angle)]
+) -> Annotated[Tensor, TensorBound(dimension=Dimless)]:
     return Tensor(np.tan(t._data), Dimless)
 
 
-def asin(t: Tensor) -> Tensor:
+@tensor_check
+def asin(
+    t: Annotated[Tensor, TensorBound(dimension=Dimless)]
+) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
     return Tensor(np.arcsin(t._data), Angle)
 
 
-def acos(t: Tensor) -> Tensor:
+@tensor_check
+def acos(
+    t: Annotated[Tensor, TensorBound(dimension=Dimless)]
+) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
     return Tensor(np.arccos(t._data), Angle)
 
 
-def atan(t: Tensor) -> Tensor:
+@tensor_check
+def atan(
+    t: Annotated[Tensor, TensorBound(dimension=Dimless)]
+) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
     return Tensor(np.arctan(t._data), Angle)
 
 
-def atan2(y: Tensor, x: Tensor) -> Tensor:
+@tensor_check
+def atan2(
+    y: Annotated[Tensor, TensorBound()],
+    x: Annotated[Tensor, TensorBound()]
+) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
     ensure_same_dimensions(y, x)
     return Tensor(np.arctan2(y._data, x._data), Angle)
 
 
-def normalize_angle(angle: Tensor) -> Tensor:
+@tensor_check
+def normalize_angle(
+    angle: Annotated[Tensor, TensorBound(dimension=Angle)]
+) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
     return Tensor(np.mod(angle._data, 2 * np.pi), Angle)
 
 
-def normalize_angle_symmetric(angle: Tensor) -> Tensor:
+@tensor_check
+def normalize_angle_symmetric(
+    angle: Annotated[Tensor, TensorBound(dimension=Angle)]
+) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
     wrapped = np.mod(angle._data + np.pi, 2 * np.pi) - np.pi
     return Tensor(wrapped, Angle)
 
 
-def interpolate(a: Tensor, b: Tensor, p: float) -> Tensor:
+@tensor_check
+def interpolate(
+    a: Annotated[Tensor, TensorBound()],
+    b: Annotated[Tensor, TensorBound()],
+    p: float
+) -> Annotated[Tensor, TensorBound()]:
     ensure_same_dimensions(a, b)
     return Tensor(a._data + p * (b._data - a._data), a.phy_dimension)

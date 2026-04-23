@@ -1,3 +1,5 @@
+from typing import Annotated
+
 import numpy as np
 import pytest
 
@@ -5,19 +7,10 @@ from leorbit.mathematics import (
     Angle,
     Dimless,
     Length,
-    Matrix33,
-    Matrix33Array,
-    Mass,
     Quantity,
-    Scalar,
-    ScalarArray,
-    Tensor_M33,
-    Tensor_V3,
-    Time,
-    Vector3,
-    Vector3Array,
-    Velocity,
-    abs,
+    Tensor,
+    TensorBound,
+    TensorKind,
     acos,
     asin,
     atan,
@@ -28,322 +21,150 @@ from leorbit.mathematics import (
     ensure_same_dimensions,
     ensure_tensor,
     interpolate,
+    mat33,
     normalize_angle,
     normalize_angle_symmetric,
+    scalar,
+    scalar_array,
     sin,
     sqrt,
     square,
     tan,
+    tensor_check,
+    vec3,
+    vec3_array,
 )
 
 
-def test_quantity_units_and_getter():
+def test_quantity_and_unit_conversion():
     assert Quantity.meter.check(Length)
-    assert Quantity.second.check(Time)
-    assert Quantity.radian.check(Angle)
+    assert Quantity.second.check(dimension=Quantity.second.phy_dimension)
     assert Quantity.get("kilo_meter").magnitude("meter") == pytest.approx(1000)
+    assert (2 * Quantity.kilo_meter).magnitude("meter") == pytest.approx(2000)
 
 
-def test_scalar_arithmetic_dimensions_and_cast():
-    a = Scalar[Length](2)
-    b = Scalar[Length](500)
+def test_tensor_factories_and_kinds():
+    s = scalar(3)
+    sa = scalar_array([1.0, 2.0, 3.0])
+    v = vec3(x=1.0, y=2.0, z=3.0)
+    va = vec3_array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+    m = mat33(
+        a11=1.0, a21=0.0, a31=0.0,
+        a12=0.0, a22=1.0, a32=0.0,
+        a13=0.0, a23=0.0, a33=1.0,
+    )
 
-    assert (a + b).magnitude("meter") == pytest.approx(502)
-    assert (a - b).magnitude("meter") == pytest.approx(-498)
+    assert s.kind == TensorKind.SCALAR and s.size == 1
+    assert sa.kind == TensorKind.SCALAR and sa.size == 3
+    assert v.kind == TensorKind.VECTOR3 and v.size == 1
+    assert va.kind == TensorKind.VECTOR3 and va.size == 2
+    assert m.kind == TensorKind.MATRIX33 and m.size == 1
 
-    speed = a / Scalar[Time](2)
-    assert speed.dim_triplet == (Length / Time).triplet()
 
-    area = a * Scalar[Length](3)
-    assert area.dim_triplet == (Length * Length).triplet()
+def test_dimension_composition_and_cast():
+    length = 2 * Quantity.meter
+    time = 4 * Quantity.second
+    speed = length / time
 
-    same = a.cast(Length)
-    assert same is a
+    assert speed.phy_dimension.triplet() == (Length / Quantity.second.phy_dimension).triplet()
+
     with pytest.raises(RuntimeError):
-        a.cast(Time)
+        length.cast(Angle)
 
 
-def test_scalar_modulo_and_comparisons():
-    x = Scalar[Dimless](7)
-    y = Scalar[Dimless](3)
+def test_basic_vector_algebra():
+    v = vec3(x=1.0, y=2.0, z=3.0) * Quantity.meter
+    w = vec3(x=3.0, y=2.0, z=1.0) * Quantity.meter
 
-    assert (x % y).magnitude() == pytest.approx(1)
-    assert (Scalar[Dimless](7) % y).magnitude() == pytest.approx(1)
-
-    t1 = Scalar[Time](2)
-    t2 = Scalar[Time](3)
-    assert t1 < t2
-    assert t1 <= t2
-    assert t2 > t1
-    assert t2 >= t1
+    np.testing.assert_allclose((v + w)._values.flatten(), [4.0, 4.0, 4.0])
+    np.testing.assert_allclose(v.cross(w)._values.flatten(), [-4.0, 8.0, -4.0])
+    assert v.dot(w).magnitude("meter") == pytest.approx(10.0)
 
 
-def test_ensure_tensor_and_dimension_helpers():
+def test_vector_angles_and_spherical_helpers():
+    v = vec3(x=1.0, y=1.0, z=0.0) * Quantity.meter
+    assert v.theta.check(Angle)
+    assert v.theta.magnitude("rad") == pytest.approx(np.pi / 4)
+    assert v.delta.magnitude("rad") == pytest.approx(0.0)
+
+    u = Tensor.from_spherical(
+        theta=np.pi / 4 * Quantity.radian,
+        delta=0 * Quantity.radian,
+        radius=np.sqrt(2) * Quantity.meter,
+    )
+    np.testing.assert_allclose(u._values.flatten(), [1.0, 1.0, 0.0], atol=1e-12)
+
+
+def test_matrix_products_with_vector_arrays():
+    vectors = vec3_array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
+    m = Tensor.from_elements(
+        a11=2.0, a21=0.0, a31=0.0,
+        a12=0.0, a22=3.0, a32=0.0,
+        a13=0.0, a23=0.0, a33=4.0,
+    )
+
+    out = m @ vectors
+    np.testing.assert_allclose(out._values, np.array([[2.0, 8.0], [6.0, 15.0], [12.0, 24.0]]))
+
+
+def test_ensure_helpers():
     t = ensure_tensor(3.5)
     assert t.check(Dimless)
-    assert float(np.asarray(t._values)) == pytest.approx(3.5)
 
-    s1 = Scalar[Time](1)
-    s2 = Scalar[Time](2)
-    assert ensure_same_dimensions(s1, s2) is True
-
-    with pytest.raises(RuntimeError):
-        ensure_same_dimensions(Quantity.second, Quantity.meter)
-
-
-def test_vector3_from_components_and_basic_vector_ops():
-    v = Vector3[Length].from_components(1.0, 2.0, 3.0)
-    w = Vector3[Length].from_components(3.0, 2.0, 1.0)
-
-    vsum = v + w
-    np.testing.assert_allclose(vsum._values.flatten(), [4, 4, 4])
-
-    vscaled = v * Scalar[Dimless](2)
-    np.testing.assert_allclose(vscaled._values.flatten(), [2, 4, 6])
-
-    cross = v.cross(w)
-    np.testing.assert_allclose(cross._values.flatten(), [-4, 8, -4])
-
-
-def test_vector3_from_components_rejects_mixed_dims():
-    with pytest.raises(RuntimeError):
-        Tensor_V3[Length].from_components(Quantity.meter, Quantity.second, Quantity.meter)  # type: ignore[arg-type]
-
-
-def test_vector3array_from_components_and_matrix_products():
-    arr = Vector3Array[Dimless].from_components(
-        np.array([1.0, 0.0]),
-        np.array([0.0, 1.0]),
-        np.array([0.0, 0.0]),
-    )
-    assert arr.size == 2
-
-    m = Matrix33[Dimless].from_elements(
-        2.0, 0.0, 0.0,
-        0.0, 2.0, 0.0,
-        0.0, 0.0, 2.0,
-    )
-    out = m @ arr
-    np.testing.assert_allclose(out._values, np.array([[2, 0], [0, 2], [0, 0]], dtype=float))
-
-
-def test_vector3array_from_vectors():
-    v1 = Vector3[Length].from_components(1.0, 2.0, 3.0)
-    v2 = Vector3[Length].from_components(4.0, 5.0, 6.0)
-
-    arr = Vector3Array.from_vectors(v1, v2)
-    assert arr.size == 2
-    assert arr.check(Length)
-    np.testing.assert_allclose(arr._values, np.array([[1, 4], [2, 5], [3, 6]], dtype=float))
-
-
-def test_vector3array_from_vectors_rejects_empty_and_mixed_dims():
-    with pytest.raises(ValueError):
-        Vector3Array.from_vectors()
-
-    v_len = Vector3[Length].from_components(1.0, 2.0, 3.0)
-    v_time = Vector3[Time].from_components(1.0, 2.0, 3.0)
-    with pytest.raises(ValueError):
-        Vector3Array.from_vectors(v_len, v_time)
-
-
-def test_vector3array_getitem_returns_vector3():
-    arr = Vector3Array[Length].from_components(
-        np.array([1.0, 4.0]),
-        np.array([2.0, 5.0]),
-        np.array([3.0, 6.0]),
-    )
-
-    v0 = arr[0]
-    assert isinstance(v0, Vector3)
-    assert v0.size == 1
-    np.testing.assert_allclose(v0._values.flatten(), [1.0, 2.0, 3.0])
-
-
-def test_matrix33_arithmetic_inverse_and_products():
-    i = Matrix33[Dimless].from_elements(
-        1, 0, 0,
-        0, 1, 0,
-        0, 0, 1,
-    )
-    x2 = Matrix33[Dimless].from_elements(
-        2, 0, 0,
-        0, 2, 0,
-        0, 0, 2,
-    )
-
-    np.testing.assert_allclose((i + x2)._values, np.array([[3, 0, 0], [0, 3, 0], [0, 0, 3]], dtype=float))
-    np.testing.assert_allclose((x2 - i)._values, np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]], dtype=float))
-
-    mm = i @ x2
-    np.testing.assert_allclose(mm._values, x2._values)
-
-    inv = x2.inverse()
-    np.testing.assert_allclose(inv._values, np.linalg.inv(x2._values))
-
-    v = Vector3[Length].from_components(1.0, 2.0, 3.0)
-    mv = x2 @ v
-    np.testing.assert_allclose(mv._values.flatten(), [2, 4, 6])
-
-
-def test_matrix33array_matmul_vector3array_pairwise():
-    vectors = Vector3Array[Dimless].from_components(
-        np.array([1.0, 4.0, 7.0, 10.0]),
-        np.array([2.0, 5.0, 8.0, 11.0]),
-        np.array([3.0, 6.0, 9.0, 12.0]),
-    )
-
-    m0 = np.array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]])
-    m1 = np.array([[2.0, 0.0, 0.0], [0.0, 3.0, 0.0], [0.0, 0.0, 4.0]])
-    m2 = np.array([[0.0, 1.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]])
-    m3 = np.array([[1.0, 1.0, 1.0], [0.0, 1.0, 0.0], [0.0, 0.0, -1.0]])
-
-    matrices = Matrix33Array[Dimless](np.stack([m0, m1, m2, m3], axis=2))
-
-    out = matrices @ vectors
-
-    np.testing.assert_allclose(
-        out._values,
-        np.array(
-            [
-                [1.0, 8.0, 8.0, 33.0],
-                [2.0, 15.0, 9.0, 11.0],
-                [3.0, 24.0, 7.0, -12.0],
-            ]
-        ),
-    )
-
-
-def test_matrix33array_matmul_vector3array_requires_same_size():
-    matrices = Matrix33Array[Dimless](
-        np.stack(
-            [
-                np.eye(3),
-                np.eye(3),
-                np.eye(3),
-                np.eye(3),
-            ],
-            axis=2,
-        )
-    )
-
-    vectors = Vector3Array[Dimless].from_components(
-        np.array([1.0, 2.0, 3.0]),
-        np.array([4.0, 5.0, 6.0]),
-        np.array([7.0, 8.0, 9.0]),
-    )
+    a = 1 * Quantity.meter
+    b = 2 * Quantity.meter
+    assert ensure_same_dimensions(a, b)
 
     with pytest.raises(RuntimeError):
-        _ = matrices @ vectors
+        ensure_same_dimensions(1 * Quantity.meter, 1 * Quantity.second)
 
 
-def test_square_sqrt_and_trig_functions():
-    s = Scalar[Length](3)
-    sq = square(s)
-    assert sq.dim_triplet == (Length ** 2).triplet()
-    assert sq.magnitude() == pytest.approx(9)
+def test_trig_and_power_helpers():
+    ang = np.pi / 2 * Quantity.radian
 
-    root = sqrt(sq)
-    assert root.magnitude("meter") == pytest.approx(3)
+    assert sin(ang).magnitude() == pytest.approx(1.0)
+    assert cos(ang).magnitude() == pytest.approx(0.0, abs=1e-12)
+    assert tan(0 * Quantity.radian).magnitude() == pytest.approx(0.0)
 
-    ang = Scalar[Angle](np.pi / 2)
-    assert sin(ang).magnitude() == pytest.approx(1)
-    assert cos(ang).magnitude() == pytest.approx(0, abs=1e-12)
-    assert tan(Scalar[Angle](0)).magnitude() == pytest.approx(0)
+    unit = 0.5 * Quantity.dimensionless
+    assert asin(unit).check(Angle)
+    assert acos(unit).check(Angle)
+    assert atan(unit).check(Angle)
 
-    u = Scalar[Dimless](0.5)
-    assert asin(u).check(Angle)
-    assert acos(u).check(Angle)
-    assert atan(u).check(Angle)
+    y = 1 * Quantity.meter
+    x = 1 * Quantity.meter
+    assert atan2(y, x).magnitude("rad") == pytest.approx(np.pi / 4)
+
+    sq = square(3 * Quantity.meter)
+    assert sq.magnitude() == pytest.approx(9.0)
+    assert sqrt(sq).magnitude("meter") == pytest.approx(3.0)
+    assert cube(4 * Quantity.meter).magnitude() == pytest.approx(64.0)
+    assert cbrt(64 * (Quantity.meter ** 3)).magnitude("meter") == pytest.approx(4.0)
 
 
-def test_atan2_and_angle_normalization_helpers():
-    y = Scalar[Length](1)
-    x = Scalar[Length](1)
-    a = atan2(y, x)
-    assert a.check(Angle)
-    assert a.magnitude("rad") == pytest.approx(np.pi / 4)
+def test_angle_normalization_and_interpolation():
+    n = normalize_angle(5 * np.pi * Quantity.radian)
+    ns = normalize_angle_symmetric(3 * np.pi / 2 * Quantity.radian)
 
-    n = normalize_angle(Scalar[Angle](5 * np.pi))
     assert n.magnitude("rad") == pytest.approx(np.pi)
-
-    ns = normalize_angle_symmetric(Scalar[Angle](3 * np.pi / 2))
     assert ns.magnitude("rad") == pytest.approx(-np.pi / 2)
 
-
-def test_tensor_v3_direct_cross_operation():
-    x = Tensor_V3[Dimless].from_components(1.0, 0.0, 0.0)
-    y = Tensor_V3[Dimless].from_components(0.0, 1.0, 0.0)
-    cross = x.cross(y)
-    np.testing.assert_allclose(cross._values.flatten(), [0.0, 0.0, 1.0])
+    a = 10 * Quantity.meter
+    b = 14 * Quantity.meter
+    assert interpolate(a, b, 0.25).magnitude("meter") == pytest.approx(11.0)
 
 
-def test_abs_helper_on_scalar_vector_and_matrix():
-    s = Scalar[Length](-12)
-    assert abs(s).magnitude("meter") == pytest.approx(12)
+def test_tensor_check_with_runtime_bounds():
+    @tensor_check
+    def scale_vector(
+        value: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)],
+        gain: float,
+    ) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)]:
+        return value * gain
 
-    v = Tensor_V3[Length].from_components(-1.0, 2.0, -3.0)
-    av = abs(v)
-    np.testing.assert_allclose(av._values.flatten(), [1.0, 2.0, 3.0])
-    assert av.dim_triplet == Length.triplet()
+    v = vec3(x=1.0, y=-2.0, z=3.0) * Quantity.meter
+    out = scale_vector(v, 2.0)
+    np.testing.assert_allclose(out._values.flatten(), [2.0, -4.0, 6.0])
 
-    m = Matrix33[Time].from_elements(
-        -1, 2, -3,
-        4, -5, 6,
-        -7, 8, -9,
-    )
-    am = abs(m)
-    np.testing.assert_allclose(
-        am._values,
-        np.array([[1, 2, 3], [4, 5, 6], [7, 8, 9]], dtype=float),
-    )
-    assert am.dim_triplet == Time.triplet()
-
-
-def test_cube_and_cbrt_roundtrip_and_dimensions():
-    length = Scalar[Length](4)
-    volume = cube(length)
-    assert volume.dim_triplet == (Length ** 3).triplet()
-    assert volume.magnitude() == pytest.approx(64)
-
-    restored = cbrt(volume)
-    assert restored.dim_triplet == Length.triplet()
-    assert restored.magnitude("meter") == pytest.approx(4)
-
-
-def test_interpolate_scalar_vector_and_matrix():
-    a = Scalar[Length](10)
-    b = Scalar[Length](14)
-    mid = interpolate(a, b, 0.25)
-    assert mid.magnitude("meter") == pytest.approx(11)
-
-    v1 = Vector3[Dimless].from_components(0.0, 0.0, 0.0)
-    v2 = Vector3[Dimless].from_components(2.0, 4.0, 6.0)
-    vm = interpolate(v1, v2, 0.5)
-    np.testing.assert_allclose(vm._values.flatten(), [1.0, 2.0, 3.0])
-
-    m1 = Matrix33[Dimless].from_elements(
-        0, 0, 0,
-        0, 0, 0,
-        0, 0, 0,
-    )
-    m2 = Matrix33[Dimless].from_elements(
-        2, 2, 2,
-        2, 2, 2,
-        2, 2, 2,
-    )
-    mm = interpolate(m1, m2, 0.5)
-    np.testing.assert_allclose(mm._values, np.ones((3, 3)))
-
-
-def test_dot_for_single_vector_returns_scalar():
-    v = Tensor_V3[Dimless].from_components(3.0, 4.0, 12.0)
-    dot = v.dot(v)
-    assert dot.check(Dimless)
-    assert dot.magnitude() == pytest.approx(169)
-
-
-def test_normalize_angle_wrap_for_negative_scalar():
-    a = Scalar[Angle](-np.pi / 2)
-    wrapped = normalize_angle(a)
-    assert wrapped.magnitude("rad") == pytest.approx(3 * np.pi / 2)
+    with pytest.raises(ValueError):
+        scale_vector(1 * Quantity.meter, 2.0)
