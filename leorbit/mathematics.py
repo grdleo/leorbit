@@ -278,7 +278,26 @@ class Tensor:
         Data units are default SI units corresponding to dimension."""
         if dimension is None:
             dimension = Dimless
+        if not isinstance(data, np.ndarray):
+            data = np.asarray(data, dtype=np.float64).reshape((1,))
+
         assert dimension.triplet() is not None
+
+        if data.ndim == 0:
+            data = data.reshape((1,))
+
+        if data.ndim == 1:
+            pass
+        elif data.ndim == 2:
+            rows, _ = data.shape
+            if rows != 3:
+                raise ValueError("Vector3 tensor data must have shape (3, N).")
+        elif data.ndim == 3:
+            rows, cols, _ = data.shape
+            if rows != 3 or cols != 3:
+                raise ValueError("Matrix33 tensor data must have shape (3, 3, N).")
+        else:
+            raise ValueError("Tensor data must be 1D, 2D, or 3D.")
 
         self._data = np.asarray(data, dtype=np.float64)
         self._phy_dimension = dimension
@@ -974,7 +993,7 @@ def vector3(x: RealNumber, y: RealNumber, z: RealNumber) -> Tensor:
     )
 
 
-def mat33(a11: RealNumber, a12: RealNumber, a13: RealNumber,
+def matrix33(a11: RealNumber, a12: RealNumber, a13: RealNumber,
           a21: RealNumber, a22: RealNumber, a23: RealNumber,
           a31: RealNumber, a32: RealNumber, a33: RealNumber) -> Tensor:
     """Create a dimensionless matrix33 tensor with the given values.

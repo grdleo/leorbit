@@ -20,7 +20,7 @@ from leorbit.mathematics import (
     ensure_same_dimensions,
     ensure_tensor,
     interpolate,
-    matrix33,
+    mat33,
     normalize_angle,
     normalize_angle_symmetric,
     scalar,
@@ -38,7 +38,7 @@ def test_quantity_registry_and_synonyms():
     assert Quantity.get("km").scalar.value("meter") == pytest.approx(1000.0)
 
 def test_matmul():
-    m = matrix33(
+    m = mat33(
         0, 0, 1,
         1, 0, 0,
         0, 1, 0
@@ -46,7 +46,7 @@ def test_matmul():
     v = vector3(1, 2, 3)
     assert m.matrix33 @ v.vector3 == vector3(3, 1, 2)
 
-    m = matrix33(
+    m = mat33(
         1, 2, 3,
         4, 5, 6,
         7, 8, 9
@@ -57,22 +57,22 @@ def test_matmul():
 
 
 def test_matmul_matrix_size4_with_vector3_size4():
-    m1 = matrix33(
+    m1 = mat33(
         1, 0, 0,
         0, 1, 0,
         0, 0, 1,
     )
-    m2 = matrix33(
+    m2 = mat33(
         2, 0, 0,
         0, 3, 0,
         0, 0, 4,
     )
-    m3 = matrix33(
+    m3 = mat33(
         1, 2, 3,
         0, 1, 0,
         0, 0, 1,
     )
-    m4 = matrix33(
+    m4 = mat33(
         0, 1, 0,
         -1, 0, 0,
         0, 0, 1,
@@ -103,12 +103,12 @@ def test_matmul_matrix_size4_with_vector3_size4():
 
 
 def test_matmul_matrix_by_matrix_size1_and_size5():
-    left_1 = matrix33(
+    left_1 = mat33(
         1, 2, 3,
         4, 5, 6,
         7, 8, 9,
     )
-    right_1 = matrix33(
+    right_1 = mat33(
         9, 8, 7,
         6, 5, 4,
         3, 2, 1,
@@ -129,18 +129,18 @@ def test_matmul_matrix_by_matrix_size1_and_size5():
     )
 
     left_batch = (
-        matrix33(1, 0, 0, 0, 1, 0, 0, 0, 1)
-        | matrix33(2, 0, 0, 0, 2, 0, 0, 0, 2)
-        | matrix33(1, 2, 0, 0, 1, 0, 0, 0, 1)
-        | matrix33(0, -1, 0, 1, 0, 0, 0, 0, 1)
-        | matrix33(3, 1, 0, 0, 3, 0, 0, 0, 3)
+        mat33(1, 0, 0, 0, 1, 0, 0, 0, 1)
+        | mat33(2, 0, 0, 0, 2, 0, 0, 0, 2)
+        | mat33(1, 2, 0, 0, 1, 0, 0, 0, 1)
+        | mat33(0, -1, 0, 1, 0, 0, 0, 0, 1)
+        | mat33(3, 1, 0, 0, 3, 0, 0, 0, 3)
     )
     right_batch = (
-        matrix33(1, 2, 3, 4, 5, 6, 7, 8, 9)
-        | matrix33(1, 0, 0, 0, 1, 0, 0, 0, 1)
-        | matrix33(2, 0, 0, 0, 2, 0, 0, 0, 2)
-        | matrix33(1, 0, 0, 0, 1, 0, 0, 0, 1)
-        | matrix33(0, 1, 0, 1, 0, 0, 0, 0, 1)
+        mat33(1, 2, 3, 4, 5, 6, 7, 8, 9)
+        | mat33(1, 0, 0, 0, 1, 0, 0, 0, 1)
+        | mat33(2, 0, 0, 0, 2, 0, 0, 0, 2)
+        | mat33(1, 0, 0, 0, 1, 0, 0, 0, 1)
+        | mat33(0, 1, 0, 1, 0, 0, 0, 0, 1)
     )
 
     out_5 = left_batch.matrix33 @ right_batch.matrix33
@@ -165,7 +165,7 @@ def test_matmul_matrix_by_matrix_size1_and_size5():
 def test_scalar_vector_matrix_factories_and_kinds():
     s = scalar(7)
     v = vector3(1.0, 2.0, 3.0)
-    m = matrix33(
+    m = mat33(
         1.0, 0.0, 0.0,
         0.0, 1.0, 0.0,
         0.0, 0.0, 1.0,
@@ -182,6 +182,32 @@ def test_scalar_vector_matrix_factories_and_kinds():
     assert m.kind == TensorKind.MATRIX33
     assert m.shape == (3, 3, 1)
     assert m.size == 1
+
+
+def test_tensor_constructor_validates_data_dimensions_and_shapes():
+    scalar_from_0d = Tensor(np.asarray(42.0))
+    assert scalar_from_0d.kind == TensorKind.SCALAR
+    assert scalar_from_0d.shape == (1,)
+
+    v = Tensor(np.zeros((3, 4), dtype=np.float64))
+    assert v.kind == TensorKind.VECTOR3
+    assert v.size == 4
+
+    m = Tensor(np.zeros((3, 3, 2), dtype=np.float64))
+    assert m.kind == TensorKind.MATRIX33
+    assert m.size == 2
+
+    with pytest.raises(ValueError, match=r"shape \(3, N\)"):
+        Tensor(np.zeros((2, 4), dtype=np.float64))
+
+    with pytest.raises(ValueError, match=r"shape \(3, N\)"):
+        Tensor(np.zeros((4, 3), dtype=np.float64))
+
+    with pytest.raises(ValueError, match=r"shape \(3, 3, N\)"):
+        Tensor(np.zeros((3, 2, 4), dtype=np.float64))
+
+    with pytest.raises(ValueError, match=r"1D, 2D, or 3D"):
+        Tensor(np.zeros((1, 1, 1, 1), dtype=np.float64))
 
 
 def test_scalar_value_and_unit_conversion():
@@ -247,7 +273,7 @@ def test_vector_spherical_roundtrip():
 
 
 def test_matrix_inverse_and_product():
-    m = matrix33(
+    m = mat33(
         2.0, 0.0, 0.0,
         0.0, 3.0, 0.0,
         0.0, 0.0, 4.0,
