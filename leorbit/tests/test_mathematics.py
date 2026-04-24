@@ -37,6 +37,130 @@ def test_quantity_registry_and_synonyms():
     assert Quantity.get("kilo_meter").scalar.value("meter") == pytest.approx(1000.0)
     assert Quantity.get("km").scalar.value("meter") == pytest.approx(1000.0)
 
+def test_matmul():
+    m = mat33(
+        0, 0, 1,
+        1, 0, 0,
+        0, 1, 0
+    )
+    v = vector3(1, 2, 3)
+    assert m.matrix33 @ v.vector3 == vector3(3, 1, 2)
+
+    m = mat33(
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9
+    ) * Quantity.meter
+    v = vector3(11, 22, 33) / (Quantity.second ** 2)
+
+    assert m.matrix33 @ v.vector3 == vector3(154, 352, 550) * (Quantity.meter / Quantity.second ** 2)
+
+
+def test_matmul_matrix_size4_with_vector3_size4():
+    m1 = mat33(
+        1, 0, 0,
+        0, 1, 0,
+        0, 0, 1,
+    )
+    m2 = mat33(
+        2, 0, 0,
+        0, 3, 0,
+        0, 0, 4,
+    )
+    m3 = mat33(
+        1, 2, 3,
+        0, 1, 0,
+        0, 0, 1,
+    )
+    m4 = mat33(
+        0, 1, 0,
+        -1, 0, 0,
+        0, 0, 1,
+    )
+
+    v1 = vector3(1, 2, 3)
+    v2 = vector3(1, 2, 3)
+    v3 = vector3(1, 2, 3)
+    v4 = vector3(7, 8, 9)
+
+    m_batch = m1 | m2 | m3 | m4
+    v_batch = v1 | v2 | v3 | v4
+
+    out = m_batch.matrix33 @ v_batch.vector3
+
+    assert out.kind == TensorKind.VECTOR3
+    assert out.size == 4
+    assert out.shape == (3, 4)
+
+    np.testing.assert_allclose(
+        out.raw_data_array(),
+        np.array([
+            [1.0, 2.0, 14.0, 8.0],
+            [2.0, 6.0, 2.0, -7.0],
+            [3.0, 12.0, 3.0, 9.0],
+        ]),
+    )
+
+
+def test_matmul_matrix_by_matrix_size1_and_size5():
+    left_1 = mat33(
+        1, 2, 3,
+        4, 5, 6,
+        7, 8, 9,
+    )
+    right_1 = mat33(
+        9, 8, 7,
+        6, 5, 4,
+        3, 2, 1,
+    )
+
+    out_1 = left_1.matrix33 @ right_1.matrix33
+
+    assert out_1.kind == TensorKind.MATRIX33
+    assert out_1.size == 1
+    assert out_1.shape == (3, 3, 1)
+    np.testing.assert_allclose(
+        out_1.raw_data_array().reshape(3, 3),
+        np.array([
+            [30.0, 24.0, 18.0],
+            [84.0, 69.0, 54.0],
+            [138.0, 114.0, 90.0],
+        ]),
+    )
+
+    left_batch = (
+        mat33(1, 0, 0, 0, 1, 0, 0, 0, 1)
+        | mat33(2, 0, 0, 0, 2, 0, 0, 0, 2)
+        | mat33(1, 2, 0, 0, 1, 0, 0, 0, 1)
+        | mat33(0, -1, 0, 1, 0, 0, 0, 0, 1)
+        | mat33(3, 1, 0, 0, 3, 0, 0, 0, 3)
+    )
+    right_batch = (
+        mat33(1, 2, 3, 4, 5, 6, 7, 8, 9)
+        | mat33(1, 0, 0, 0, 1, 0, 0, 0, 1)
+        | mat33(2, 0, 0, 0, 2, 0, 0, 0, 2)
+        | mat33(1, 0, 0, 0, 1, 0, 0, 0, 1)
+        | mat33(0, 1, 0, 1, 0, 0, 0, 0, 1)
+    )
+
+    out_5 = left_batch.matrix33 @ right_batch.matrix33
+
+    assert out_5.kind == TensorKind.MATRIX33
+    assert out_5.size == 5
+    assert out_5.shape == (3, 3, 5)
+    np.testing.assert_allclose(
+        out_5.raw_data_array(),
+        np.stack(
+            [
+                np.array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]),
+                np.array([[2.0, 0.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 2.0]]),
+                np.array([[2.0, 4.0, 0.0], [0.0, 2.0, 0.0], [0.0, 0.0, 2.0]]),
+                np.array([[0.0, -1.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]]),
+                np.array([[1.0, 3.0, 0.0], [3.0, 0.0, 0.0], [0.0, 0.0, 3.0]]),
+            ],
+            axis=2,
+        ),
+    )
 
 def test_scalar_vector_matrix_factories_and_kinds():
     s = scalar(7)

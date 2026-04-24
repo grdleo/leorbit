@@ -293,15 +293,6 @@ class Tensor:
 
     def __hash__(self) -> int:
         return hash(f"{hash(self._data.data.tobytes())}${hash(self._phy_dimension.triplet())}")
-
-    def __eq__(self, o: object) -> bool:
-        if not isinstance(o, Tensor):
-            return False
-        
-        return (
-            self.phy_dimension.triplet() == o.phy_dimension.triplet() 
-            and np.array_equal(self._data, o._data)
-        )
     
     def __repr__(self) -> str:
         return f"<Tensor {self._data} [{self._phy_dimension.triplet().representation}]>"
@@ -390,7 +381,7 @@ class Tensor:
         if self.phy_dimension != other.phy_dimension:
             raise ValueError("Cannot concatenate tensors of different dimensions.")
         return Tensor(
-            np.concatenate((self._data, other._data)),
+            np.concatenate((self._data, other._data), axis=self.array_dimensions - 1),
             self.phy_dimension
         )
     
@@ -418,8 +409,12 @@ class Tensor:
             [index]
         )
 
+        selected_data = np.asarray(self._data[*slices])
+        if selected_data.ndim < self.array_dimensions:
+            selected_data = np.expand_dims(selected_data, axis=-1)
+
         tensor = Tensor(
-            self._data[*slices],
+            selected_data,
             self.phy_dimension
         )
 
@@ -427,6 +422,15 @@ class Tensor:
         assert tensor.size == 1
 
         return tensor
+
+    def __eq__(self, o: object) -> bool:
+        if not isinstance(o, Tensor):
+            return False
+        
+        return (
+            self.phy_dimension == o.phy_dimension 
+            and np.array_equal(self._data, o._data)
+        )
 
     def __pos__(self) -> Tensor:
         return Tensor(
@@ -581,7 +585,7 @@ class TensorAsVector3(Tensor):
     @property
     def length(self) -> Annotated[Tensor, TensorBound(kind=TensorKind.SCALAR)]:
         return Tensor(
-            np.linalg.norm(self._data, axis=1),
+            np.linalg.norm(self._data, axis=0),
             self.phy_dimension
         )
     
@@ -648,10 +652,10 @@ class TensorAsVector3(Tensor):
         data_len_other = np.sum(other._data ** 2, axis=0).reshape(-1) ** .5
         data_dot = np.sum(self._data * other._data, axis=0).reshape(-1)
 
-        return acos(data_dot / (data_len_self * data_len_other))
+        return acos(ensure_tensor(data_dot / (data_len_self * data_len_other)))
 
     def normalized(self) -> Annotated[Tensor, TensorBound(kind=TensorKind.VECTOR3, dimension=Dimless)]:
-        norm = np.linalg.norm(self._data, axis=1)
+        norm = np.linalg.norm(self._data, axis=0, keepdims=True)
         return Tensor(
             self._data / norm, 
             Dimless
@@ -706,12 +710,12 @@ class TensorAsMatrix33(Tensor):
             return self * other
         elif other.kind == TensorKind.VECTOR3:
             return Tensor(
-                np.einsum('bij,bj->bi', self._data, other._data),
+                np.einsum('ijk,jk->ik', self._data, other._data),
                 self.phy_dimension * other.phy_dimension
             )
         elif other.kind == TensorKind.MATRIX33:
             return Tensor(
-                np.einsum('bij,bjk->bik', self._data, other._data),
+                np.einsum('ijk,jlk->ilk', self._data, other._data),
                 self.phy_dimension * other.phy_dimension
             )
         
@@ -730,7 +734,7 @@ class TensorAsMatrix33(Tensor):
         vals = [ensure_tensor(v) for v in (a11, a21, a31, a12, a22, a32, a13, a23, a33)]
         ensure_same_dimensions(*vals)
         dim = vals[0].phy_dimension
-        arr = np.asarray([v.scalar for v in vals], dtype=np.float64).reshape((3, 3))
+        arr = np.asarray([v.scalar.value() for v in vals], dtype=np.float64).reshape((3, 3, 1))
         return cls(arr, dim)
 
 @dataclass
@@ -973,12 +977,13 @@ def vector3(x: RealNumber, y: RealNumber, z: RealNumber) -> Tensor:
 def mat33(a11: RealNumber, a12: RealNumber, a13: RealNumber,
           a21: RealNumber, a22: RealNumber, a23: RealNumber,
           a31: RealNumber, a32: RealNumber, a33: RealNumber) -> Tensor:
-    """Create a dimensionless matrix33 tensor with the given values."""
+    """Create a dimensionless matrix33 tensor with the given values.
+    Elements given row-wise."""
     return Tensor(
         data=np.asarray((
-            a11, a21, a31,
-            a12, a22, a32,
-            a13, a23, a33
+            a11, a12, a13,
+            a21, a22, a23,
+            a31, a32, a33
         ), dtype=np.float64).reshape((3, 3, 1)), 
         dimension=Dimless
     )
