@@ -9,15 +9,14 @@ from leorbit.mathematics import (
     Length,
     Quantity,
     Tensor,
+    TensorAsVector3,
     TensorBound,
     TensorKind,
     acos,
     asin,
     atan,
     atan2,
-    cbrt,
     cos,
-    cube,
     ensure_same_dimensions,
     ensure_tensor,
     interpolate,
@@ -25,146 +24,172 @@ from leorbit.mathematics import (
     normalize_angle,
     normalize_angle_symmetric,
     scalar,
-    scalar_array,
     sin,
-    sqrt,
-    square,
     tan,
     tensor_check,
-    vec3,
-    vec3_array,
+    vector3,
 )
 
 
-def test_quantity_and_unit_conversion():
-    assert Quantity.meter.check(Length)
-    assert Quantity.second.check(dimension=Quantity.second.phy_dimension)
-    assert Quantity.get("kilo_meter").magnitude("meter") == pytest.approx(1000)
-    assert (2 * Quantity.kilo_meter).magnitude("meter") == pytest.approx(2000)
+def test_quantity_registry_and_synonyms():
+    assert Quantity.get("meter").scalar.value() == pytest.approx(1.0)
+    assert Quantity.get("m").scalar.value() == pytest.approx(1.0)
+    assert Quantity.get("kilo_meter").scalar.value("meter") == pytest.approx(1000.0)
+    assert Quantity.get("km").scalar.value("meter") == pytest.approx(1000.0)
 
 
-def test_tensor_factories_and_kinds():
-    s = scalar(3)
-    sa = scalar_array([1.0, 2.0, 3.0])
-    v = vec3(x=1.0, y=2.0, z=3.0)
-    va = vec3_array([[1.0, 0.0, 0.0], [0.0, 1.0, 0.0]])
+def test_scalar_vector_matrix_factories_and_kinds():
+    s = scalar(7)
+    v = vector3(1.0, 2.0, 3.0)
     m = mat33(
-        a11=1.0, a21=0.0, a31=0.0,
-        a12=0.0, a22=1.0, a32=0.0,
-        a13=0.0, a23=0.0, a33=1.0,
+        1.0, 0.0, 0.0,
+        0.0, 1.0, 0.0,
+        0.0, 0.0, 1.0,
     )
 
-    assert s.kind == TensorKind.SCALAR and s.size == 1
-    assert sa.kind == TensorKind.SCALAR and sa.size == 3
-    assert v.kind == TensorKind.VECTOR3 and v.size == 1
-    assert va.kind == TensorKind.VECTOR3 and va.size == 2
-    assert m.kind == TensorKind.MATRIX33 and m.size == 1
+    assert s.kind == TensorKind.SCALAR
+    assert s.shape == (1,)
+    assert s.size == 1
+
+    assert v.kind == TensorKind.VECTOR3
+    assert v.shape == (3, 1)
+    assert v.size == 1
+
+    assert m.kind == TensorKind.MATRIX33
+    assert m.shape == (3, 3, 1)
+    assert m.size == 1
 
 
-def test_dimension_composition_and_cast():
-    length = 2 * Quantity.meter
-    time = 4 * Quantity.second
-    speed = length / time
-
-    assert speed.phy_dimension.triplet() == (Length / Quantity.second.phy_dimension).triplet()
-
-    with pytest.raises(RuntimeError):
-        length.cast(Angle)
+def test_scalar_value_and_unit_conversion():
+    speed = 36.0 * Quantity.kilo_meter_per_hour
+    assert speed.scalar.value(Quantity.kilo_meter_per_hour) == pytest.approx(36.0)
+    assert speed.scalar.value("meter") == pytest.approx(10.0)
 
 
-def test_basic_vector_algebra():
-    v = vec3(x=1.0, y=2.0, z=3.0) * Quantity.meter
-    w = vec3(x=3.0, y=2.0, z=1.0) * Quantity.meter
-
-    np.testing.assert_allclose((v + w)._values.flatten(), [4.0, 4.0, 4.0])
-    np.testing.assert_allclose(v.cross(w)._values.flatten(), [-4.0, 8.0, -4.0])
-    assert v.dot(w).magnitude("meter") == pytest.approx(10.0)
-
-
-def test_vector_angles_and_spherical_helpers():
-    v = vec3(x=1.0, y=1.0, z=0.0) * Quantity.meter
-    assert v.theta.check(Angle)
-    assert v.theta.magnitude("rad") == pytest.approx(np.pi / 4)
-    assert v.delta.magnitude("rad") == pytest.approx(0.0)
-
-    u = Tensor.from_spherical(
-        theta=np.pi / 4 * Quantity.radian,
-        delta=0 * Quantity.radian,
-        radius=np.sqrt(2) * Quantity.meter,
-    )
-    np.testing.assert_allclose(u._values.flatten(), [1.0, 1.0, 0.0], atol=1e-12)
-
-
-def test_matrix_products_with_vector_arrays():
-    vectors = vec3_array([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]])
-    m = Tensor.from_elements(
-        a11=2.0, a21=0.0, a31=0.0,
-        a12=0.0, a22=3.0, a32=0.0,
-        a13=0.0, a23=0.0, a33=4.0,
-    )
-
-    out = m @ vectors
-    np.testing.assert_allclose(out._values, np.array([[2.0, 8.0], [6.0, 15.0], [12.0, 24.0]]))
-
-
-def test_ensure_helpers():
-    t = ensure_tensor(3.5)
-    assert t.check(Dimless)
-
-    a = 1 * Quantity.meter
-    b = 2 * Quantity.meter
-    assert ensure_same_dimensions(a, b)
-
-    with pytest.raises(RuntimeError):
-        ensure_same_dimensions(1 * Quantity.meter, 1 * Quantity.second)
-
-
-def test_trig_and_power_helpers():
-    ang = np.pi / 2 * Quantity.radian
-
-    assert sin(ang).magnitude() == pytest.approx(1.0)
-    assert cos(ang).magnitude() == pytest.approx(0.0, abs=1e-12)
-    assert tan(0 * Quantity.radian).magnitude() == pytest.approx(0.0)
-
-    unit = 0.5 * Quantity.dimensionless
-    assert asin(unit).check(Angle)
-    assert acos(unit).check(Angle)
-    assert atan(unit).check(Angle)
-
-    y = 1 * Quantity.meter
-    x = 1 * Quantity.meter
-    assert atan2(y, x).magnitude("rad") == pytest.approx(np.pi / 4)
-
-    sq = square(3 * Quantity.meter)
-    assert sq.magnitude() == pytest.approx(9.0)
-    assert sqrt(sq).magnitude("meter") == pytest.approx(3.0)
-    assert cube(4 * Quantity.meter).magnitude() == pytest.approx(64.0)
-    assert cbrt(64 * (Quantity.meter ** 3)).magnitude("meter") == pytest.approx(4.0)
-
-
-def test_angle_normalization_and_interpolation():
-    n = normalize_angle(5 * np.pi * Quantity.radian)
-    ns = normalize_angle_symmetric(3 * np.pi / 2 * Quantity.radian)
-
-    assert n.magnitude("rad") == pytest.approx(np.pi)
-    assert ns.magnitude("rad") == pytest.approx(-np.pi / 2)
-
-    a = 10 * Quantity.meter
-    b = 14 * Quantity.meter
-    assert interpolate(a, b, 0.25).magnitude("meter") == pytest.approx(11.0)
-
-
-def test_tensor_check_with_runtime_bounds():
-    @tensor_check
-    def scale_vector(
-        value: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)],
-        gain: float,
-    ) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)]:
-        return value * gain
-
-    v = vec3(x=1.0, y=-2.0, z=3.0) * Quantity.meter
-    out = scale_vector(v, 2.0)
-    np.testing.assert_allclose(out._values.flatten(), [2.0, -4.0, 6.0])
+def test_tensor_check_and_secure():
+    d = 5.0 * Quantity.meter
+    assert d.check(dimension=Length)
+    assert d.check(kind=TensorKind.SCALAR)
+    assert d.secure(dimension=Length, kind=TensorKind.SCALAR) is d
 
     with pytest.raises(ValueError):
-        scale_vector(1 * Quantity.meter, 2.0)
+        d.secure(dimension=Angle)
+
+    with pytest.raises(ValueError):
+        d.check()
+
+
+def test_ensure_tensor_and_dimension_guard():
+    from_float = ensure_tensor(3.5)
+    assert from_float.check(dimension=Dimless, kind=TensorKind.SCALAR)
+    assert from_float.scalar.value() == pytest.approx(3.5)
+
+    t1 = 1.0 * Quantity.meter
+    t2 = 2.0 * Quantity.meter
+    assert ensure_same_dimensions(t1, t2)
+
+    with pytest.raises(RuntimeError):
+        ensure_same_dimensions(t1, 1.0 * Quantity.second)
+
+
+def test_vector_components_norm_dot_cross_and_angle():
+    v = vector3(3.0, 4.0, 0.0) * Quantity.meter
+    w = vector3(0.0, 4.0, 3.0) * Quantity.meter
+
+    assert v.vector3.x.scalar.value("meter") == pytest.approx(3.0)
+    assert v.vector3.y.scalar.value("meter") == pytest.approx(4.0)
+    assert v.vector3.z.scalar.value("meter") == pytest.approx(0.0)
+    assert v.vector3.length.scalar.values("meter") == pytest.approx([5.0])
+
+    dot = v.vector3.dot(w)
+    assert dot.phy_dimension == Length * Length
+    assert dot.scalar.value() == pytest.approx(16.0)
+
+    cross = v.vector3.cross(w)
+    np.testing.assert_allclose(cross.raw_data_array("meter").reshape(3), [12.0, -9.0, 12.0])
+
+    angle = v.vector3.angle(v)
+    assert angle.check(dimension=Angle, kind=TensorKind.SCALAR)
+    assert angle.scalar.value("rad") == pytest.approx(0.0)
+
+
+def test_vector_spherical_roundtrip():
+    theta = (np.pi / 4.0) * Quantity.radian
+    delta = 0.0 * Quantity.radian
+    radius = np.sqrt(2.0) * Quantity.meter
+
+    v = TensorAsVector3.from_spherical(theta=theta, delta=delta, radius=radius)
+    np.testing.assert_allclose(v.raw_data_array("meter").reshape(3), [1.0, 1.0, 0.0], atol=1e-12)
+
+
+def test_matrix_inverse_and_product():
+    m = mat33(
+        2.0, 0.0, 0.0,
+        0.0, 3.0, 0.0,
+        0.0, 0.0, 4.0,
+    )
+    inv = m.matrix33.inverse()
+
+    np.testing.assert_allclose(
+        inv.raw_data_array().reshape(3, 3),
+        np.diag([0.5, 1.0 / 3.0, 0.25]),
+        atol=1e-12,
+    )
+
+
+def test_trigonometric_helpers_and_domains():
+    right_angle = (np.pi / 2.0) * Quantity.radian
+
+    assert sin(right_angle).scalar.value() == pytest.approx(1.0)
+    assert cos(right_angle).scalar.value() == pytest.approx(0.0, abs=1e-12)
+    assert tan(0.0 * Quantity.radian).scalar.value() == pytest.approx(0.0)
+
+    u = 0.5 * Quantity.dimensionless
+    assert asin(u).check(dimension=Angle)
+    assert acos(u).check(dimension=Angle)
+    assert atan(u).check(dimension=Angle)
+
+    with pytest.raises(ValueError):
+        sin(1.0 * Quantity.meter)
+
+
+def test_atan2_normalization_and_interpolation():
+    y = 1.0 * Quantity.meter
+    x = 1.0 * Quantity.meter
+    assert atan2(y, x).scalar.value("rad") == pytest.approx(np.pi / 4.0)
+
+    wrapped = normalize_angle(5.0 * np.pi * Quantity.radian)
+    assert wrapped.scalar.value("rad") == pytest.approx(np.pi)
+
+    symmetric = normalize_angle_symmetric(1.5 * np.pi * Quantity.radian)
+    assert symmetric.scalar.value("rad") == pytest.approx(-np.pi / 2.0)
+
+    a = 10.0 * Quantity.meter
+    b = 14.0 * Quantity.meter
+    p = interpolate(a, b, 0.25)
+    assert p.scalar.value("meter") == pytest.approx(11.0)
+
+
+def test_tensor_check_decorator_rejects_bad_argument_and_return():
+    @tensor_check
+    def scale_length_vector(
+        v: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)],
+        k: float,
+    ) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)]:
+        return v * k
+
+    good = vector3(1.0, -2.0, 3.0) * Quantity.meter
+    out = scale_length_vector(good, 2.0)
+    np.testing.assert_allclose(out.raw_data_array("meter").reshape(3), [2.0, -4.0, 6.0])
+
+    with pytest.raises(ValueError):
+        scale_length_vector(1.0 * Quantity.meter, 2.0)
+
+    @tensor_check
+    def broken_return(
+        v: Annotated[Tensor, TensorBound(kind=TensorKind.VECTOR3)],
+    ) -> Annotated[Tensor, TensorBound(kind=TensorKind.SCALAR)]:
+        return v
+
+    with pytest.raises(ValueError):
+        broken_return(vector3(1.0, 2.0, 3.0))

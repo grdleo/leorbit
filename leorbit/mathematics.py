@@ -11,14 +11,12 @@ from re import M
 from types import EllipsisType
 from typing import Annotated, Any, Callable, ClassVar, Generic, Iterable, Literal, NamedTuple, Self, Type, TypeAlias, TypeIs, TypeVar, TypedDict, cast, get_args, get_origin, get_type_hints
 import operator
-from numbers import Real as RealNumber
-from numbers import Rational as RationalNumber
 
 import numpy as np
 import numpy.typing as npt
 
 type NumpyFloatArray = npt.NDArray[np.float64]
-type Number = RealNumber | np.floating[Any]
+RealNumber = float | int | Fraction | Decimal
 
 
 class DimTriplet:
@@ -29,9 +27,9 @@ class DimTriplet:
     """
 
     def __init__(self,
-        length: RationalNumber | float | int = 0,
-        time: RationalNumber | float | int = 0,
-        mass: RationalNumber | float | int = 0,
+        length: RealNumber | float | int = 0,
+        time: RealNumber | float | int = 0,
+        mass: RealNumber | float | int = 0,
     ):
         """Build dimension coordinates from base-axis exponents."""
         self.__length = Fraction(length)
@@ -118,7 +116,7 @@ class DimTriplet:
             mass=self.mass - o.mass
         )
     
-    def __pow__(self, p: RationalNumber | int) -> DimTriplet:
+    def __pow__(self, p: RealNumber | int) -> DimTriplet:
         """Raise a dimension to a scalar power."""
         p = Fraction(p)
 
@@ -161,10 +159,10 @@ class _DimClassAlgebra(type):
             cls.triplet() ** -1
         )
     
-    def __pow__(cls, p: RationalNumber | int | float) -> type[Dim]:
+    def __pow__(cls, p: RealNumber | int | float) -> type[Dim]:
         """Raise a dimension to a scalar power."""
         cls = cast(type[Dim], cls)
-        if not isinstance(p, RationalNumber):
+        if not isinstance(p, RealNumber):
             raise NotImplementedError()
         
         return _dimension_factory(
@@ -396,12 +394,21 @@ class Tensor:
             self.phy_dimension
         )
     
-    def raw_data_array(self, units: float | str) -> NumpyFloatArray:
+    def raw_data_array(self, units: Tensor | float | str | None = None) -> NumpyFloatArray:
         """Return the raw data array of this tensor, converted to the given units."""
-        if isinstance(units, str):
-            factor = Quantity.get(units).scalar
-        else:
+        if isinstance(units, Tensor):
+            if units.kind != TensorKind.SCALAR:
+                raise ValueError("Units tensor must be a scalar.")
+            if units.phy_dimension != self.phy_dimension:
+                raise ValueError("Units tensor must have the same physical dimension as the tensor.")
+            
+            factor = units.scalar.value()
+        elif isinstance(units, str):
+            factor = Quantity.get(units).scalar.value()
+        elif isinstance(units, (int, float)):
             factor = units
+        elif units is None:
+            factor = 1.0
         return self._data / factor
     
     def __getitem__(self, index: int) -> Tensor:
@@ -439,7 +446,7 @@ class Tensor:
             dimension=self.phy_dimension
         )
     
-    def __pow__(self, exponent: RationalNumber | int | float) -> Tensor:
+    def __pow__(self, exponent: RealNumber | int | float) -> Tensor:
         return Tensor(
             data=self._data ** float(exponent),
             dimension=self.phy_dimension ** exponent
@@ -547,16 +554,14 @@ class TensorAsScalar(Tensor):
     def scalar(self) -> TensorAsScalar:
         return self
         
-    @property
-    def value(self) -> float:
+    def value(self, units: Tensor | str | float | None = None) -> float:
         try:
-            return self._data.item()
+            return self.raw_data_array(units).item()
         except AttributeError:
             raise ValueError("Tensor data is not a single scalar value.")
         
-    @property
-    def values(self) -> list[float]:
-        return self._data.tolist()
+    def values(self, units: Tensor | str | float | None = None) -> list[float]:
+        return self.raw_data_array(units).tolist()
     
 class TensorAsVector3(Tensor):
     def __init__(self, data: NumpyFloatArray | RealNumber, dimension: type[Dim] | None = None):
@@ -955,7 +960,7 @@ def scalar(value: RealNumber) -> Tensor:
     """Create a dimensionless scalar tensor with the given value."""
     assert isinstance(value, RealNumber)
 
-    return Tensor(data=np.asarray(value, dtype=np.float64), dimension=Dimless)
+    return Tensor(data=np.asarray(value, dtype=np.float64).reshape((1,)), dimension=Dimless)
 
 def vector3(x: RealNumber, y: RealNumber, z: RealNumber) -> Tensor:
     """Create a dimensionless vector3 tensor with the given values."""
@@ -965,13 +970,15 @@ def vector3(x: RealNumber, y: RealNumber, z: RealNumber) -> Tensor:
     )
 
 
-def mat33(**elements: ElementsMatrix33) -> Tensor:
+def mat33(a11: RealNumber, a12: RealNumber, a13: RealNumber,
+          a21: RealNumber, a22: RealNumber, a23: RealNumber,
+          a31: RealNumber, a32: RealNumber, a33: RealNumber) -> Tensor:
     """Create a dimensionless matrix33 tensor with the given values."""
     return Tensor(
         data=np.asarray((
-            elements["a11"], elements["a21"], elements["a31"],
-            elements["a12"], elements["a22"], elements["a32"],
-            elements["a13"], elements["a23"], elements["a33"]
+            a11, a21, a31,
+            a12, a22, a32,
+            a13, a23, a33
         ), dtype=np.float64).reshape((3, 3, 1)), 
         dimension=Dimless
     )
