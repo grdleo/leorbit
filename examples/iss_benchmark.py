@@ -108,6 +108,7 @@ def main():
 
     try:
         iss = get_satellite(25544, log=True)
+        print(f"   ISS Epoch   : {iss.propagator.elements.epoch.isoformat}")
     except requests.exceptions.SSLError:
         print("Warning: TLS certificate validation failed; retrying with insecure SSL fallback.")
         _configure_insecure_ssl_fallback()
