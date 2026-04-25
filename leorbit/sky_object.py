@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from functools import lru_cache
+
+import numpy as np
 from leorbit.coordinates import Coordinates, OrbitalElements, Trajectory
 from typing import Annotated
 
@@ -172,33 +174,45 @@ class Moon(Body):
 
     def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]:
         """Returns the semi major axis (a) of this star at given epoch."""
-        return 60.2666 * Quantity.radii_earth
+        # to keep the shape of the input epoch (scalar or array) in the output
+        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        return one * (60.2666 * Quantity.radii_earth)
     
     def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the inclination (i) of this star at given epoch."""
-        return 0.08980417133211624 * Quantity.radian
+        # to keep the shape of the input epoch (scalar or array) in the output
+        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        return one * (0.08980417133211624 * Quantity.radian)
     
     def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)]:
         """Returns the eccentricity (e) of this star at given epoch."""
-        return scalar(0.054900)
+        # to keep the shape of the input epoch (scalar or array) in the output
+        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        return one * 0.054900
     
     def arg_of_pericenter(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
-        argp = 318.0634 + 0.1643573223 * t.scalar.value("day")
-        return normalize_angle(argp * Quantity.degree)
+        argp = Tensor(
+            318.0634 + 0.1643573223 * t.scalar.values("day")
+        ) * Quantity.degree
+        return normalize_angle(argp)
     
     def ra_of_asc_node(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
-        raan = 125.1228 - 0.0529538083 * t.scalar.value("day")
-        return normalize_angle(raan * Quantity.degree)
+        raan = Tensor(
+            125.1228 - 0.0529538083 * t.scalar.values("day")
+        ) * Quantity.degree
+        return normalize_angle(raan)
     
     def mean_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
-        M = 115.3654 + 13.0649929509 * t.scalar.value("day")
-        return normalize_angle(M * Quantity.degree)
+        M = Tensor(
+            115.3654 + 13.0649929509 * t.scalar.values("day")
+        ) * Quantity.degree
+        return normalize_angle(M)
     
 class Sun(Body):
     """`Body` object representing the Sun.
@@ -211,30 +225,42 @@ class Sun(Body):
     
     def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]:
         """Returns the semi major axis (a) of this star at given epoch."""
-        return 149_597_870_700 * Quantity.meter
+        # to keep the shape of the input epoch (scalar or array) in the output
+        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        return one * (149_597_870_700 * Quantity.meter)
     
     def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the inclination (i) of this star at given epoch."""
-        return 0 * Quantity.radian
+        # to keep the shape of the input epoch (scalar or array) in the output
+        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        return one * (0 * Quantity.radian)
     
     def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)]:
         """Returns the eccentricity (e) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
-        e = 0.016709 - 1.151e-9 * t.scalar.value("day")
-        return scalar(e)
+        e = Tensor(
+            0.016709 - 1.151e-9 * t.scalar.values("day")
+        )
+        return e
     
     def arg_of_pericenter(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
-        argp = 282.9404 + 4.70935e-5 * t.scalar.value("day")
-        return normalize_angle(argp * Quantity.degree)
+        argp = Tensor(
+            282.9404 + 4.70935e-5 * t.scalar.values("day")
+        ) * Quantity.degree
+        return normalize_angle(argp)
     
     def ra_of_asc_node(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
-        return 0 * Quantity.radian
+        # to keep the shape of the input epoch (scalar or array) in the output
+        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        return one * (0 * Quantity.radian)
     
     def mean_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
-        M = 356.0470 + 0.9856002585 * t.scalar.value("day")
-        return normalize_angle(M * Quantity.degree)
+        M = Tensor(
+            356.0470 + 0.9856002585 * t.scalar.values("day")
+        ) * Quantity.degree
+        return normalize_angle(M)
