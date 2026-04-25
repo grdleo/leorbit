@@ -170,6 +170,8 @@ class _DimClassAlgebra(type):
         )
     
 class Dim(metaclass=_DimClassAlgebra):
+    """Type-level physical dimension represented by a ``DimTriplet``."""
+
     __triplet: ClassVar[DimTriplet]
 
     def __init__(self, *args, **kwargs):
@@ -220,6 +222,8 @@ _ = InvLength = 1 / Length
 # instead of just `type[Dim]` which would be the case if we directly assigned the result of the operations to the variables.
 
 class TensorBinaryOperator(Enum):
+    """Supported binary operators between tensors and scalar numbers."""
+
     ADD = "+"
     SUB = "-"
     MUL = "*"
@@ -262,6 +266,8 @@ class TensorBinaryOperator(Enum):
         raise NotImplementedError(f"Unsupported operator '{self.value}' for dimension composition.")
 
 class TensorKind(Enum):
+    """Shape category of a tensor: scalar, 3-vector, or 3x3 matrix."""
+
     SCALAR = "scalar"
     VECTOR3 = "vector3"
     MATRIX33 = "matrix33"
@@ -567,6 +573,8 @@ class Tensor:
         return TensorAsMatrix33(self._data, self.phy_dimension)
     
 class TensorAsScalar(Tensor):
+    """Scalar-specialized tensor helper."""
+
     def __init__(self, data: NumpyFloatArray | RealNumber, dimension: type[Dim] | None = None):
         super().__init__(data, dimension)
 
@@ -575,18 +583,23 @@ class TensorAsScalar(Tensor):
         
     @property
     def scalar(self) -> TensorAsScalar:
+        """Return this scalar view itself."""
         return self
         
     def value(self, units: Tensor | str | float | None = None) -> float:
+        """Return the scalar value converted to optional ``units``."""
         try:
             return self.raw_data_array(units).item()
         except AttributeError:
             raise ValueError("Tensor data is not a single scalar value.")
         
     def values(self, units: Tensor | str | float | None = None) -> npt.NDArray[np.float64]:
+        """Return scalar data as a NumPy array converted to optional ``units``."""
         return self.raw_data_array(units)
     
 class TensorAsVector3(Tensor):
+    """Vector3-specialized tensor helper with vector operations."""
+
     def __init__(self, data: NumpyFloatArray | RealNumber, dimension: type[Dim] | None = None):
         super().__init__(data, dimension)
 
@@ -595,6 +608,7 @@ class TensorAsVector3(Tensor):
         
     @property
     def vector3(self) -> TensorAsVector3:
+        """Return this vector3 view itself."""
         return self
         
     @property
@@ -703,6 +717,8 @@ class TensorAsVector3(Tensor):
         return cls.from_components(x, y, z)
 
 class TensorAsMatrix33(Tensor):
+    """Matrix33-specialized tensor helper with linear algebra utilities."""
+
     def __init__(self, data: NumpyFloatArray | RealNumber, dimension: type[Dim] | None = None):
         super().__init__(data, dimension)
 
@@ -715,6 +731,7 @@ class TensorAsMatrix33(Tensor):
         return self
         
     def inverse(self) -> Tensor:
+        """Return matrix inverse for each matrix sample in the tensor."""
         if self.kind != TensorKind.MATRIX33:
             raise RuntimeError("inverse only applies to matrix tensors")
         if self._data.ndim == 2:
@@ -725,6 +742,7 @@ class TensorAsMatrix33(Tensor):
         return Tensor(inv, 1 / self.phy_dimension)
     
     def matrix_product(self, other: Tensor) -> Tensor:
+        """Multiply by a scalar, vector3, or matrix33 tensor."""
         if other.kind == TensorKind.SCALAR:
             return self * other
         elif other.kind == TensorKind.VECTOR3:
@@ -750,6 +768,7 @@ class TensorAsMatrix33(Tensor):
         a12: RealNumber | Tensor, a22: RealNumber | Tensor, a32: RealNumber | Tensor,
         a13: RealNumber | Tensor, a23: RealNumber | Tensor, a33: RealNumber | Tensor,
     ) -> Tensor:
+        """Build a matrix33 tensor from nine scalar elements."""
         vals = [ensure_tensor(v) for v in (a11, a21, a31, a12, a22, a32, a13, a23, a33)]
         ensure_same_dimensions(*vals)
         dim = vals[0].phy_dimension
@@ -758,11 +777,14 @@ class TensorAsMatrix33(Tensor):
 
 @dataclass
 class TensorBound:
+    """Runtime constraints describing acceptable tensor dimension/shape/size."""
+
     dimension: type[Dim] | None = None
     kind: TensorKind | str | None = None
     size: int | None = None
 
     def check(self, tensor: Tensor) -> bool:
+        """Return whether ``tensor`` satisfies this bound."""
         if self.dimension is None and self.kind is None and self.size is None:
             return True
         return tensor.check(
@@ -772,6 +794,7 @@ class TensorBound:
         )
     
     def secure(self, tensor: Tensor) -> Tensor:
+        """Return ``tensor`` when it satisfies this bound, else raise."""
         return tensor.secure(
             dimension=self.dimension,
             kind=self.kind,
@@ -1062,6 +1085,7 @@ def matrix33(a11: RealNumber, a12: RealNumber, a13: RealNumber,
 
 
 def ensure_tensor(v: Tensor | RealNumber) -> Tensor:
+    """Return ``v`` as a tensor, wrapping plain numbers/arrays as dimensionless."""
     if isinstance(v, Tensor):
         return v
     if isinstance(v, np.ndarray):
@@ -1071,6 +1095,7 @@ def ensure_tensor(v: Tensor | RealNumber) -> Tensor:
 
 
 def ensure_same_dimensions(*tensors: Tensor) -> bool:
+    """Validate that all tensors share the same physical dimension."""
     if len(tensors) < 2:
         return True
     d0 = tensors[0].phy_dimension.triplet()
@@ -1082,6 +1107,7 @@ def ensure_same_dimensions(*tensors: Tensor) -> bool:
 def sin(
     t: Annotated[Tensor, TensorBound(dimension=Angle)]
 ) -> Annotated[Tensor, TensorBound(dimension=Dimless)]:
+    """Element-wise sine on angle tensors."""
     return Tensor(np.sin(t._data), Dimless)
 
 
@@ -1089,6 +1115,7 @@ def sin(
 def cos(
     t: Annotated[Tensor, TensorBound(dimension=Angle)]
 ) -> Annotated[Tensor, TensorBound(dimension=Dimless)]:
+    """Element-wise cosine on angle tensors."""
     return Tensor(np.cos(t._data), Dimless)
 
 
@@ -1096,6 +1123,7 @@ def cos(
 def tan(
     t: Annotated[Tensor, TensorBound(dimension=Angle)]
 ) -> Annotated[Tensor, TensorBound(dimension=Dimless)]:
+    """Element-wise tangent on angle tensors."""
     return Tensor(np.tan(t._data), Dimless)
 
 
@@ -1103,6 +1131,7 @@ def tan(
 def asin(
     t: Annotated[Tensor, TensorBound(dimension=Dimless)]
 ) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
+    """Element-wise arcsine returning angle tensors."""
     return Tensor(np.arcsin(t._data), Angle)
 
 
@@ -1110,6 +1139,7 @@ def asin(
 def acos(
     t: Annotated[Tensor, TensorBound(dimension=Dimless)]
 ) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
+    """Element-wise arccosine returning angle tensors."""
     return Tensor(np.arccos(t._data), Angle)
 
 
@@ -1117,6 +1147,7 @@ def acos(
 def atan(
     t: Annotated[Tensor, TensorBound(dimension=Dimless)]
 ) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
+    """Element-wise arctangent returning angle tensors."""
     return Tensor(np.arctan(t._data), Angle)
 
 
@@ -1125,6 +1156,7 @@ def atan2(
     y: Annotated[Tensor, TensorBound()],
     x: Annotated[Tensor, TensorBound()]
 ) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
+    """Element-wise two-argument arctangent with dimension checking."""
     ensure_same_dimensions(y, x)
     return Tensor(np.arctan2(y._data, x._data), Angle)
 
@@ -1133,6 +1165,7 @@ def atan2(
 def normalize_angle(
     angle: Annotated[Tensor, TensorBound(dimension=Angle)]
 ) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
+    """Wrap angles to the ``[0, 2π)`` interval."""
     return Tensor(np.mod(angle._data, 2 * np.pi), Angle)
 
 
@@ -1140,6 +1173,7 @@ def normalize_angle(
 def normalize_angle_symmetric(
     angle: Annotated[Tensor, TensorBound(dimension=Angle)]
 ) -> Annotated[Tensor, TensorBound(dimension=Angle)]:
+    """Wrap angles to the ``[-π, π)`` interval."""
     wrapped = np.mod(angle._data + np.pi, 2 * np.pi) - np.pi
     return Tensor(wrapped, Angle)
 
@@ -1150,5 +1184,6 @@ def interpolate(
     b: Annotated[Tensor, TensorBound()],
     p: float
 ) -> Annotated[Tensor, TensorBound()]:
+    """Linear interpolation between tensors ``a`` and ``b`` at ratio ``p``."""
     ensure_same_dimensions(a, b)
     return Tensor(a._data + p * (b._data - a._data), a.phy_dimension)

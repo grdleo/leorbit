@@ -100,12 +100,14 @@ def stl0(
 def mean_motion_to_semi_major_axis_earth(
     mean_motion: Annotated[Tensor, TensorBound(dimension=Angle / Time, kind=TensorKind.SCALAR)]
 ) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]:
+    """Convert Earth mean motion to semi-major axis using Kepler's third law."""
     return (MU_EARTH / mean_motion ** 2) ** Fraction(1, 3)
 
 @tensor_check
 def semi_major_axis_earth_to_mean_motion(
         sma: Annotated[Tensor,  TensorBound(dimension=Length, kind=TensorKind.SCALAR)]
 ) -> Annotated[Tensor, TensorBound(dimension=Angle / Time, kind=TensorKind.SCALAR)]:
+    """Convert Earth semi-major axis to mean motion using Kepler's third law."""
     return (MU_EARTH / sma ** 3) ** .5
 
 @tensor_check
@@ -190,6 +192,7 @@ def mean2eccentric_anomaly(
     e: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)],
     M: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
 ) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
+    """Solve Kepler's equation for eccentric anomaly by fixed-point iterations."""
     E = M
     for _ in range(5):
         E = M + e * sin(E)
@@ -297,6 +300,8 @@ def elements2orthogonal_gcrf(
     )
 
 class OrbitalElementsTuple(NamedTuple):
+    """Compact orbital-element tuple reconstructed from state vectors."""
+
     eccentricity: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)]
     inclination: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
     ra_of_asc_node: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
@@ -309,6 +314,7 @@ def gcrf_state_vectors2elements(
     pos: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)],
     vel: Annotated[Tensor, TensorBound(dimension=Length / Time, kind=TensorKind.VECTOR3)]
 ) -> OrbitalElementsTuple:
+    """Estimate Keplerian elements from GCRF position and velocity vectors."""
     north = vector3(0.0, 0.0, 1.0)
 
     kinetic = pos.vector3.cross(vel.vector3)
@@ -386,6 +392,7 @@ def itrf2horizontal(
     itrf_pos: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)], 
     earth_local_frame: Any
 ) -> _TupleHorizontal:
+    """Convert an ITRF position to horizontal coordinates for a local frame."""
     t = cast(
         TransformVector3Affine,
         earth_local_frame.transform

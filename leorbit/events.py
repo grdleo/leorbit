@@ -23,7 +23,13 @@ def _truth_array_to_time_intervals(truth_array: npt.NDArray, timeline: TimeInter
 
 
 class TimeMap:
+    """Time-indexed container for arrays computed on a fixed interval."""
+
     def __init__(self, interval: TimeInterval, **values: npt.NDArray):
+        """Store named arrays sampled over ``interval``.
+
+        All arrays must have exactly ``interval.steps`` elements.
+        """
         for arr in values.values():
             if len(arr) != interval.steps:
                 raise ValueError(f"All value arrays must have the same length as the interval, expected {interval.steps}, got {len(arr)}")
@@ -32,6 +38,7 @@ class TimeMap:
         self._mapped_values = values
 
     def get_values(self, value_name: str) -> npt.NDArray:
+        """Return the full sampled array registered under ``value_name``."""
         values = self._mapped_values.get(value_name)
         if values is None:
             raise ValueError(f"Value name {value_name} not found in TimeMap")
@@ -39,6 +46,7 @@ class TimeMap:
         return values
 
     def get_value(self, epoch: Timestamp, value_name: str) -> Any:
+        """Return a single mapped value at ``epoch`` for ``value_name``."""
         if epoch not in self.interval:
             raise ValueError(f"Epoch {epoch} not contained in TimeMap interval {self.interval}")
         
@@ -48,11 +56,13 @@ class TimeMap:
 
 class Event(ABC):
     def __init__(self, trajectory: Trajectory):
+        """Initialize an event evaluator for a trajectory."""
         self.trajectory = trajectory
         self._time_map = self.compute()
 
     @property
     def timeline(self) -> TimeInterval:
+        """Sampling timeline used to compute this event."""
         return self.trajectory.interval
     
     @abstractmethod
@@ -61,11 +71,18 @@ class Event(ABC):
         ...
 
 class VisibleFromEarthLocationEvent(Event):
+    """Visibility event of a trajectory from a fixed Earth observer location."""
+
     def __init__(self, 
         trajectory: Trajectory, 
         gps_observer: GPS,
         altitude_angle_min: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)] = 0 * Quantity.radian
     ):
+        """Build a visibility event from observer GPS coordinates.
+
+        ``altitude_angle_min`` is kept for API compatibility and future
+        visibility thresholds.
+        """
         self.gps_observer = gps_observer
         self.altitude_angle_min = altitude_angle_min
 
@@ -78,6 +95,7 @@ class VisibleFromEarthLocationEvent(Event):
         super().__init__(trajectory)
     
     def compute(self) -> TimeMap:
+        """Compute per-step visibility booleans for the underlying trajectory."""
         local_frame = self.gps_observer.earth_local_frame
         local_pos = self.trajectory.trajectory_pos(local_frame)
     
@@ -90,6 +108,7 @@ class VisibleFromEarthLocationEvent(Event):
 
     @property
     def visible_intervals(self) -> list[TimeInterval]:
+        """Contiguous intervals where the object is visible from the observer."""
         return _truth_array_to_time_intervals(
             self._time_map.get_values("visible"),
             self.timeline
@@ -97,6 +116,7 @@ class VisibleFromEarthLocationEvent(Event):
     
     @property
     def not_visible_intervals(self) -> list[TimeInterval]:
+        """Contiguous intervals where the object is below the local horizon."""
         return _truth_array_to_time_intervals(
             ~self._time_map.get_values("visible"),
             self.timeline

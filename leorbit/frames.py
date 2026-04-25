@@ -24,7 +24,10 @@ FrameTransformFactory = Callable[[Timestamp | TimeInterval], Transform]
 
 @lru_cache(4096)
 def itrf2gcrf(epoch: Timestamp | TimeInterval) -> Transform:
-    """NOTE: This rotation can transform any position or velocity"""
+    """Build the Earth rotation transform from ITRF to GCRF at ``epoch``.
+
+    The returned transform applies equally to position and velocity vectors.
+    """
 
     unixepoch: npt.NDArray[np.float64]
     if isinstance(epoch, Timestamp):
@@ -90,6 +93,8 @@ def absolute_frame_transform_factory(from_frame: AbsoluteFrame, to_frame: Absolu
 ### RELATIVE FRAMES
 
 class RelativeFrame:
+    """Frame defined by a transform relative to an absolute reference frame."""
+
     transform: Transform
     """The transformation that takes a vector expressed in the `reference_frame` and returns the same vector expressed in this `RelativeFrame`"""
 
@@ -97,7 +102,7 @@ class RelativeFrame:
     """The absolute frame to which this frame is relative"""
 
     def __init__(self, reference_frame: AbsoluteFrame, transform: Transform):
-        """A frame relative to a reference frame. """
+        """Create a frame expressed from ``reference_frame`` via ``transform``."""
         self.reference_frame = reference_frame
         self.transform = transform
 
@@ -159,6 +164,7 @@ class EarthLocalFrame(RelativeFrame):
     transform: Transform
 
     def __init__(self, location: "Coordinates"):
+        """Create a local topocentric frame centered at ``location``."""
         itrf = location.get_pos(AbsoluteFrame.ITRF)
 
         z = itrf.vector3.normalized()
@@ -205,5 +211,6 @@ class EarthLocalFrame(RelativeFrame):
         self.location = location
     
     def __repr__(self) -> str:
+        """Return a compact textual representation of the local frame location."""
         gps = self.location.gps()
         return f"<EarthLocalFrame at GPS location {gps.dms}>"

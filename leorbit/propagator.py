@@ -15,6 +15,7 @@ class Propagator(ABC):
     """Algorithm to propagate given orbital elements at given time"""
     
     def __init__(self, elements: OrbitalElements):
+        """Store orbital elements used by this propagator implementation."""
         self.elements = elements
     
     @overload
@@ -41,6 +42,7 @@ class NoPropagator(Propagator):
         ...
     
     def propagate(self, epoch: TimeInterval | Timestamp) -> Trajectory | Coordinates:
+        """Propagate by analytical Keplerian conversion without perturbations."""
         els = self.elements
 
         if isinstance(epoch, Timestamp):
@@ -88,6 +90,7 @@ class SGP4(Propagator):
         ...
     
     def propagate(self, epoch: TimeInterval | Timestamp) -> Trajectory | Coordinates:
+        """Propagate state using the SGP4 numerical model."""
         tsince: npt.NDArray[np.float64]
 
         if isinstance(epoch, Timestamp):

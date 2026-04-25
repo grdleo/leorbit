@@ -206,6 +206,7 @@ class Timestamp:
 class TimeInterval:
     """A time interval between two `Timestamp` objects. """
     def __init__(self, start: Timestamp, stop: Timestamp, dt=(1 * Quantity.second)):
+        """Create a discretized interval from ``start`` to ``stop`` with step ``dt``."""
         dt_seconds = Timestamp._duration_seconds(dt)
         dt = dt_seconds * Quantity.second
 
@@ -280,6 +281,7 @@ class TimeInterval:
         raise TypeError()
     
     def intersects(self, t: Timestamp | Self) -> bool:
+        """Return whether ``t`` overlaps this interval."""
         if isinstance(t, Timestamp):
             return (self.start <= t <= self.stop)
         
@@ -333,6 +335,7 @@ class TimeInterval:
         return self.start == self.stop + MIN_DURATION
     
     def to_time_stamps(self) -> Tensor:
+        """Return all discretized timestamps as a time-dimension tensor."""
         return Tensor(self.to_unixepoch(), Time)
     
     @staticmethod

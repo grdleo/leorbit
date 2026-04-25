@@ -12,12 +12,16 @@ from leorbit.utils import from_mil, semi_major_axis_earth_to_mean_motion
 
 
 class SkyObject(ABC):
+    """Abstract object that can provide coordinates and trajectories."""
+
     @abstractmethod
     def coordinates(self, at: Timestamp) -> Coordinates:
+        """Return object coordinates at instant ``at``."""
         ...
     
     @abstractmethod
     def trajectory(self, during: TimeInterval) -> Trajectory:
+        """Return object trajectory sampled over interval ``during``."""
         ...
 
 class Satellite(SkyObject):
@@ -27,13 +31,16 @@ class Satellite(SkyObject):
         orbital_elements: OrbitalElements, 
         propagator: type[Propagator] = NoPropagator
     ):
+        """Create a satellite from orbital elements and a propagation strategy."""
         self.name = name
         self.propagator = propagator(orbital_elements)
     
     def coordinates(self, at: Timestamp) -> Coordinates:
+        """Propagate and return coordinates at instant ``at``."""
         return self.propagator.propagate(at)
     
     def trajectory(self, during: TimeInterval) -> Trajectory:
+        """Propagate and return trajectory over ``during``."""
         return self.propagator.propagate(during)
     
 class Body(SkyObject, ABC):
@@ -48,6 +55,7 @@ class Body(SkyObject, ABC):
         radius: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)], 
         mass: Annotated[Tensor, TensorBound(dimension=Mass, kind=TensorKind.SCALAR)]
     ):
+        """Create a celestial body with physical radius and mass."""
         self.name = name
         self.body_radius = radius
         self.body_mass = mass
@@ -63,6 +71,7 @@ class Body(SkyObject, ABC):
         return propagator.propagate(during)
 
     def earth_osculating_orbit(self, epoch: Timestamp) -> OrbitalElements:
+        """Build Earth-centered osculating elements at ``epoch`` from body models."""
         return OrbitalElements(
             epoch,
             self.eccentricity(epoch),
