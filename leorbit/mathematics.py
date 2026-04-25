@@ -583,8 +583,8 @@ class TensorAsScalar(Tensor):
         except AttributeError:
             raise ValueError("Tensor data is not a single scalar value.")
         
-    def values(self, units: Tensor | str | float | None = None) -> list[float]:
-        return self.raw_data_array(units).tolist()
+    def values(self, units: Tensor | str | float | None = None) -> npt.NDArray[np.float64]:
+        return self.raw_data_array(units)
     
 class TensorAsVector3(Tensor):
     def __init__(self, data: NumpyFloatArray | RealNumber, dimension: type[Dim] | None = None):
