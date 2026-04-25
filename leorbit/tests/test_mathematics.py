@@ -199,9 +199,6 @@ def test_tensor_check_and_secure():
     with pytest.raises(ValueError):
         d.secure(dimension=Angle)
 
-    with pytest.raises(ValueError):
-        d.check()
-
 
 def test_ensure_tensor_and_dimension_guard():
     from_float = ensure_tensor(3.5)

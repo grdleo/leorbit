@@ -374,7 +374,7 @@ class Tensor:
     ) -> bool:
         """Check if the dimension of this tensor matches the given one."""
         if (dimension == kind == size == None):
-            raise ValueError("Nothing to check!")
+            return True
         
         return (
             (self.phy_dimension == dimension if dimension is not None else True)
@@ -766,6 +766,13 @@ class TensorBound:
         if self.dimension is None and self.kind is None and self.size is None:
             return True
         return tensor.check(
+            dimension=self.dimension,
+            kind=self.kind,
+            size=self.size
+        )
+    
+    def secure(self, tensor: Tensor) -> Tensor:
+        return tensor.secure(
             dimension=self.dimension,
             kind=self.kind,
             size=self.size

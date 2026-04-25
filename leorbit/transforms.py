@@ -1,182 +1,207 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Self, TypeVar, cast, overload
+from typing import Self, cast
 
-from leorbit.mathematics import Angle, Dim, Dimless, Matrix33, Scalar, Tensor_M33, Tensor_V3, Vector3, Vector3Array, cos, sin
+from leorbit.mathematics import Angle, Dimless, Quantity, Tensor, TensorBound, TensorKind, matrix33, cos, scalar, sin
 
 
-T1 = TypeVar("T1")
-T2 = TypeVar("T2")
-SomeDim = TypeVar("SomeDim", bound=Dim)
-
-class Transform(Generic[T1, T2], ABC):
+class Transform(ABC):
     """Abstract reversible transform between two tensor-like types."""
 
     @abstractmethod
-    def do(self, tensor: T1) -> T2: ...
+    def _do(self, tensor: Tensor) -> Tensor: ...
+
+    def do(self, tensor: Tensor) -> Tensor:
+        output = self._do(
+            self._input_bound.secure(tensor)
+        )
+
+        return self._output_bound.secure(output)
 
     @abstractmethod
-    def undo(self, tensor: T2) -> T1: ...
+    def _undo(self, tensor: Tensor) -> Tensor: ...
+
+    def undo(self, tensor: Tensor) -> Tensor:
+        output = self._undo(
+            self._output_bound.secure(tensor)
+        )
+
+        return self._input_bound.secure(output)
 
     @abstractmethod
     def copy(self) -> Self: ...
 
-    def reverse(self) -> Transform[T2, T1]:
+    @property
+    @abstractmethod
+    def _input_bound(self) -> TensorBound: ...
+
+    @property
+    @abstractmethod
+    def _output_bound(self) -> TensorBound: ...
+
+    def reverse(self) -> Transform:
         """Return a transform with ``do`` and ``undo`` swapped."""
         t = self.copy()
 
         do = t.do
         undo = t.undo
 
-        tt = cast(Transform[T2, T1], t)
+        tt = cast(Transform, t)
 
         tt.do = undo  # type: ignore
         tt.undo = do  # type: ignore
 
         return tt
-    
-class TransformIdentify(Generic[T1], Transform[T1, T1]):
+
+
+class TransformIdentify(Transform):
     """Identity transform that leaves values unchanged."""
 
-    def do(self, tensor: T1) -> T1:
+    @property
+    def _input_bound(self) -> TensorBound:
+        return TensorBound()
+
+    @property
+    def _output_bound(self) -> TensorBound:
+        return TensorBound()
+
+    def _do(self, tensor: Tensor) -> Tensor:
         """Return the input value unchanged."""
         return tensor
-    
-    def undo(self, tensor: T1) -> T1:
+
+    def _undo(self, tensor: Tensor) -> Tensor:
         """Return the input value unchanged."""
         return tensor
-    
+
     def copy(self) -> Self:
         """Return a new identity transform instance."""
-        t = TransformIdentify[T1]()
+        t = TransformIdentify()
         return cast(Self, t)
-    
-class TransformVector3Linear(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Tensor_V3[SomeDim]]):
+
+
+class TransformVector3Linear(Transform):
     """Linear transform for vectors using a dimensionless 3×3 matrix."""
 
-    def __init__(self, matrix: Tensor_M33[Dimless]):
+    def __init__(self, matrix: Tensor):
         """Initialize with the transformation matrix."""
+        matrix.secure(dimension=Dimless, kind=TensorKind.MATRIX33)
         self.matrix = matrix
 
-    @overload
-    def do(self, tensor: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
+    @property
+    def _input_bound(self) -> TensorBound:
+        return TensorBound(kind=TensorKind.VECTOR3)
 
-    @overload
-    def do(self, tensor: Vector3Array[SomeDim]) -> Vector3Array[SomeDim]: ...
+    @property
+    def _output_bound(self) -> TensorBound:
+        return TensorBound(kind=TensorKind.VECTOR3)
 
-    @overload
-    def do(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]: ...
-    
-    def do(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
+    def _do(self, tensor: Tensor) -> Tensor:
         """Apply the linear transformation."""
-        return self.matrix @ tensor
-    
-    @overload
-    def undo(self, tensor: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
+        return self.matrix.matrix33 @ tensor.vector3
 
-    @overload
-    def undo(self, tensor: Vector3Array[SomeDim]) -> Vector3Array[SomeDim]: ...
-
-    @overload
-    def undo(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]: ...
-    
-    def undo(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
+    def _undo(self, tensor: Tensor) -> Tensor:
         """Apply the inverse linear transformation."""
-        return self.matrix.inverse() @ tensor
-    
+        return self.matrix.matrix33.inverse().matrix33 @ tensor.vector3
+
     def copy(self) -> Self:
         """Return a deep copy of this transform."""
-        t = TransformVector3Linear[SomeDim](
+        t = TransformVector3Linear(
             matrix=self.matrix.copy()
         )
         return cast(Self, t)
 
-class TransformVector3Affine(Generic[SomeDim], Transform[Tensor_V3[SomeDim], Tensor_V3[SomeDim]]):
+
+class TransformVector3Affine(Transform):
     """Affine transform combining linear map and translation."""
 
-    def __init__(self, matrix: Tensor_M33[Dimless], translation: Tensor_V3[SomeDim]):
+    def __init__(self, matrix: Tensor, translation: Tensor):
         """Initialize with matrix and translation components."""
+        matrix.secure(dimension=Dimless, kind=TensorKind.MATRIX33)
+        translation.secure(kind=TensorKind.VECTOR3)
         self.matrix = matrix
         self.translation = translation
 
-    @overload
-    def do(self, tensor: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
+    @property
+    def _input_bound(self) -> TensorBound:
+        return TensorBound(kind=TensorKind.VECTOR3)
 
-    @overload
-    def do(self, tensor: Vector3Array[SomeDim]) -> Vector3Array[SomeDim]: ...
+    @property
+    def _output_bound(self) -> TensorBound:
+        return TensorBound(kind=TensorKind.VECTOR3)
 
-    @overload
-    def do(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]: ...
-    
-    def do(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
+    def _do(self, tensor: Tensor) -> Tensor:
         """Apply affine transform ``M @ v + t``."""
-        return self.matrix @ tensor + self.translation
-    
-    @overload
-    def undo(self, tensor: Vector3[SomeDim]) -> Vector3[SomeDim]: ...
+        return self.matrix.matrix33 @ tensor.vector3 + self.translation
 
-    @overload
-    def undo(self, tensor: Vector3Array[SomeDim]) -> Vector3Array[SomeDim]: ...
-
-    @overload
-    def undo(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]: ...
-    
-    def undo(self, tensor: Tensor_V3[SomeDim]) -> Tensor_V3[SomeDim]:
+    def _undo(self, tensor: Tensor) -> Tensor:
         """Apply inverse affine transform ``M⁻¹ @ (v - t)``."""
-        return self.matrix.inverse() @ (tensor - self.translation)
-    
+        return self.matrix.matrix33.inverse().matrix33 @ (tensor - self.translation).vector3
+
     def copy(self) -> Self:
         """Return a deep copy of this transform."""
-        t = TransformVector3Affine[SomeDim](
-            matrix=self.matrix.copy(), 
+        t = TransformVector3Affine(
+            matrix=self.matrix.copy(),
             translation=self.translation.copy()
         )
         return cast(Self, t)
 
 
-class TransformVector3RotationZ(TransformVector3Linear[SomeDim], Generic[SomeDim]):
+class TransformVector3RotationZ(TransformVector3Linear):
     """Rotation around the Z axis by a given angle."""
 
-    def __init__(self, angle: Scalar[Angle]):
-        c = cast(Scalar[Dimless], cos(angle))
-        s = cast(Scalar[Dimless], sin(angle))
-        ns = cast(Scalar[Dimless], -s)
-        z = Scalar[Dimless](0)
-        o = Scalar[Dimless](1)
+    def __init__(self, angle: Tensor):
+        angle.secure(dimension=Angle, kind=TensorKind.SCALAR)
+        c = cos(angle).scalar.value()
+        s = sin(angle).scalar.value()
+
         super().__init__(
-            Matrix33[Dimless].from_elements(
-                c, ns, z,
-                s, c, z,
-                z, z, o,
+            matrix33(
+                c, -s, 0,
+                s, c, 0,
+                0, 0, 1,
             )
         )
+
         self.angle = angle
 
     def copy(self) -> Self:
-        t = TransformVector3RotationZ[SomeDim](self.angle.copy())
+        t = TransformVector3RotationZ(self.angle.copy())
         return cast(Self, t)
-    
-class TransformChain(Generic[T1, T2], Transform[T1, T2]):
-    def __init__(self, *transforms: Transform[Any, Any]):
+
+
+class TransformChain(Transform):
+    def __init__(self, *transforms: Transform):
         """Create a composite transform executed in the given order."""
         self.transforms = list(transforms)
 
-    def do(self, tensor: T1) -> T2:
+    @property
+    def _input_bound(self) -> TensorBound:
+        if not self.transforms:
+            return TensorBound()
+        return self.transforms[0]._input_bound
+
+    @property
+    def _output_bound(self) -> TensorBound:
+        if not self.transforms:
+            return TensorBound()
+        return self.transforms[-1]._output_bound
+
+    def _do(self, tensor: Tensor) -> Tensor:
         """Apply all transforms in forward order."""
-        result: Any = tensor
+        result = tensor
         for t in self.transforms:
             result = t.do(result)
-        return cast(T2, result)
+        return result
 
-    def undo(self, tensor: T2) -> T1:
+    def _undo(self, tensor: Tensor) -> Tensor:
         """Apply all inverse transforms in reverse order."""
-        result: Any = tensor
+        result = tensor
         for t in reversed(self.transforms):
             result = t.undo(result)
-        return cast(T1, result)
-    
+        return result
+
     def copy(self) -> Self:
         """Return a deep copy of the transform chain."""
-        t = TransformChain[T1, T2](
+        t = TransformChain(
             *(t.copy() for t in self.transforms)
         )
 
