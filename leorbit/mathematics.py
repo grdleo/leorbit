@@ -779,8 +779,17 @@ class TensorBound:
         )
 
 def tensor_check(f):
-    """Wrapper that checks tensor inputs and outputs of a function based on type annotations."""
+    """Wrapper that checks function inputs/outputs based on type annotations.
+
+    Supported runtime checks:
+    - ``Annotated[Tensor, TensorBound(...)]``
+    - ``tuple[...]`` containing supported element annotations
+    - Plain runtime types via ``isinstance``
+
+    String-literal annotations are intentionally ignored.
+    """
     signature = inspect.signature(f)
+    raw_annotations = getattr(f, "__annotations__", {})
     hints = get_type_hints(f, include_extras=True)
 
     def _bound_from_annotation(name: str, annotation: Any, where: str) -> TensorBound:
@@ -803,20 +812,61 @@ def tensor_check(f):
 
         return bound
 
-    parameter_bounds: dict[str, TensorBound] = {}
+    def _check_against_annotation(value: Any, annotation: Any, where: str) -> None:
+        origin = get_origin(annotation)
+
+        if origin is Annotated:
+            bound = _bound_from_annotation(where, annotation, where)
+            if not isinstance(value, Tensor):
+                raise TypeError(f"{where} must be a Tensor.")
+            if not bound.check(value):
+                raise ValueError(f"{where} does not satisfy declared TensorBound.")
+            return
+
+        if origin is tuple:
+            if not isinstance(value, tuple):
+                raise TypeError(f"{where} must be a tuple.")
+
+            tuple_annotations = get_args(annotation)
+
+            if len(tuple_annotations) == 2 and tuple_annotations[1] is Ellipsis:
+                element_annotation = tuple_annotations[0]
+                for element in value:
+                    _check_against_annotation(element, element_annotation, f"{where} tuple element")
+                return
+
+            if len(value) != len(tuple_annotations):
+                raise TypeError(f"{where} tuple arity does not match its annotation.")
+
+            for element, element_annotation in zip(value, tuple_annotations):
+                _check_against_annotation(element, element_annotation, f"{where} tuple element")
+            return
+
+        if annotation is Any:
+            return
+
+        if isinstance(annotation, type):
+            if not isinstance(value, annotation):
+                raise TypeError(f"{where} must be of type {annotation.__name__}.")
+            return
+
+        # Unsupported typing forms are ignored at runtime.
+        return
+
+    parameter_annotations: dict[str, Any] = {}
     for name in signature.parameters:
+        raw_annotation = raw_annotations.get(name, None)
+        if isinstance(raw_annotation, str):
+            continue
+
         annotation = hints.get(name, None)
         if annotation is None:
             continue
 
-        if get_origin(annotation) is not Annotated:
-            continue
+        parameter_annotations[name] = annotation
 
-        parameter_bounds[name] = _bound_from_annotation(name, annotation, "Parameter")
-
-    if "return" not in hints:
-        raise TypeError("Return annotation must be Annotated[Tensor, TensorBound(...)].")
-    return_bound = _bound_from_annotation("return", hints["return"], "Return annotation")
+    raw_return_annotation = raw_annotations.get("return", None)
+    return_annotation = None if isinstance(raw_return_annotation, str) else hints.get("return", None)
 
     @wraps(f)
     def wrapper(*args, **kwargs):
@@ -824,9 +874,10 @@ def tensor_check(f):
         bound_arguments.apply_defaults()
 
         for name, value in bound_arguments.arguments.items():
-            bound = parameter_bounds.get(name)
-            if bound is None:
+            annotation = parameter_annotations.get(name)
+            if annotation is None:
                 continue
+
             parameter = signature.parameters[name]
 
             if parameter.kind is inspect.Parameter.VAR_POSITIONAL:
@@ -837,17 +888,12 @@ def tensor_check(f):
                 values_to_check = (value,)
 
             for checked_value in values_to_check:
-                if not isinstance(checked_value, Tensor):
-                    raise TypeError(f"Argument '{name}' must be a Tensor.")
-                if not bound.check(checked_value):
-                    raise ValueError(f"Argument '{name}' does not satisfy declared TensorBound.")
+                _check_against_annotation(checked_value, annotation, f"Argument '{name}'")
 
         result = f(*args, **kwargs)
 
-        if not isinstance(result, Tensor):
-            raise TypeError("Return value must be a Tensor.")
-        if not return_bound.check(result):
-            raise ValueError("Return value does not satisfy declared TensorBound.")
+        if return_annotation is not None:
+            _check_against_annotation(result, return_annotation, "Return value")
 
         return result
 
