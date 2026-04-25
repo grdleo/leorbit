@@ -1,6 +1,7 @@
 """Special functions with special purposes. Should not be useful for the average user.
 """
 
+from fractions import Fraction
 import numpy as np
 import numpy.typing as npt
 
@@ -64,7 +65,7 @@ def j2000_to_stl0(j2000: npt.NDArray | RealNumber) -> npt.NDArray | RealNumber:
 def mean_motion_to_semi_major_axis_earth(
     mean_motion: Annotated[Tensor, TensorBound(dimension=Angle / Time, kind=TensorKind.SCALAR)]
 ) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]:
-    return (MU_EARTH / mean_motion ** 2) ** (1/3)
+    return (MU_EARTH / mean_motion ** 2) ** Fraction(1, 3)
 
 @tensor_check
 def semi_major_axis_earth_to_mean_motion(
@@ -230,7 +231,7 @@ def elements2orthogonal_gcrf(
     esinE = e * sin(E)
     
     r = a * one_ee / (1 + e * cos(υ))
-    rd = (SQRT_MU_EARTH * a ** .5 * esinE / r).check(dimension=Length / Time)
+    rd = (SQRT_MU_EARTH * a ** .5 * esinE / r).secure(dimension=Length / Time)
     rυd = rd * one_ee / esinE
     
     c_raan, s_raan = cos(Ω), sin(Ω)

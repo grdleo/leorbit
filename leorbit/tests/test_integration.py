@@ -81,22 +81,22 @@ def test_event_visibility_integration():
 
     c0 = iss.coordinates(event_start)
     hor0 = c0.horizontal(local_frame)
-    azi0 = normalize_angle_symmetric(hor0.azimuth).magnitude("deg")
-    alt0 = hor0.altitude.magnitude("deg")
+    azi0 = normalize_angle_symmetric(hor0.azimuth).scalar.value("deg")
+    alt0 = hor0.altitude.scalar.value("deg")
     assert azi0 == pytest.approx(-164, abs=2)
     assert alt0 == pytest.approx(10, abs=1)
 
     c1 = iss.coordinates(event_stop)
     hor1 = c1.horizontal(local_frame)
-    azi1 = normalize_angle_symmetric(hor1.azimuth).magnitude("deg")
-    alt1 = hor1.altitude.magnitude("deg")
+    azi1 = normalize_angle_symmetric(hor1.azimuth).scalar.value("deg")
+    alt1 = hor1.altitude.scalar.value("deg")
     assert azi1 == pytest.approx(81, abs=2)
     assert alt1 == pytest.approx(10, abs=1)
 
     tmid = event_start + 206 * Quantity.second
     cmid = iss.coordinates(tmid)
     hormid = cmid.horizontal(local_frame)
-    azimid = normalize_angle_symmetric(hormid.azimuth).magnitude("deg")
-    altmid = hormid.altitude.magnitude("deg")
+    azimid = normalize_angle_symmetric(hormid.azimuth).scalar.value("deg")
+    altmid = hormid.altitude.scalar.value("deg")
     assert azimid == pytest.approx(120, abs=2)
     assert altmid == pytest.approx(24, abs=1)

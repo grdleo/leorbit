@@ -92,8 +92,8 @@ def test_orbital_scalar_conversions_and_contracts():
     n = u.semi_major_axis_earth_to_mean_motion(sma)
     assert n.check(dimension=Angle / Time, kind=TensorKind.SCALAR)
 
-    with pytest.raises(ValueError):
-        u.mean_motion_to_semi_major_axis_earth(n)
+    sma_rt = u.mean_motion_to_semi_major_axis_earth(n)
+    assert sma_rt.check(dimension=Length, kind=TensorKind.SCALAR)
 
     with pytest.raises((TypeError, ValueError)):
         u.mean_motion_to_semi_major_axis_earth(1.0 * Quantity.meter)

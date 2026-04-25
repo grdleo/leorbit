@@ -1,17 +1,14 @@
-from ast import Or
 from genericpath import getmtime
 import json
 from pathlib import Path
 from tempfile import gettempdir
 import numpy as np
 from pydantic import BaseModel, Field
-from requests import HTTPError, get
+from requests import get
 
 from leorbit.coordinates import OrbitalElements
-from leorbit.mathematics import InvLength, Quantity, Dimless, AngularVelocity, AngularAcceleration, AngularJerk
+from leorbit.mathematics import AngularAcceleration, AngularJerk, AngularVelocity, InvLength, Quantity
 from leorbit.time import Timestamp
-
-from leorbit.utils import convert_quantity_units
 
 class CelestrakDataGP(BaseModel):
     """Orbital elements as returned by Celestrak in JSON format
@@ -50,21 +47,15 @@ class CelestrakDataGP(BaseModel):
     norad_cat_id: int | None = Field(alias="NORAD_CAT_ID", default=None)
 
     def to_orbital_elements(self) -> "OrbitalElements":
-        deg_to_rad = np.pi / 180
-        turn_per_day_to_rad_per_second = 2 * np.pi / (24 * 3600)
-        turn_per_day_sqr_to_rad_per_second_sqr = turn_per_day_to_rad_per_second / (24 * 3600)
-        turn_per_day_cub_to_rad_per_second_cub = turn_per_day_sqr_to_rad_per_second_sqr / (24 * 3600)
-        inv_radiiearth_to_inv_meter = float(1 / Quantity.radii_earth.magnitude("meter"))
-
         e = self.eccentricity * Quantity.dimensionless 
         i = self.inclination * Quantity.degree
         Ω = self.ra_of_asc_node * Quantity.degree
         ω = self.arg_of_pericenter * Quantity.degree
-        n = self.mean_motion * (Quantity.turn / Quantity.day).cast(AngularVelocity)
+        n = self.mean_motion * (Quantity.turn / Quantity.day)
         M = self.mean_anomaly * Quantity.degree
-        n_dot = self.mean_motion_dot * (Quantity.turn / Quantity.day ** 2).cast(AngularAcceleration)
-        n_ddot = self.mean_motion_ddot * (Quantity.turn / Quantity.day ** 3).cast(AngularJerk)
-        bstar = self.bstar * (1 / Quantity.radii_earth).cast(InvLength)
+        n_dot = self.mean_motion_dot * (Quantity.turn / Quantity.day ** 2)
+        n_ddot = self.mean_motion_ddot * (Quantity.turn / Quantity.day ** 3)
+        bstar = self.bstar * (1 / Quantity.radii_earth)
         return OrbitalElements(
             epoch=Timestamp.fromisoformat(self.epoch),
             eccentricity=e,

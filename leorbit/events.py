@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from typing import Any, cast
+from typing import Annotated, Any
 
 import numpy as np
 
-from leorbit.coordinates import GPS
-from leorbit.mathematics import Angle, Dimless, Quantity, Scalar, ScalarArray, acos
-from leorbit.propagator import Trajectory
+from leorbit.coordinates import GPS, Trajectory
+from leorbit.mathematics import Angle, Quantity, Tensor, TensorBound, TensorKind
 from leorbit.time import TimeInterval, Timestamp
 
 import numpy.typing as npt
@@ -65,12 +64,12 @@ class VisibleFromEarthLocationEvent(Event):
     def __init__(self, 
         trajectory: Trajectory, 
         gps_observer: GPS,
-        altitude_angle_min: Scalar[Angle] = 0 * Quantity.radian
+        altitude_angle_min: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)] = 0 * Quantity.radian
     ):
         self.gps_observer = gps_observer
         self.altitude_angle_min = altitude_angle_min
 
-        if gps_observer.altitude < 0 or gps_observer.altitude > 10 * Quantity.kilo_meter:
+        if gps_observer.altitude < 0 * Quantity.meter or gps_observer.altitude > 10 * Quantity.kilo_meter:
             print(
                 f"Warning: Observer GPS altitude {gps_observer.altitude} is out of typical range for Earth's surface! "
                 "This may lead to inaccurate results."
@@ -82,7 +81,7 @@ class VisibleFromEarthLocationEvent(Event):
         local_frame = self.gps_observer.earth_local_frame
         local_pos = self.trajectory.trajectory_pos(local_frame)
     
-        visible = local_pos.z.get_raw_array("meter") > 0 # visible if satellite is above the horizon
+        visible = local_pos.vector3.z.raw_data_array("meter") > 0 # visible if satellite is above the horizon
 
         return TimeMap(
             self.timeline,

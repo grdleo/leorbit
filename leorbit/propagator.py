@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import cast, overload
+from typing import overload
 
 import numpy as np
 import numpy.typing as npt
@@ -7,7 +7,7 @@ import numpy.typing as npt
 from leorbit.algorithms import sgp4
 from leorbit.coordinates import Coordinates, OrbitalElements, Trajectory
 from leorbit.frames import AbsoluteFrame
-from leorbit.mathematics import Angle, Length, Quantity, Scalar, ScalarArray, Time, Vector3, Vector3Array, Velocity, normalize_angle
+from leorbit.mathematics import Angle, Length, Quantity, Tensor, TensorBound, TensorKind, Time, normalize_angle
 from leorbit.time import TimeInterval, Timestamp
 from leorbit.utils import elements2orthogonal_gcrf, mean2true_anomaly
 
@@ -44,7 +44,7 @@ class NoPropagator(Propagator):
         els = self.elements
 
         if isinstance(epoch, Timestamp):
-            shift = (els.mean_motion * epoch.delta(els.epoch)).cast(Angle)
+            shift = (els.mean_motion * epoch.delta(els.epoch)).secure(Angle, TensorKind.SCALAR)
             shifted_M0 = normalize_angle(els.mean_anomaly + shift)
             shifted_nu = mean2true_anomaly(els.eccentricity, shifted_M0)
             pos, vel = elements2orthogonal_gcrf(
@@ -59,7 +59,7 @@ class NoPropagator(Propagator):
         
         elif isinstance(epoch, TimeInterval):
             time_line = epoch.to_time_stamps() - epoch.start.unixepoch * Quantity.second
-            shift = (time_line * els.mean_motion).cast(Angle)
+            shift = (time_line * els.mean_motion).secure(Angle, TensorKind.SCALAR)
             shifted_M0 = normalize_angle(els.mean_anomaly + shift)
             shifted_nu = mean2true_anomaly(els.eccentricity, shifted_M0)
             pos, vel = elements2orthogonal_gcrf(
@@ -91,9 +91,9 @@ class SGP4(Propagator):
         tsince: npt.NDArray[np.float64]
 
         if isinstance(epoch, Timestamp):
-            tsince = epoch.delta(self.elements.epoch).get_raw_array("minute")
+            tsince = np.asarray([epoch.delta(self.elements.epoch).scalar.value("minute")], dtype=np.float64)
         elif isinstance(epoch, TimeInterval):
-            tsince = (epoch.to_time_stamps() - self.elements.epoch.unixepoch * Quantity.second).get_raw_array("minute")
+            tsince = (epoch.to_time_stamps() - self.elements.epoch.unixepoch * Quantity.second).raw_data_array("minute")
         else:
             raise TypeError()
 
@@ -113,29 +113,13 @@ class SGP4(Propagator):
             return Coordinates(
                 epoch,
                 AbsoluteFrame.GCRF,
-                cast(Vector3[Length], Vector3[Length].from_components(
-                    x=x,
-                    y=y,
-                    z=z
-                ).cast(Length)),
-                cast(Vector3[Velocity], Vector3[Velocity].from_components(
-                    x=vx,
-                    y=vy,
-                    z=vz
-                ).cast(Velocity)),
+                Tensor(np.asarray([[x], [y], [z]], dtype=np.float64), Length),
+                Tensor(np.asarray([[vx], [vy], [vz]], dtype=np.float64), Length / Time),
             )
         elif isinstance(epoch, TimeInterval):
             return Trajectory(
                 epoch,
                 AbsoluteFrame.GCRF,
-                cast(Vector3Array[Length], Vector3Array[Length].from_components(
-                    x=output.x,
-                    y=output.y,
-                    z=output.z
-                ).cast(Length)),
-                cast(Vector3Array[Velocity], Vector3Array[Velocity].from_components(
-                    x=output.vx,
-                    y=output.vy,
-                    z=output.vz
-                ).cast(Velocity)),
+                Tensor(np.asarray([output.x, output.y, output.z], dtype=np.float64), Length),
+                Tensor(np.asarray([output.vx, output.vy, output.vz], dtype=np.float64), Length / Time),
             )
