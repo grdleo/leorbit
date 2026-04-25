@@ -6,14 +6,14 @@ from math import ceil
 
 import numpy as np
 
-from leorbit.mathematics import Angle, Number, Quantity, Scalar, ScalarArray, Time
+from leorbit.mathematics import Angle, Quantity, Tensor, TensorKind, Time
 from leorbit.utils import humanize_duration, j2000_to_stl0, unixepoch_to_j2000
 
 MIN_DURATION = 1e-9 * Quantity.second
 
 class Timestamp:
     """Class representing a time instant."""
-    def __init__(self, unixepoch: Number):
+    def __init__(self, unixepoch: float | int):
         """
         Parameters:
         -----------
@@ -22,7 +22,7 @@ class Timestamp:
         self._unixepoch = float(unixepoch)
     
     @property
-    def unixepoch(self) -> Number:
+    def unixepoch(self) -> float:
         """Unixepoch (timestamp) corresponding to this instant. 
         Units: seconds"""
         return self._unixepoch
@@ -91,17 +91,20 @@ class Timestamp:
         return self.copy()
 
     @staticmethod
-    def _duration_seconds(other: Scalar[Time] | timedelta) -> float:
+    def _duration_seconds(other: Tensor | timedelta) -> float:
         if isinstance(other, timedelta):
             return other.total_seconds()
 
-        if not hasattr(other, "magnitude"):
+        if not isinstance(other, Tensor):
             raise TypeError("Unsupported duration type")
 
-        delta_seconds = other.magnitude("second")
+        if not other.check(dimension=Time, kind=TensorKind.SCALAR):
+            raise TypeError("Unsupported duration type")
+
+        delta_seconds = other.scalar.value("second")
         return float(np.asarray(delta_seconds).reshape(-1)[0])
 
-    def __add__(self: "Timestamp", other: Scalar[Time] | timedelta) -> "Timestamp":
+    def __add__(self: "Timestamp", other: Tensor | timedelta) -> "Timestamp":
         try:
             delta_seconds = self._duration_seconds(other)
             return self.__class__(self._unixepoch + delta_seconds)
@@ -110,7 +113,7 @@ class Timestamp:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def __iadd__(self: "Timestamp", other: Scalar[Time] | timedelta) -> "Timestamp":
+    def __iadd__(self: "Timestamp", other: Tensor | timedelta) -> "Timestamp":
         try:
             self._unixepoch += self._duration_seconds(other)
             return self
@@ -119,7 +122,7 @@ class Timestamp:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
         
-    def __sub__(self: "Timestamp", other: Scalar[Time] | timedelta) -> "Timestamp":
+    def __sub__(self: "Timestamp", other: Tensor | timedelta) -> "Timestamp":
         try:
             delta_seconds = self._duration_seconds(other)
             return self.__class__(self._unixepoch - delta_seconds)
@@ -128,7 +131,7 @@ class Timestamp:
                 f"Could not do operation with {other} and {self} since it is not a duration"
             ) from ex
 
-    def __isub__(self: "Timestamp", other: Scalar[Time] | timedelta) -> "Timestamp":
+    def __isub__(self: "Timestamp", other: Tensor | timedelta) -> "Timestamp":
         try:
             self._unixepoch -= self._duration_seconds(other)
             return self
@@ -137,12 +140,12 @@ class Timestamp:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def delta(self: "Timestamp", other: "Timestamp") -> Scalar[Time]:
+    def delta(self: "Timestamp", other: "Timestamp") -> Tensor:
         """Return the duration between two given `Timestamp` objects (i.e `self - other`), as a `pint.Quantity`.
 
         If `other > self`, the returned duration will be negative. 
         """
-        return Scalar[Time](self._unixepoch - other._unixepoch)
+        return (self._unixepoch - other._unixepoch) * Quantity.second
 
     @property
     def isoformat(self: "Timestamp") -> str:
@@ -157,20 +160,20 @@ class Timestamp:
         return date.strftime("%Y-%m-%d at %H:%M:%S")
 
     @property
-    def jd(self: "Timestamp") -> Scalar[Time]:
+    def jd(self: "Timestamp") -> Tensor:
         """Representation of this `Timestamp` object as "Julian day (JD)", aka 
         the number of days since -4712/01/01."""
         days = (self._unixepoch / 86_400 + 2_440_587.5)
         return days * Quantity.day
 
     @property
-    def j2000(self: "Timestamp") -> Scalar[Time]:
+    def j2000(self: "Timestamp") -> Tensor:
         """Representation of this `Timestamp` object as "Julian year (J2000)", aka 
         the number of days since 2000/01/01T12:00:00."""
         return unixepoch_to_j2000(self._unixepoch) * Quantity.day
 
     @property
-    def from_mil(self: "Timestamp") -> Scalar[Time]:
+    def from_mil(self: "Timestamp") -> Tensor:
         """Representation of this `Timestamp` object as a fraction of days since 1 january 2000 00:00.
 
         Taken from: https://stjarnhimlen.se/comp/ppcomp.html#3"""
@@ -186,36 +189,36 @@ class Timestamp:
         full_y = iso[0:4]
         newyear = Timestamp.fromisoformat(f"{full_y}-01-01T00:00:00")
         from_newyear = self.delta(newyear)
-        days = from_newyear.magnitude("second") / 86_400
+        days = from_newyear.scalar.value("second") / 86_400
         return f"{full_y[2:4]}{days:012.8f}"
 
     @property
-    def stl0(self: "Timestamp") -> Scalar[Angle]: # FIXME: better algorithm on the Wiki page
+    def stl0(self: "Timestamp") -> Tensor: # FIXME: better algorithm on the Wiki page
         """The 
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Timestamp`.
         """
-        j2000 = float(self.j2000.magnitude("day"))
-        return j2000_to_stl0(j2000) * Quantity.radian
+        j2000 = float(self.j2000.scalar.value("day"))
+        return float(j2000_to_stl0(j2000)) * Quantity.radian
 
 class TimeInterval:
     """A time interval between two `Timestamp` objects. """
     def __init__(self, start: Timestamp, stop: Timestamp, dt=(1 * Quantity.second)):
         dt_seconds = Timestamp._duration_seconds(dt)
-        dt = Scalar[Time](dt_seconds)
+        dt = dt_seconds * Quantity.second
 
         if not stop > start:
             raise ValueError()
         if start + dt > stop:
             raise ValueError()
-        if dt_seconds < float(MIN_DURATION.magnitude("second")):
+        if dt_seconds < float(MIN_DURATION.scalar.value("second")):
             raise ValueError(f"Time delta cannot be lower than minimal duration {MIN_DURATION}")
         
         self.start = start
         self.stop = stop
         self.dt = dt
         self.duration = stop.delta(start)
-        steps = ceil((self.duration / dt).magnitude("1"))
+        steps = ceil((self.duration / dt).scalar.value())
         self.steps = int(steps)
     
     def __eq__(self, other: object) -> bool:
@@ -237,7 +240,7 @@ class TimeInterval:
         for i in range(self.steps):
             yield self.start + i * self.dt
     
-    def duplicate(self, dt: Scalar[Time] | None = None) -> "TimeInterval":
+    def duplicate(self, dt: Tensor | None = None) -> "TimeInterval":
         """Duplicates this `TimeInterval`.
         A new `dt` can be passed."""
         dt = dt if dt is not None else self.dt
@@ -254,7 +257,7 @@ class TimeInterval:
     def _time2idx(self, time: Timestamp) -> int:
         if not (self.start <= time <= self.stop):
             raise ValueError()
-        i = (time.unixepoch - self.start.unixepoch) / self.dt.magnitude("second")
+        i = (time.unixepoch - self.start.unixepoch) / self.dt.scalar.value("second")
         return round(i)
     
     def snap_to_discretization(self, time: Timestamp) -> Timestamp:
@@ -283,7 +286,7 @@ class TimeInterval:
             or self.start <= t.stop <= self.stop
         )
     
-    def intersection(self: "TimeInterval", timeline: "TimeInterval", dt: Scalar[Time] | None = None) -> Optional["TimeInterval"]:
+    def intersection(self: "TimeInterval", timeline: "TimeInterval", dt: Tensor | None = None) -> Optional["TimeInterval"]:
         """Returns the intersection of current timeline with given timeline"""
         if self.stop <= timeline.start or self.start >= timeline.stop:
             return None
@@ -302,15 +305,15 @@ class TimeInterval:
     
     def progress(self, t: Timestamp) -> float | None:
         """Returns the proportion of given time over the current timeline"""
-        p = float((t.delta(self.start) / self.duration).magnitude("1"))
+        p = float((t.delta(self.start) / self.duration).scalar.value())
         if not (0 <= p <= 1):
             return None
         return p
     
-    def divide(self, nb_segments: int, dt: Scalar[Time] | None = None) -> list["TimeInterval"]:
+    def divide(self, nb_segments: int, dt: Tensor | None = None) -> list["TimeInterval"]:
         """Divides the current TimeInterval in a given number of segments"""
         dt = dt if dt is not None else self.dt
-        dur: Scalar[Time] = self.duration / nb_segments
+        dur = self.duration / nb_segments
         start = self.start
         return [TimeInterval(start + i * dur, start + (i + 1) * dur, dt) for i in range(nb_segments)]
     
@@ -327,8 +330,8 @@ class TimeInterval:
         """Returns `True` if this `TimeInterval` is ponctual (start == stop + MIN_DURATION)"""
         return self.start == self.stop + MIN_DURATION
     
-    def to_time_stamps(self) -> ScalarArray[Time]:
-        return ScalarArray[Time](np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps, dtype=np.float64))
+    def to_time_stamps(self) -> Tensor:
+        return Tensor(np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps, dtype=np.float64), Time)
     
     @staticmethod
     def make_ponctual(time: Timestamp) -> "TimeInterval":

@@ -28,7 +28,7 @@ def test_instance(unix: float, iso: str):
     ),
 )
 def test_shift(unix: float, shift):
-    assert (Timestamp(unix) + shift).unixepoch == pytest.approx(unix + shift.magnitude("second"))
+    assert (Timestamp(unix) + shift).unixepoch == pytest.approx(unix + shift.scalar.value("second"))
 
 
 def test_shift_with_timedelta():
@@ -71,7 +71,7 @@ def test_yearday(inp: str, outp: str):
 )
 def test_stl0(iso: str, stl0_deg: float):
     t = Timestamp.fromisoformat(iso)
-    assert t.stl0.magnitude("deg") == pytest.approx(stl0_deg)
+    assert t.stl0.scalar.value("deg") == pytest.approx(stl0_deg)
 
 
 @pytest.mark.parametrize(
