@@ -1,7 +1,8 @@
 import numpy as np
 import pytest
 
-from leorbit.utils import truth_array_to_indices_intervals
+from leorbit.mathematics import Angle, Length, Quantity, TensorKind, Time, vector3
+import leorbit.utils as u
 
 
 @pytest.mark.parametrize(
@@ -18,7 +19,7 @@ from leorbit.utils import truth_array_to_indices_intervals
     ],
 )
 def test_truth_array_to_indices_intervals_various_patterns(truth_array, expected):
-    assert truth_array_to_indices_intervals(truth_array) == expected
+    assert u.truth_array_to_indices_intervals(truth_array) == expected
 
 
 @pytest.mark.parametrize(
@@ -34,7 +35,7 @@ def test_truth_array_to_indices_intervals_various_patterns(truth_array, expected
     ],
 )
 def test_truth_array_to_indices_intervals_min_size_filtering(truth_array, min_size, expected):
-    assert truth_array_to_indices_intervals(truth_array, min_size_intervals=min_size) == expected
+    assert u.truth_array_to_indices_intervals(truth_array, min_size_intervals=min_size) == expected
 
 
 @pytest.mark.parametrize(
@@ -47,8 +48,8 @@ def test_truth_array_to_indices_intervals_min_size_filtering(truth_array, min_si
     ],
 )
 def test_truth_array_to_indices_intervals_numpy_inputs(arr):
-    got = truth_array_to_indices_intervals(arr, min_size_intervals=2)
-    ref = truth_array_to_indices_intervals(np.asarray(arr, dtype=bool).reshape(-1), min_size_intervals=2)
+    got = u.truth_array_to_indices_intervals(arr, min_size_intervals=2)
+    ref = u.truth_array_to_indices_intervals(np.asarray(arr, dtype=bool).reshape(-1), min_size_intervals=2)
     assert got == ref
 
 
@@ -61,16 +62,67 @@ def test_truth_array_to_indices_intervals_numpy_inputs(arr):
     ],
 )
 def test_truth_array_to_indices_intervals_iterable_inputs(iterable_input, expected):
-    assert truth_array_to_indices_intervals(iterable_input) == expected
+    assert u.truth_array_to_indices_intervals(iterable_input) == expected
 
 
 def test_truth_array_to_indices_intervals_empty_and_invalid_min_size():
-    assert truth_array_to_indices_intervals([]) == []
+    assert u.truth_array_to_indices_intervals([]) == []
 
-    assert truth_array_to_indices_intervals(np.array([], dtype=bool)) == []
-
-    with pytest.raises(ValueError):
-        truth_array_to_indices_intervals([True, False], min_size_intervals=0)
+    assert u.truth_array_to_indices_intervals(np.array([], dtype=bool)) == []
 
     with pytest.raises(ValueError):
-        truth_array_to_indices_intervals([True, False], min_size_intervals=-3)
+        u.truth_array_to_indices_intervals([True, False], min_size_intervals=0)
+
+    with pytest.raises(ValueError):
+        u.truth_array_to_indices_intervals([True, False], min_size_intervals=-3)
+
+
+def test_angle_and_time_helpers():
+    assert u.angle2dms(39.5 * Quantity.degree) == " 039° 30′ 00″"
+
+    out = u.unixepoch_to_j2000(np.array([0.0, 86_400.0]))
+    np.testing.assert_allclose(out, np.array([-10_957.5, -10_956.5]))
+
+    stl0 = u.j2000_to_stl0(0.0)
+    assert np.isfinite(np.asarray(stl0)).all()
+
+
+def test_orbital_scalar_conversions_and_contracts():
+    sma = 7_000_000 * Quantity.meter
+    n = u.semi_major_axis_earth_to_mean_motion(sma)
+    assert n.check(dimension=Angle / Time, kind=TensorKind.SCALAR)
+
+    with pytest.raises(ValueError):
+        u.mean_motion_to_semi_major_axis_earth(n)
+
+    with pytest.raises((TypeError, ValueError)):
+        u.mean_motion_to_semi_major_axis_earth(1.0 * Quantity.meter)
+
+
+def test_anomaly_helpers_and_contracts():
+    e = 0.01 * Quantity.dimensionless
+    m = 0.2 * Quantity.radian
+
+    nu = u.mean2true_anomaly(e, m)
+    assert nu.check(dimension=Angle, kind=TensorKind.SCALAR)
+
+    ecc = u.mean2eccentric_anomaly(e, m)
+    assert ecc.check(dimension=Angle, kind=TensorKind.SCALAR)
+
+    nu2 = u.eccentric2true_anomaly(e, ecc)
+    assert nu2.check(dimension=Angle, kind=TensorKind.SCALAR)
+
+    with pytest.raises((TypeError, ValueError)):
+        u.mean2true_anomaly(vector3(0.01, 0.0, 0.0), m)
+
+
+def test_itrf_to_gps_contract():
+    pos = vector3(6_378_135.0, 0.0, 0.0) * Quantity.meter
+    gps = u.itrf2gps(pos)
+
+    assert gps.latitude.check(dimension=Angle, kind=TensorKind.SCALAR)
+    assert gps.longitude.check(dimension=Angle, kind=TensorKind.SCALAR)
+    assert gps.altitude.check(dimension=Length, kind=TensorKind.SCALAR)
+
+    with pytest.raises((TypeError, ValueError)):
+        u.itrf2gps(vector3(1.0, 0.0, 0.0))

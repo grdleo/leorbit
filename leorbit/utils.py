@@ -1,22 +1,18 @@
 """Special functions with special purposes. Should not be useful for the average user.
 """
 
-from re import A
-
 import numpy as np
 import numpy.typing as npt
 
-from typing import Annotated, Iterable, NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
+from typing import Annotated, Any, Iterable, NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
 
-from fidgetting import tensor_check
-from leorbit.coordinates import AngularVelocity
 from leorbit.transforms import TransformVector3Affine
 
 if TYPE_CHECKING:
     from leorbit.frames import EarthLocalFrame
     import pint
 
-from leorbit.mathematics import Dimless, Length, RealNumber, Angle, Tensor, Quantity, TensorBound, TensorKind, Time, atan2, cos, normalize_angle, sin, tan, vector3
+from leorbit.mathematics import AngularVelocity, Dimless, Length, RealNumber, Angle, Tensor, Quantity, TensorBound, TensorKind, Time, atan2, cos, normalize_angle, sin, tan, vector3, tensor_check
 
 MU_EARTH = 398_600_441_800_000 * (Quantity.meter ** 3 / Quantity.second ** 2)
 """Gravitational parameter for planet Earth (µ🜨) 
@@ -352,7 +348,7 @@ class _TupleHorizontal(NamedTuple):
 @tensor_check
 def itrf2horizontal(
     itrf_pos: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)], 
-    earth_local_frame: "EarthLocalFrame"
+    earth_local_frame: Any
 ) -> _TupleHorizontal:
     t = cast(
         TransformVector3Affine,
