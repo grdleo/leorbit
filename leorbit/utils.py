@@ -61,6 +61,41 @@ def j2000_to_stl0(j2000: npt.NDArray | RealNumber) -> npt.NDArray | RealNumber:
     """
     return ((np.longdouble(18.697374558) + np.longdouble(24.06570982441908) * np.asarray(j2000)) * TWELF_PI) % TWOPI
 
+def jd(
+    unixepoch: int | float | npt.NDArray[np.float64]
+) -> Annotated[Tensor, TensorBound(dimension=Time, kind=TensorKind.SCALAR)]:
+    """Representation of this `Timestamp` object as "Julian day (JD)", aka 
+    the number of days since -4712/01/01."""
+    unixepoch = np.asarray(unixepoch, dtype=np.float64)
+    days = (unixepoch / 86_400 + 2_440_587.5)
+    return Tensor(days) * Quantity.day
+
+def j2000(
+    unixepoch: int | float | npt.NDArray[np.float64]
+) -> Annotated[Tensor, TensorBound(dimension=Time, kind=TensorKind.SCALAR)]:
+    """Representation of this `Timestamp` object as "Julian year (J2000)", aka 
+    the number of days since 2000/01/01T12:00:00."""
+    unixepoch = np.asarray(unixepoch, dtype=np.float64)
+    return Tensor(unixepoch_to_j2000(unixepoch)) * Quantity.day
+
+def from_mil(
+    unixepoch: int | float | npt.NDArray[np.float64]
+) -> Annotated[Tensor, TensorBound(dimension=Time, kind=TensorKind.SCALAR)]:
+    """Representation as a fraction of days since 1 january 2000 00:00.
+
+    Taken from: https://stjarnhimlen.se/comp/ppcomp.html#3"""
+    unixepoch = np.asarray(unixepoch, dtype=np.float64)
+    days = (unixepoch / 86_400 - 10_957.5) - .5
+    return Tensor(days) * Quantity.day
+
+def stl0(
+    unixepoch: int | float | npt.NDArray[np.float64]
+) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
+    """Sidereal time (angle) of latitude 0 at this unixepoch."""
+    j2k = j2000(unixepoch)
+    sidereal = j2000_to_stl0(j2k.raw_data_array("day"))
+    return Tensor(np.asarray(sidereal, dtype=np.float64)) * Quantity.radian
+
 @tensor_check
 def mean_motion_to_semi_major_axis_earth(
     mean_motion: Annotated[Tensor, TensorBound(dimension=Angle / Time, kind=TensorKind.SCALAR)]

@@ -1,13 +1,14 @@
 """Time handling"""
 
 from datetime import datetime, timezone, timedelta
-from typing import Iterable, Self, Iterator, Optional
+from typing import Annotated, Iterable, Self, Iterator, Optional
 from math import ceil
 
 import numpy as np
+import numpy.typing as npt
 
-from leorbit.mathematics import Angle, Quantity, Tensor, TensorKind, Time
-from leorbit.utils import humanize_duration, j2000_to_stl0, unixepoch_to_j2000
+from leorbit.mathematics import Angle, Quantity, Tensor, TensorBound, TensorKind, Time
+from leorbit.utils import from_mil, humanize_duration, j2000, j2000_to_stl0, jd, stl0, unixepoch_to_j2000
 
 MIN_DURATION = 1e-9 * Quantity.second
 
@@ -163,22 +164,20 @@ class Timestamp:
     def jd(self: "Timestamp") -> Tensor:
         """Representation of this `Timestamp` object as "Julian day (JD)", aka 
         the number of days since -4712/01/01."""
-        days = (self._unixepoch / 86_400 + 2_440_587.5)
-        return days * Quantity.day
+        return jd(self._unixepoch)
 
     @property
     def j2000(self: "Timestamp") -> Tensor:
         """Representation of this `Timestamp` object as "Julian year (J2000)", aka 
         the number of days since 2000/01/01T12:00:00."""
-        return unixepoch_to_j2000(self._unixepoch) * Quantity.day
+        return j2000(self._unixepoch)
 
     @property
     def from_mil(self: "Timestamp") -> Tensor:
         """Representation of this `Timestamp` object as a fraction of days since 1 january 2000 00:00.
 
         Taken from: https://stjarnhimlen.se/comp/ppcomp.html#3"""
-        days = (self._unixepoch / 86_400 - 10_957.5) - .5
-        return days * Quantity.day
+        return from_mil(self._unixepoch)
 
     @property
     def year_day(self: "Timestamp") -> str:
@@ -198,8 +197,11 @@ class Timestamp:
         [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Timestamp`.
         """
-        j2000 = float(self.j2000.scalar.value("day"))
-        return float(j2000_to_stl0(j2000)) * Quantity.radian
+        return stl0(self._unixepoch)
+    
+    def to_unixepoch(self) -> npt.NDArray[np.float64]:
+        """Representation of this `Timestamp` object as a numpy array of unixepoch (timestamp) in seconds."""
+        return np.asarray(self._unixepoch, dtype=np.float64)
 
 class TimeInterval:
     """A time interval between two `Timestamp` objects. """
@@ -331,12 +333,16 @@ class TimeInterval:
         return self.start == self.stop + MIN_DURATION
     
     def to_time_stamps(self) -> Tensor:
-        return Tensor(np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps, dtype=np.float64), Time)
+        return Tensor(self.to_unixepoch(), Time)
     
     @staticmethod
     def make_ponctual(time: Timestamp) -> "TimeInterval":
         """Creates a ponctual `TimeInterval` at given `Timestamp`"""
         return TimeInterval(time, time + MIN_DURATION, MIN_DURATION)
+    
+    def to_unixepoch(self) -> npt.NDArray[np.float64]:
+        """Representation of this `TimeInterval` object as a numpy array of unixepoch (timestamp) in seconds."""
+        return np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps, dtype=np.float64)
 
 Timeline = TimeInterval
     

@@ -87,6 +87,72 @@ def test_angle_and_time_helpers():
     assert np.isfinite(np.asarray(stl0)).all()
 
 
+@pytest.mark.parametrize(
+    "unixepoch",
+    [
+        0.0,
+        86_400.0,
+        np.array([0.0, 86_400.0, 172_800.0], dtype=np.float64),
+    ],
+)
+def test_jd_parametrized(unixepoch):
+    got = u.jd(unixepoch)
+    expected = np.asarray(unixepoch, dtype=np.float64) / 86_400 + 2_440_587.5
+
+    assert got.check(dimension=Time, kind=TensorKind.SCALAR)
+    np.testing.assert_allclose(got.raw_data_array("day"), expected)
+
+
+@pytest.mark.parametrize(
+    "unixepoch",
+    [
+        0.0,
+        86_400.0,
+        np.array([0.0, 86_400.0, 172_800.0], dtype=np.float64),
+    ],
+)
+def test_j2000_parametrized(unixepoch):
+    got = u.j2000(unixepoch)
+    expected = np.asarray(unixepoch, dtype=np.float64) / 86_400 - 10_957.5
+
+    assert got.check(dimension=Time, kind=TensorKind.SCALAR)
+    np.testing.assert_allclose(got.raw_data_array("day"), expected)
+
+
+@pytest.mark.parametrize(
+    "unixepoch",
+    [
+        0.0,
+        86_400.0,
+        np.array([0.0, 86_400.0, 172_800.0], dtype=np.float64),
+    ],
+)
+def test_from_mil_parametrized(unixepoch):
+    got = u.from_mil(unixepoch)
+    expected = np.asarray(unixepoch, dtype=np.float64) / 86_400 - 10_958.0
+
+    assert got.check(dimension=Time, kind=TensorKind.SCALAR)
+    np.testing.assert_allclose(got.raw_data_array("day"), expected)
+
+
+@pytest.mark.parametrize(
+    "unixepoch",
+    [
+        0.0,
+        86_400.0,
+        np.array([0.0, 86_400.0, 172_800.0], dtype=np.float64),
+    ],
+)
+def test_stl0_parametrized(unixepoch):
+    got = u.stl0(unixepoch)
+    j2k = np.asarray(unixepoch, dtype=np.float64) / 86_400 - 10_957.5
+    expected = np.asarray(u.j2000_to_stl0(j2k), dtype=np.float64)
+
+    assert got.check(dimension=Angle, kind=TensorKind.SCALAR)
+    assert np.isfinite(got.raw_data_array("radian")).all()
+    np.testing.assert_allclose(got.raw_data_array("radian"), expected)
+
+
 def test_orbital_scalar_conversions_and_contracts():
     sma = 7_000_000 * Quantity.meter
     n = u.semi_major_axis_earth_to_mean_motion(sma)
