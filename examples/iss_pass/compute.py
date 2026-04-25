@@ -25,7 +25,7 @@ OBS_LON_DEG = 5.72
 
 
 def _float_array_deg(tensor) -> np.ndarray:
-    return np.asarray(tensor.magnitude("deg"), dtype=float).reshape(-1)
+    return np.asarray(tensor.raw_data_array("deg"), dtype=float).reshape(-1)
 
 
 def _equatorial_to_horizontal(
@@ -36,7 +36,7 @@ def _equatorial_to_horizontal(
 ) -> tuple[np.ndarray, np.ndarray]:
     lat = np.deg2rad(latitude_deg)
     lon = np.deg2rad(longitude_deg)
-    stl0 = float(np.asarray(epoch.stl0.magnitude("rad")).reshape(-1)[0])
+    stl0 = epoch.stl0.scalar.value("radian")
     local_sidereal = stl0 + lon
 
     x = eq_vectors[0, :]
@@ -238,8 +238,8 @@ def main() -> None:
     trajectory = satellite.trajectory(timeline)
 
     observer = Coordinates.from_gps(
-        longitude=OBS_LON_DEG * Quantity.deg,
-        latitude=OBS_LAT_DEG * Quantity.deg,
+        longitude=OBS_LON_DEG * Quantity.degree,
+        latitude=OBS_LAT_DEG * Quantity.degree,
         altitude=0 * Quantity.meter,
         epoch=timeline.start,
     )
