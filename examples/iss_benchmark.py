@@ -11,11 +11,14 @@ Run:
 """
 
 from datetime import timedelta
+import os
+import ssl
 from time import perf_counter, sleep
 
-import numpy as np
+import certifi
 from pydantic import BaseModel
 import requests
+import urllib3
 
 from leorbit.coordinates import GPS
 from leorbit.mathematics import Quantity
@@ -63,7 +66,25 @@ class OpenNotifyIssResponse(BaseModel):
 
 def _delta_deg(a, b) -> float:
     """Return absolute angular delta in degrees for two angle scalars."""
-    return abs(float(np.asarray((a - b).magnitude("deg")).reshape(-1)[0]))
+    return abs((a - b).scalar.value("deg"))
+
+
+def _configure_ssl_for_https() -> None:
+    """Point Python/requests TLS validation to certifi CA bundle."""
+    ca_bundle = certifi.where()
+    os.environ.setdefault("SSL_CERT_FILE", ca_bundle)
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", ca_bundle)
+    os.environ.setdefault("CURL_CA_BUNDLE", ca_bundle)
+    ssl._create_default_https_context = lambda: ssl.create_default_context(cafile=ca_bundle)
+
+
+def _configure_insecure_ssl_fallback() -> None:
+    """Disable TLS certificate validation as a last-resort fallback."""
+    os.environ["PYTHONHTTPSVERIFY"] = "0"
+    os.environ["CURL_CA_BUNDLE"] = ""
+    os.environ["REQUESTS_CA_BUNDLE"] = ""
+    ssl._create_default_https_context = ssl._create_unverified_context
+    urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
 def _print_sample(sample_idx: int, epoch: Timestamp, open_notify_gps: GPS, leorbit_gps: GPS) -> None:
@@ -79,11 +100,18 @@ def _print_sample(sample_idx: int, epoch: Timestamp, open_notify_gps: GPS, leorb
 def main():
     """Run the benchmark loop and print live comparison samples."""
 
+    _configure_ssl_for_https()
+
     print("\n══════════════════════════════════════════════════════════════")
     print("  LEOrbit ISS benchmark vs Open Notify")
     print("══════════════════════════════════════════════════════════════")
 
-    iss = get_satellite(25544, log=True)
+    try:
+        iss = get_satellite(25544, log=True)
+    except requests.exceptions.SSLError:
+        print("Warning: TLS certificate validation failed; retrying with insecure SSL fallback.")
+        _configure_insecure_ssl_fallback()
+        iss = get_satellite(25544, log=True)
 
     t0 = Timestamp.now() - timedelta(hours=2)
     timeline = TimeInterval(

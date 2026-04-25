@@ -611,21 +611,21 @@ class TensorAsVector3(Tensor):
     @property
     def x(self) -> Annotated[Tensor, TensorBound(kind=TensorKind.SCALAR)]:
         return Tensor(
-            np.asarray(self._data[0]).reshape((1,)), 
+            np.asarray(self._data[0]).reshape(-1), 
             self.phy_dimension
         )
 
     @property
     def y(self) -> Annotated[Tensor, TensorBound(kind=TensorKind.SCALAR)]:
         return Tensor(
-            np.asarray(self._data[1]).reshape((1,)), 
+            np.asarray(self._data[1]).reshape(-1), 
             self.phy_dimension
         )
 
     @property
     def z(self) -> Annotated[Tensor, TensorBound(kind=TensorKind.SCALAR)]:
         return Tensor(
-            np.asarray(self._data[2]).reshape((1,)), 
+            np.asarray(self._data[2]).reshape(-1), 
             self.phy_dimension
         )
 

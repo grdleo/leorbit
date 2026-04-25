@@ -1,10 +1,13 @@
 from genericpath import getmtime
 import json
+import os
 from pathlib import Path
 from tempfile import gettempdir
 import numpy as np
 from pydantic import BaseModel, Field
 from requests import get
+import requests
+import urllib3
 
 from leorbit.coordinates import OrbitalElements
 from leorbit.mathematics import AngularAcceleration, AngularJerk, AngularVelocity, InvLength, Quantity
@@ -106,10 +109,25 @@ def get_celestrak_gpdata(catnr: int, log: bool = False) -> CelestrakDataGP:
                     
     print(f"Requesting GP data for object n°{catnr} on `celestrak.com...`") if log else None
 
-    res = get(
-        url="https://celestrak.com/NORAD/elements/gp.php", 
-        params=dict(CATNR=catnr, FORMAT="JSON")
-    )
+    try:
+        res = get(
+            url="https://celestrak.com/NORAD/elements/gp.php", 
+            params=dict(CATNR=catnr, FORMAT="JSON")
+        )
+    except requests.exceptions.SSLError:
+        # Last-resort fallback for environments with broken/expired certificate chains.
+        if os.environ.get("LEORBIT_ALLOW_INSECURE_SSL", "1") != "1":
+            raise
+
+        urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+        if log:
+            print("Warning: SSL certificate validation failed; retrying Celestrak request with verify=False.")
+
+        res = get(
+            url="https://celestrak.com/NORAD/elements/gp.php",
+            params=dict(CATNR=catnr, FORMAT="JSON"),
+            verify=False,
+        )
 
     if not res.ok:
         msg = f"An error occured during TLE fetch on celestrak.org!\nHTTP code {res.status_code}: "

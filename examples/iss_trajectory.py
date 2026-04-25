@@ -5,7 +5,6 @@ from typing import cast
 from urllib.error import URLError
 
 import matplotlib.pyplot as plt
-import numpy as np
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import certifi
@@ -14,10 +13,6 @@ from cartopy.mpl.geoaxes import GeoAxes
 from leorbit import get_satellite
 from leorbit.mathematics import Quantity
 from leorbit.time import Timestamp, TimeInterval
-
-
-def _to_deg(angle) -> float:
-    return float(np.asarray(angle.magnitude("deg")).reshape(-1)[0])
 
 
 def _configure_ssl_for_cartopy() -> None:
@@ -46,8 +41,8 @@ def main() -> None:
 
     t0 = perf_counter()
     gps = trajectory.gps()
-    longitudes: list[float] = gps.longitude.get_raw_array("deg").tolist()
-    latitudes: list[float] = gps.latitude.get_raw_array("deg").tolist()
+    longitudes: list[float] = gps.longitude.raw_data_array("deg").tolist()
+    latitudes: list[float] = gps.latitude.raw_data_array("deg").tolist()
     print(f"GPS extraction: 72h @ 5s step in {perf_counter() - t0:.4f}s")
 
     fig = plt.figure(figsize=(12, 6))
