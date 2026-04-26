@@ -3,7 +3,7 @@ from functools import lru_cache
 from typing import TYPE_CHECKING, Callable, cast
 
 from leorbit.mathematics import Dimless, Length, Quantity, Tensor, cos, matrix33, vector3
-from leorbit.transforms import Transform, TransformChain, TransformIdentify, TransformVector3Affine, TransformVector3Linear
+from leorbit.transforms import Transform, TransformChain, TransformIdentity, TransformVector3Affine, TransformVector3Linear
 from leorbit.time import Timestamp, TimeInterval
 
 import numpy as np
@@ -76,7 +76,7 @@ def absolute_frame_transform_factory(from_frame: AbsoluteFrame, to_frame: Absolu
     That function returns a transformation that, applied to a vector `v` (whose coordinates are expressed in `from_frame`), 
     returns the same vector but whose coordinates are expressed in `to_frame`"""
     if from_frame == to_frame:
-        return lambda epoch: TransformIdentify()
+        return lambda epoch: TransformIdentity()
 
     frames = from_frame, to_frame
     factory = ABS_FRAME_TRANSFORMS.get(frames, None)
@@ -115,8 +115,8 @@ def frame_transform_factory(from_frame: Frame, to_frame: Frame) -> FrameTransfor
     then transform to the absolute frame of the target, and then transform to source frame.
     Always works as long as transforms between absolute frames are defined properly"""
 
-    first = TransformIdentify()
-    last = TransformIdentify()
+    first = TransformIdentity()
+    last = TransformIdentity()
 
     abs_frame_from: AbsoluteFrame
     if isinstance(from_frame, AbsoluteFrame):
@@ -138,7 +138,7 @@ def frame_transform_factory(from_frame: Frame, to_frame: Frame) -> FrameTransfor
     
     abs_transform = absolute_frame_transform_factory(abs_frame_from, abs_frame_to)
 
-    if isinstance(first, TransformIdentify) and isinstance(last, TransformIdentify):
+    if isinstance(first, TransformIdentity) and isinstance(last, TransformIdentity):
         return abs_transform
     
     def _factory(epoch: Timestamp | TimeInterval) -> TransformChain:

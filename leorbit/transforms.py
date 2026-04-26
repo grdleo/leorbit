@@ -53,7 +53,7 @@ class Transform(ABC):
         return tt
 
 
-class TransformIdentify(Transform):
+class TransformIdentity(Transform):
     """Identity transform that leaves values unchanged."""
 
     @property
@@ -74,7 +74,7 @@ class TransformIdentify(Transform):
 
     def copy(self) -> Self:
         """Return a new identity transform instance."""
-        t = TransformIdentify()
+        t = TransformIdentity()
         return cast(Self, t)
 
 
@@ -143,6 +143,10 @@ class TransformVector3Affine(Transform):
             translation=self.translation.copy()
         )
         return cast(Self, t)
+    
+    def as_linear_transform(self) -> TransformVector3Linear:
+        """Returns this transform as linear, getting rid of the translation"""
+        return TransformVector3Linear(self.matrix)
 
 
 class TransformVector3RotationZ(TransformVector3Linear):

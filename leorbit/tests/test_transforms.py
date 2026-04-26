@@ -4,7 +4,7 @@ import pytest
 from leorbit.mathematics import Angle, Dimless, Length, Quantity, Tensor, matrix33, vector3
 from leorbit.transforms import (
     TransformChain,
-    TransformIdentify,
+    TransformIdentity,
     TransformVector3Affine,
     TransformVector3Linear,
     TransformVector3RotationZ,
@@ -12,7 +12,7 @@ from leorbit.transforms import (
 
 
 def test_transform_identity_do_undo_and_copy():
-    t = TransformIdentify()
+    t = TransformIdentity()
     v = vector3(1.0, 2.0, 3.0) * Quantity.meter
 
     out = t.do(v)
