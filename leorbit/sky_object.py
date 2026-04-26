@@ -34,6 +34,11 @@ class Satellite(SkyObject):
         """Create a satellite from orbital elements and a propagation strategy."""
         self.name = name
         self.propagator = propagator(orbital_elements)
+
+    def __repr__(self) -> str:
+        epoch_iso = self.propagator.elements.epoch.isoformat
+        propagator_name = type(self.propagator).__name__
+        return f"<Satellite name='{self.name}' t₀='{epoch_iso}' [{propagator_name}]>"
     
     def coordinates(self, at: Timestamp) -> Coordinates:
         """Propagate and return coordinates at instant ``at``."""
@@ -59,6 +64,14 @@ class Body(SkyObject, ABC):
         self.name = name
         self.body_radius = radius
         self.body_mass = mass
+
+    def __repr__(self) -> str:
+        radius_km = self.body_radius.scalar.value("kilo_meter")
+        mass_kg = self.body_mass.scalar.value("kilo_gram")
+        return (
+            f"<{self.__class__.__name__} name='{self.name}' "
+            f"radius={radius_km:.3f} km mass={mass_kg:.3e} kg>"
+        )
     
     @lru_cache(512)
     def coordinates(self, at: Timestamp) -> Coordinates:

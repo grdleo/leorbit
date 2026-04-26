@@ -60,17 +60,17 @@ class Coordinates:
         self.name = None
 
     def __repr__(self) -> str:
-        km = "kilo_meter"
-        kmph = "kilo_meter / hour"
+        km = Quantity.kilo_meter
+        kmph = Quantity.kilo_meter / Quantity.hour
         p = self.pos.vector3
         pos_repr = (
-            f"(x={p.x.scalar.value(km):.2f}, y={p.y.scalar.value(km):.2f}, z={p.z.scalar.value(km):.2f})"
+            f"(x={p.x.scalar.value(km):.0f}km, y={p.y.scalar.value(km):.0f}km, z={p.z.scalar.value(km):.0f}km)"
         )
         vel_repr = "None"
         if self.vel is not None:
             v = self.vel.vector3
             vel_repr = (
-                f"(x={v.x.scalar.value(kmph):.2f}, y={v.y.scalar.value(kmph):.2f}, z={v.z.scalar.value(kmph):.2f})"
+                f"(x={v.x.scalar.value(kmph):.0f} km/h, y={v.y.scalar.value(kmph):.0f} km/h, z={v.z.scalar.value(kmph):.0f} km/h)"
             )
         return f"<Coordinates: epoch={self.epoch}, frame={self.privileged_frame}, pos={pos_repr}, vel={vel_repr}>"
 
@@ -87,7 +87,12 @@ class Coordinates:
         transform = cast(Transform, frame_transform_factory(self.privileged_frame, frame)(self.epoch))
         p = transform.do(p)
         if v is not None:
-            v = transform.do(v)
+            # Relative frame transforms are affine (include translation), which
+            # applies to positions but not to velocities.
+            if isinstance(self.privileged_frame, AbsoluteFrame) and isinstance(frame, AbsoluteFrame):
+                v = transform.do(v)
+            else:
+                v = None
 
         self.positions[frame] = PosVel(p, v)
 
@@ -162,6 +167,14 @@ class Coordinates:
             altitude=tuple_hor.altitude,
             distance=tuple_hor.distance,
         )
+    
+    def gcrf(self) -> "TensorAsVector3":
+        """Return position in GCRF frame."""
+        return self.get_pos(AbsoluteFrame.GCRF).vector3
+    
+    def itrf(self) -> "TensorAsVector3":
+        """Return position in ITRF frame."""
+        return self.get_pos(AbsoluteFrame.ITRF).vector3
 
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, Coordinates):
@@ -456,7 +469,12 @@ class Trajectory:
 
         p = transform.do(p)
         if v is not None:
-            v = transform.do(v)
+            # Relative frame transforms are affine (include translation), which
+            # applies to positions but not to velocities.
+            if isinstance(self.privileged_frame, AbsoluteFrame) and isinstance(frame, AbsoluteFrame):
+                v = transform.do(v)
+            else:
+                v = None
 
         self.positions[frame] = PosVelArray(p, v)
 

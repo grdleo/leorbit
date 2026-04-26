@@ -55,6 +55,17 @@ class DimTriplet:
 
         return " × ".join((sl, st, sm))
     
+    @cached_property
+    def representation_si_base_units(self) -> str:
+        """Return a human-readable representation in SI base units, e.g. ``m^1 × s^-2 × kg^0``."""
+        l, t, m = self.__length, self.__time, self.__mass
+
+        sl = "" if l.numerator == 0 else (f"m^{l.numerator}" + ("" if l.denominator == 1 else f"/{l.denominator}"))
+        st = "" if t.numerator == 0 else (f"s^{t.numerator}" + ("" if t.denominator == 1 else f"/{t.denominator}"))
+        sm = "" if m.numerator == 0 else (f"kg^{m.numerator}" + ("" if m.denominator == 1 else f"/{m.denominator}"))
+
+        return " × ".join(filter(None, (sl, st, sm)))
+    
     def __repr__(self) -> str:
         return f"<DimCoords : {self.representation}>"
 
@@ -320,7 +331,41 @@ class Tensor:
         return hash(f"{hash(self._data.data.tobytes())}${hash(self._phy_dimension.triplet())}")
     
     def __repr__(self) -> str:
-        return f"<Tensor {self._data} [{self._phy_dimension.triplet().representation}]>"
+        return self.human_repr()
+    
+    def human_repr(self, units: Tensor | int | float | str | None = None) -> str:
+        """Human-readable inline representation.
+
+        Uses ``<Scalar ...>``, ``<Vector3 ...>``, or ``<Matrix33 ...>``.
+        For tensors with multiple samples, only the first sample is shown and
+        the output is suffixed with `...`.
+        """
+        data = self.raw_data_array(units)
+        dim_repr = units if isinstance(units, str) else self._phy_dimension.triplet().representation_si_base_units
+        suffix = " ..." if self.size > 1 else ""
+
+        if self.kind == TensorKind.SCALAR:
+            shown_data = np.asarray(data[0]).reshape((1,))
+            data_repr = np.array2string(
+                shown_data,
+                separator=", ",
+                max_line_width=10_000,
+            )
+            data_repr = " ".join(data_repr.split())
+            return f"<Scalar {data_repr} [{dim_repr}]{suffix}>"
+        elif self.kind == TensorKind.VECTOR3:
+            shown_data = np.asarray(data[:, 0]).reshape((3,))
+            x, y, z = (float(shown_data[0]), float(shown_data[1]), float(shown_data[2]))
+            return f"<Vector3 x={x} y={y} z={z} [{dim_repr}]{suffix}>"
+        else:
+            shown_data = np.asarray(data[:, :, 0]).reshape((3, 3))
+            return (
+                "<Matrix33 "
+                f"a11={float(shown_data[0, 0])} a12={float(shown_data[0, 1])} a13={float(shown_data[0, 2])} "
+                f"a21={float(shown_data[1, 0])} a22={float(shown_data[1, 1])} a23={float(shown_data[1, 2])} "
+                f"a31={float(shown_data[2, 0])} a32={float(shown_data[2, 1])} a33={float(shown_data[2, 2])} "
+                f"[{dim_repr}]{suffix}>"
+            )
     
     def __copy__(self) -> Tensor:
         """Return a shallow/deep copy of this tensor."""
