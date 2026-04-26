@@ -22,7 +22,7 @@ from leorbit.mathematics import (
     normalize_angle_symmetric,
 )
 from leorbit.time import TimeInterval, Timestamp
-from leorbit.transforms import Transform
+from leorbit.transforms import Transform, _secure_position_transform, _secure_velocity_transform
 from leorbit.utils import (
     angle2dms,
     eccentric2true_anomaly,
@@ -84,15 +84,9 @@ class Coordinates:
             return
 
         p, v = self.positions[self.privileged_frame]
-        transform = cast(Transform, frame_transform_factory(self.privileged_frame, frame)(self.epoch))
-        p = transform.do(p)
-        if v is not None:
-            # Relative frame transforms are affine (include translation), which
-            # applies to positions but not to velocities.
-            if isinstance(self.privileged_frame, AbsoluteFrame) and isinstance(frame, AbsoluteFrame):
-                v = transform.do(v)
-            else:
-                v = None
+        transform = frame_transform_factory(self.privileged_frame, frame)(self.epoch)
+        p = _secure_position_transform(transform).do(p)
+        v = None if v is None else _secure_velocity_transform(transform).do(v)
 
         self.positions[frame] = PosVel(p, v)
 

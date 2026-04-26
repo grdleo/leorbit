@@ -212,3 +212,33 @@ class TransformChain(Transform):
         return cast(Self, t)
     
 ################################
+
+def _secure_position_transform(transform: Transform) -> Transform:
+    """Reshapes a transformation so that it fits the requirements to
+    be a 'position' transform"""
+    
+    if isinstance(transform, TransformVector3Linear):
+        return transform
+    if isinstance(transform, TransformVector3Affine):
+        return transform
+    elif isinstance(transform, TransformChain):
+        return TransformChain(
+            *map(_secure_position_transform, transform.transforms)
+        )
+    
+    raise ValueError("Uncompatible transform type for position transformation")
+
+def _secure_velocity_transform(transform: Transform) -> Transform:
+    """Reshapes a transformation so that it fits the requirements to
+    be a 'velocity' transform"""
+
+    if isinstance(transform, TransformVector3Linear):
+        return transform
+    if isinstance(transform, TransformVector3Affine):
+        return transform.as_linear_transform()
+    elif isinstance(transform, TransformChain):
+        return TransformChain(
+            *map(_secure_velocity_transform, transform.transforms)
+        )
+    
+    raise ValueError("Uncompatible transform type for velocity transformation")
