@@ -28,66 +28,88 @@ pip install -e .
 ```
 
 ### Main depedencies
-Uses `numpy` internally for computation purposes.
+Uses `numpy` internally for computation purposes. The consequence is that any computation is absurdly fast.
 
 ## Quick tour
 
+Get the coordinates of the satellite of your choice, at the time of your choice
 ```python
->>> from leorbit.api import get_satellite, get_passes, Timestamp, Quantity, GPS, VisibleFromEarthLocationEvent, TimeInterval
+from leorbit.api import get_satellite, get_passes, Timestamp, Quantity, GPS, VisibleFromEarthLocationEvent, TimeInterval
 
-# Let's compute the position of a LEO satellite!
+iss = get_satellite(25544) # 25544: ISS NORAD Cat ID
+now = Timestamp.now()
+coords = iss.coordinates(now) # ISS Coordinates at given time, frame agnostic!
 
->>> iss = get_satellite(25544) # 25544: ISS NORAD Cat ID
->>> now = Timestamp.now()
->>> c = iss.coordinates(now) # We compute the ISS position at given time
->>> c.gps()
+coords.gps()
 '<GPS:  003° 59′ 29″E,  042° 29′ 24″S>'
+```
 
-# Now that we have computed its position for the given time, we can project
-# it into any frame we want!
+Need the coordinates in a specific frame? Sure, as easy as this:
+```python
+coords.gcrf().human_repr("km") # Coordinates in GCRF!
+'<Vector3 x=-6381.3 y=146.7 z=-2333.7 [km]>'
 
-# Coordinates in GCRF!
->>> c.gcrf().human_repr("km")
-'<Vector3 x=-6381.3991361611925 y=146.7020812274849 z=-2333.735440753873 [km]>'
+coords.itrf().human_repr("km") # Coordinates in ITRF!
+'<Vector3 x=-2639.1 y=5811.9 z=-2333.7 [km]>'
+```
 
-# Coordinates in ITRF!
->>> c.itrf().human_repr("km")
-'<Vector3 x=-2639.11482315943 y=5811.957448727188 z=-2333.735440753873 [km]>'
-
-# Horizontal coordinates in any Earth local frame!
-# For example, let's try in Paris.
->>> gps_paris = GPS(
+Even local coordinates are astonishingly easy to convert to.
+```python
+gps_paris = GPS(
     longitude=2.333333 * Quantity.degree, 
     latitude=48.866667 * Quantity.degree, 
     altitude=0 * Quantity.meter
 )
->>> c.horizontal(gps_paris.earth_local_frame)
+
+coords.horizontal(gps_paris.earth_local_frame)
 '<Horizontal: Azimuth:  087° 21′ 36″, Altitude: - 058° 36′ 26″>'
+```
 
-# Ugh, negative altitude, it means it is not visible currently...
-# Want to get the ISS passes for the next 7 days?
-
->>> timeline = TimeInterval(
+You need to know when your satellite passes above your location?
+Let's compute the passes for the next 7 days.
+```python
+timeline = TimeInterval(
     start=now,
     stop=now + 7 * Quantity.day,
     dt=5 * Quantity.second
 )
->>> passes = get_passes(iss, timeline, gps_paris)
 
+first_pass, *others = get_passes(iss, timeline, gps_paris)
+'<TimeInterval from: \'2026-04-28 at 00:19:19\' to: \'2026-04-28 at 00:28:54\' dt: 5s>'
+```
+
+And for the interval of your choice, generate an export of the trajectory:
+```python
+iss.trajectory(first_pass).horizontal(gps_paris.earth_local_frame).to_csv(first_pass)
+"""
+timestamp,azimuth,elevation,range
+2026-04-28T00:19:21.1,-159.7,0.3,6790.4
+2026-04-28T00:19:26.1,-160.1,0.5,6790.4
+2026-04-28T00:19:31.1,-160.6,0.8,6790.4
+2026-04-28T00:19:36.1,-161.0,1.1,6790.3
 ...
-
+"""
 ```
 
 ## Examples & documentation
 
+The above examples are one of the few features the library offers.
+Make sure to check the documentation and reference to know everything it can do!
+
 LEOrbit is available with a complete walkthrough the capabilities of the library.
-Check the documentation with the available examples.
 
 # What's next?
-- SDP4 implementation (see https://github.com/Bill-Gray/sat_code)
-- Orientation tracking for satellites
-- Tools to generate a list of commands to send to satellite
 
-### Links
+The following are features I would like to implement, one day, when I have the time to do so.
+
+- Ephemerids for planets/stars
+- More "ready to use out-of-the-box" events, like day/night time, transits, etc.
+- SDP4 implementation (see https://github.com/Bill-Gray/sat_code)
+
+# Please participate
+
+You like this library and feel like it is missing a feature? By all means, feel free to open a PR!
+
+# Links
 - [Documentation & reference](https://leorbit.readthedocs.org)
 - [Developer's page (Léo G.)](https://leog.dev)
