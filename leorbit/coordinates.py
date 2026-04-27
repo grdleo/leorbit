@@ -24,6 +24,8 @@ from leorbit.mathematics import (
 from leorbit.time import TimeInterval, Timestamp
 from leorbit.transforms import Transform, _secure_position_transform, _secure_velocity_transform
 from leorbit.utils import (
+    GPSTrajectory,
+    HorizontalTrajectory,
     angle2dms,
     eccentric2true_anomaly,
     elements2orthogonal_gcrf,
@@ -532,16 +534,10 @@ class Trajectory:
         _, vel = self.positions[frame]
         return cast(Tensor, vel)
 
-    class _GPSArray(NamedTuple):
-        longitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-        latitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-        altitude: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]
-
     @lru_cache(16)
-    def gps(self) -> _GPSArray:
+    def gps(self) -> GPSTrajectory:
         """Return geodetic arrays (lon/lat/alt) for the full trajectory."""
-        tuple_gps = itrf2gps(self.trajectory_pos(AbsoluteFrame.ITRF))
-        return cast(Trajectory._GPSArray, tuple_gps)
+        return itrf2gps(self.trajectory_pos(AbsoluteFrame.ITRF))
 
     @lru_cache(4096)
     def gps_at(self, epoch: Timestamp, interpolation: Interpolation = Interpolation.CONSTANT) -> GPS:
@@ -560,16 +556,10 @@ class Trajectory:
             epoch=epoch,
         )
 
-    class _HorizontalArray(NamedTuple):
-        azimuth: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-        altitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-        distance: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]
-
     @lru_cache(16)
-    def horizontal(self, local_frame: EarthLocalFrame) -> _HorizontalArray:
+    def horizontal(self, local_frame: EarthLocalFrame) -> HorizontalTrajectory:
         """Return horizontal azimuth/altitude/range arrays for ``local_frame``."""
-        tuple_hor = itrf2horizontal(self.trajectory_pos(AbsoluteFrame.ITRF), local_frame)
-        return cast(Trajectory._HorizontalArray, tuple_hor)
+        return itrf2horizontal(self.trajectory_pos(AbsoluteFrame.ITRF), local_frame)
 
     @lru_cache(4096)
     def horizontal_at(

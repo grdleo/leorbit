@@ -234,7 +234,13 @@ class TimeInterval:
         )
     
     def __repr__(self) -> str:
-        return f"TimeInterval(start={self.start}, stop={self.stop}, dt={self.dt})"
+        return (
+            "<TimeInterval "
+            f"from: '{self.start.human}' "
+            f"to: '{self.stop.human}' "
+            f"dt: {self.dt.scalar.value('second'):.0f}s"
+            ">"
+        )
     
     def __hash__(self) -> int:
         return hash(self.__repr__())

@@ -1,15 +1,18 @@
 """Special functions with special purposes. Should not be useful for the average user.
 """
 
+from dataclasses import dataclass
 from fractions import Fraction
+from multiprocessing import Value
 import numpy as np
 import numpy.typing as npt
 
-from typing import Annotated, Any, Iterable, NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
+from typing import Annotated, Any, Generator, Iterable, NamedTuple, TypeAlias, TypeVar, Union, cast, overload, TYPE_CHECKING
 
 from leorbit.transforms import TransformVector3Affine
 
 if TYPE_CHECKING:
+    from leorbit.time import TimeInterval
     from leorbit.frames import EarthLocalFrame
     import pint
 
@@ -362,36 +365,157 @@ def gcrf_state_vectors2elements(
         M
     )
 
-class _TupleGPS(NamedTuple):
+@dataclass
+class GPSTrajectory:
     latitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
     longitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
     altitude: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]
 
+    def to_csv(self, timeline: "TimeInterval") -> str:
+        """Serialize the trajectory samples to a CSV string.
+
+        The output uses one row per sample in ``timeline`` and the following
+        header:
+
+        ``timestamp,latitude,longitude,altitude``
+
+        CSV columns:
+        - ``timestamp``: ISO-8601 timestamp for the sample time
+            (``Time.isoformat``).
+        - ``latitude``: geocentric latitude in degrees.
+        - ``longitude``: geocentric longitude in degrees.
+        - ``altitude``: altitude above the reference Earth spheroid in
+            kilometers.
+
+        Numeric columns are formatted with one decimal place.
+
+        Parameters
+        ----------
+        timeline : TimeInterval
+                Timeline used to pair each trajectory sample with its timestamp.
+                Its number of steps must match the trajectory sample count.
+
+        Returns
+        -------
+        str
+                Complete CSV document including the header row.
+
+        Raises
+        ------
+        ValueError
+                If ``timeline.steps`` does not match the number of trajectory
+                samples.
+        """
+        latitude_deg = self.latitude.scalar.values('deg').flatten()
+        longitude_deg = self.longitude.scalar.values('deg').flatten()
+        altitude_km = self.altitude.scalar.values('kilo_meter').flatten()
+
+        assert len(latitude_deg) == len(longitude_deg) == len(altitude_km)
+        if len(latitude_deg) != timeline.steps:
+            raise ValueError("Given timeline is not matching the size of trajectory")
+        
+        def _float2str(el: float) -> str:
+            return f"{el:.1f}"
+        
+        line_gen = zip(
+            map(_float2str, latitude_deg),
+            map(_float2str, longitude_deg),
+            map(_float2str, altitude_km),
+            map(lambda t: t.isoformat, timeline)
+        )
+
+        lines = "\n".join(
+            f"{ts},{lat},{lon},{alt}"
+            for lat, lon, alt, ts in line_gen
+        )
+        
+        return f"timestamp,latitude,longitude,altitude\n{lines}"
+
 @tensor_check
 def itrf2gps(
     itrf_pos: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)]
-) -> _TupleGPS:
+) -> GPSTrajectory:
     """Convert a position in ITRS coordinates to GPS coordinates, at a given time."""
     lon = itrf_pos.vector3.theta
     lat = itrf_pos.vector3.delta
     alt = itrf_pos.vector3.length - geocentric_radius_earth(lat)
 
-    return _TupleGPS(
+    return GPSTrajectory(
         latitude=lat,
         longitude=lon,
         altitude=alt
     )
 
-class _TupleHorizontal(NamedTuple):
+@dataclass
+class HorizontalTrajectory:
     azimuth: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
     altitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
     distance: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]
+
+    def to_csv(self, timeline: "TimeInterval") -> str:
+        """Serialize the trajectory samples to a CSV string.
+
+        The output uses one row per sample in ``timeline`` and the following
+        header:
+
+        ``timestamp,azimuth,elevation,range``
+
+        CSV columns:
+        - ``timestamp``: ISO-8601 timestamp for the sample time
+          (``Time.isoformat``).
+        - ``azimuth``: horizontal azimuth angle in degrees.
+        - ``elevation``: horizontal elevation/altitude angle in degrees.
+        - ``range``: line-of-sight distance in kilometers.
+
+        Numeric columns are formatted with one decimal place.
+
+        Parameters
+        ----------
+        timeline : TimeInterval
+            Timeline used to pair each trajectory sample with its timestamp.
+            Its number of steps must match the trajectory sample count.
+
+        Returns
+        -------
+        str
+            Complete CSV document including the header row.
+
+        Raises
+        ------
+        ValueError
+            If ``timeline.steps`` does not match the number of trajectory
+            samples.
+        """
+        azimuth_deg = self.azimuth.scalar.values('deg').flatten()
+        elevation_deg = self.altitude.scalar.values('deg').flatten()
+        _range_km = self.distance.scalar.values('kilo_meter').flatten()
+
+        assert len(azimuth_deg) == len(elevation_deg) == len(_range_km)
+        if len(azimuth_deg) != timeline.steps:
+            raise ValueError("Given timeline is not matching the size of trajectory")
+        
+        def _float2str(el: float) -> str:
+            return f"{el:.1f}"
+        
+        line_gen = zip(
+            map(_float2str, azimuth_deg),
+            map(_float2str, elevation_deg),
+            map(_float2str, _range_km),
+            map(lambda t: t.isoformat, timeline)
+        )
+
+        lines = "\n".join(
+            f"{ts},{az},{el},{_range}"
+            for az, el, _range, ts in line_gen
+        )
+        
+        return f"timestamp,azimuth,elevation,range\n{lines}"
 
 @tensor_check
 def itrf2horizontal(
     itrf_pos: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)], 
     earth_local_frame: Any
-) -> _TupleHorizontal:
+) -> HorizontalTrajectory:
     """Convert an ITRF position to horizontal coordinates for a local frame."""
     t = cast(
         TransformVector3Affine,
@@ -399,7 +523,7 @@ def itrf2horizontal(
     )
     horizontal_pos = t.do(itrf_pos)
 
-    return _TupleHorizontal(
+    return HorizontalTrajectory(
         azimuth=horizontal_pos.vector3.theta,
         altitude=horizontal_pos.vector3.delta,
         distance=itrf_pos.vector3.length
