@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 def get_satellite(
 	norad_cat_id: int,
-	propagator: type[Propagator] | None = None,
+	propagator: type[Propagator] = SGP4,
 	log: bool = True,
 ) -> Satellite:
 	"""Build a ``Satellite`` from latest Celestrak GP data.
@@ -36,9 +36,6 @@ def get_satellite(
 		Whether to print fetch logs.
 	"""
 	from leorbit.ext import get_celestrak_gpdata
-
-	if propagator is None:
-		propagator = SGP4
 
 	gp_data = get_celestrak_gpdata(norad_cat_id, log)
 
