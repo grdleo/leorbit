@@ -58,7 +58,7 @@ class Event(ABC):
     def __init__(self, trajectory: Trajectory):
         """Initialize an event evaluator for a trajectory."""
         self.trajectory = trajectory
-        self._time_map = self.compute()
+        self._time_map = self._compute()
 
     @property
     def timeline(self) -> TimeInterval:
@@ -66,12 +66,14 @@ class Event(ABC):
         return self.trajectory.interval
     
     @abstractmethod
-    def compute(self) -> TimeMap:
+    def _compute(self) -> TimeMap:
         """Compute the event for the given trajectory and return a TimeMap of the event values"""
         ...
 
 class VisibleFromEarthLocationEvent(Event):
     """Visibility event of a trajectory from a fixed Earth observer location."""
+
+    _KW_VISIBLE = "visible"
 
     def __init__(self, 
         trajectory: Trajectory, 
@@ -94,7 +96,7 @@ class VisibleFromEarthLocationEvent(Event):
 
         super().__init__(trajectory)
     
-    def compute(self) -> TimeMap:
+    def _compute(self) -> TimeMap:
         """Compute per-step visibility booleans for the underlying trajectory."""
         local_frame = self.gps_observer.earth_local_frame
         local_pos = self.trajectory.trajectory_pos(local_frame)
@@ -103,14 +105,16 @@ class VisibleFromEarthLocationEvent(Event):
 
         return TimeMap(
             self.timeline,
-            visible=visible
+            **{
+                self._KW_VISIBLE: visible
+            }
         )
 
     @property
     def visible_intervals(self) -> list[TimeInterval]:
         """Contiguous intervals where the object is visible from the observer."""
         return _truth_array_to_time_intervals(
-            self._time_map.get_values("visible"),
+            self._time_map.get_values(self._KW_VISIBLE),
             self.timeline
         )
     
@@ -118,7 +122,7 @@ class VisibleFromEarthLocationEvent(Event):
     def not_visible_intervals(self) -> list[TimeInterval]:
         """Contiguous intervals where the object is below the local horizon."""
         return _truth_array_to_time_intervals(
-            ~self._time_map.get_values("visible"),
+            ~self._time_map.get_values(self._KW_VISIBLE),
             self.timeline
         )
     
