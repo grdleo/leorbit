@@ -382,7 +382,30 @@ def get_intersections_timelines(first_set: Iterable[TimeInterval], second_set: I
     return list(tl for tl in all_pairs.values() if tl is not None)
 
 def get_unions_timelines(first_set: Iterable[TimeInterval], second_set: Iterable[TimeInterval]) -> list[TimeInterval]:
-    raise NotImplementedError("Timeline union is not implemented yet")
+    """Return a normalized union of two sets of time intervals.
+
+    The result is sorted by ``start`` and overlapping (or touching)
+    intervals are merged.
+    """
+    all_intervals = list(first_set) + list(second_set)
+    if len(all_intervals) == 0:
+        return []
+
+    intervals = sorted(all_intervals, key=lambda t: (t.start.unixepoch, t.stop.unixepoch))
+
+    merged: list[TimeInterval] = [intervals[0].duplicate()]
+    for current in intervals[1:]:
+        last = merged[-1]
+
+        # Merge when intervals overlap or share a boundary.
+        if current.start <= last.stop:
+            new_stop = current.stop if current.stop > last.stop else last.stop
+            new_dt = current.dt if current.dt <= last.dt else last.dt
+            merged[-1] = TimeInterval(last.start, new_stop, new_dt)
+        else:
+            merged.append(current.duplicate())
+
+    return merged
     
 if Timestamp.now() >= Timestamp.fromisoformat("2100-01-01T00:00:00"):
     raise RuntimeError(f"Nobody will ever see this but considering you "

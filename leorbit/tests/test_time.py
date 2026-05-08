@@ -3,7 +3,7 @@ from datetime import timedelta
 import pytest
 
 from leorbit.mathematics import Quantity
-from leorbit.time import Timestamp, TimeInterval, get_intersections_timelines
+from leorbit.time import Timestamp, TimeInterval, get_intersections_timelines, get_unions_timelines
 
 
 @pytest.mark.parametrize(
@@ -206,3 +206,64 @@ S = 1 * Quantity.second
 def test_intersections(tls1: list[TimeInterval], tls2: list[TimeInterval], inters: list[TimeInterval]):
     inters_computed = get_intersections_timelines(tls1, tls2)
     assert set(inters_computed) == set(inters)
+
+
+@pytest.mark.parametrize(
+    "tls1, tls2, expected",
+    [
+        (
+            [
+                TimeInterval(A_DATE + 0 * S, A_DATE + 10 * S, S),
+                TimeInterval(A_DATE + 20 * S, A_DATE + 30 * S, S),
+            ],
+            [
+                TimeInterval(A_DATE + 5 * S, A_DATE + 25 * S, S),
+            ],
+            [
+                TimeInterval(A_DATE + 0 * S, A_DATE + 30 * S, S),
+            ],
+        ),
+        (
+            [
+                TimeInterval(A_DATE + 0 * S, A_DATE + 10 * S, S),
+            ],
+            [
+                TimeInterval(A_DATE + 15 * S, A_DATE + 20 * S, S),
+            ],
+            [
+                TimeInterval(A_DATE + 0 * S, A_DATE + 10 * S, S),
+                TimeInterval(A_DATE + 15 * S, A_DATE + 20 * S, S),
+            ],
+        ),
+        (
+            [
+                TimeInterval(A_DATE + 0 * S, A_DATE + 10 * S, S),
+            ],
+            [
+                TimeInterval(A_DATE + 3 * S, A_DATE + 7 * S, S),
+            ],
+            [
+                TimeInterval(A_DATE + 0 * S, A_DATE + 10 * S, S),
+            ],
+        ),
+        (
+            [
+                TimeInterval(A_DATE + 0 * S, A_DATE + 5 * S, S),
+                TimeInterval(A_DATE + 8 * S, A_DATE + 10 * S, S),
+            ],
+            [
+                TimeInterval(A_DATE + 5 * S, A_DATE + 8 * S, S),
+            ],
+            [
+                TimeInterval(A_DATE + 0 * S, A_DATE + 10 * S, S),
+            ],
+        ),
+    ],
+)
+def test_unions(tls1: list[TimeInterval], tls2: list[TimeInterval], expected: list[TimeInterval]):
+    unions = get_unions_timelines(tls1, tls2)
+    assert unions == expected
+
+
+def test_unions_empty_inputs():
+    assert get_unions_timelines([], []) == []
