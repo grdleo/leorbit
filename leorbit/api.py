@@ -13,7 +13,7 @@ from leorbit.frames import AbsoluteFrame, EarthLocalFrame
 from leorbit.mathematics import Quantity, Tensor, matrix33, scalar, vector3
 from leorbit.propagator import NoPropagator, Propagator, SGP4
 from leorbit.sky_object import Moon, Satellite, SkyObject, Sun
-from leorbit.time import TimeInterval, Timestamp, Timeline, get_intersections_timelines
+from leorbit.time import TimeInterval, TimeIntervalSet, Timestamp, Timeline, get_intersections_timelines
 
 if TYPE_CHECKING:
 	from leorbit.mathematics import Tensor as _Tensor
@@ -53,7 +53,7 @@ def get_passes(
 	during: TimeInterval,
 	gps_observer: GPS,
 	altitude_angle_min_degrees: float = 0.
-) -> list[TimeInterval]:
+) -> TimeIntervalSet:
 	return VisibleFromEarthLocationEvent(
 		satellite.trajectory(during),
 		gps_observer,

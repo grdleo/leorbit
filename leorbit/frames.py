@@ -161,7 +161,6 @@ class EarthLocalFrame(RelativeFrame):
         - `x × y = -z`
     """
     location: "Coordinates"
-    transform: Transform
 
     def __init__(self, location: "Coordinates"):
         """Create a local topocentric frame centered at ``location``."""
