@@ -5,7 +5,7 @@ import numpy as np
 
 from leorbit.coordinates import GPS, Trajectory
 from leorbit.mathematics import Angle, Quantity, Tensor, TensorBound, TensorKind
-from leorbit.time import TimeInterval, Timestamp
+from leorbit.time import TimeInterval, TimeIntervalSet, Timestamp
 
 import numpy.typing as npt
 
@@ -111,18 +111,20 @@ class VisibleFromEarthLocationEvent(Event):
         )
 
     @property
-    def visible_intervals(self) -> list[TimeInterval]:
+    def visible_intervals(self) -> TimeIntervalSet:
         """Contiguous intervals where the object is visible from the observer."""
-        return _truth_array_to_time_intervals(
+        intervals = _truth_array_to_time_intervals(
             self._time_map.get_values(self._KW_VISIBLE),
             self.timeline
         )
+        return TimeIntervalSet(intervals)
     
     @property
-    def not_visible_intervals(self) -> list[TimeInterval]:
+    def not_visible_intervals(self) -> TimeIntervalSet:
         """Contiguous intervals where the object is below the local horizon."""
-        return _truth_array_to_time_intervals(
+        intervals = _truth_array_to_time_intervals(
             ~self._time_map.get_values(self._KW_VISIBLE),
             self.timeline
         )
+        return TimeIntervalSet(intervals)
     

@@ -1,5 +1,6 @@
 """Time handling"""
 
+import collections
 from datetime import datetime, timezone, timedelta
 from typing import Annotated, Iterable, Self, Iterator, Optional
 from math import ceil
@@ -352,6 +353,19 @@ class TimeInterval:
     def to_unixepoch(self) -> npt.NDArray[np.float64]:
         """Representation of this `TimeInterval` object as a numpy array of unixepoch (timestamp) in seconds."""
         return np.linspace(self.start.unixepoch, self.stop.unixepoch, self.steps, dtype=np.float64)
+    
+class TimeIntervalSet(collections.UserList):
+    """A set of `TimeInterval` objects."""
+    def __init__(self, initlist: Iterable[TimeInterval] | None = None):
+        super().__init__(initlist if initlist is not None else [])
+
+    def __and__(self, other: "TimeIntervalSet") -> "TimeIntervalSet":
+        """Returns the intersection of this `TimeIntervalSet` with another `TimeIntervalSet`."""
+        return TimeIntervalSet(get_intersections_timelines(self, other))
+    
+    def __or__(self, other: "TimeIntervalSet") -> "TimeIntervalSet":
+        """Returns the union of this `TimeIntervalSet` with another `TimeIntervalSet`."""
+        return TimeIntervalSet(get_unions_timelines(self, other))
 
 Timeline = TimeInterval
     
@@ -366,6 +380,9 @@ def get_intersections_timelines(first_set: Iterable[TimeInterval], second_set: I
                 continue
             all_pairs[k] = t.intersection(tt)
     return list(tl for tl in all_pairs.values() if tl is not None)
+
+def get_unions_timelines(first_set: Iterable[TimeInterval], second_set: Iterable[TimeInterval]) -> list[TimeInterval]:
+    raise NotImplementedError("Timeline union is not implemented yet")
     
 if Timestamp.now() >= Timestamp.fromisoformat("2100-01-01T00:00:00"):
     raise RuntimeError(f"Nobody will ever see this but considering you "
