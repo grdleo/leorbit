@@ -4,7 +4,7 @@ from typing import Annotated, Any
 import numpy as np
 
 from leorbit.coordinates import GPS, Trajectory
-from leorbit.mathematics import Angle, Quantity, Tensor, TensorBound, TensorKind
+from leorbit.mathematics import Angle, Quantity, Tensor, TensorBound, TensorKind, sin
 from leorbit.time import TimeInterval, TimeIntervalSet, Timestamp
 
 import numpy.typing as npt
@@ -100,8 +100,11 @@ class VisibleFromEarthLocationEvent(Event):
         """Compute per-step visibility booleans for the underlying trajectory."""
         local_frame = self.gps_observer.earth_local_frame
         local_pos = self.trajectory.trajectory_pos(local_frame)
-    
-        visible = local_pos.vector3.z.raw_data_array("meter") > 0 # visible if satellite is above the horizon
+
+        visible = (
+            local_pos.vector3.normalized().vector3.z.raw_data_array()
+            > sin(self.altitude_angle_min).scalar.raw_data_array()
+        )
 
         return TimeMap(
             self.timeline,
