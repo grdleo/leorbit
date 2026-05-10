@@ -216,7 +216,6 @@ def _dimension_factory(triplet: DimTriplet) -> type[Dim]:
             dict(__triplet=triplet)
         )
     )
-    ...
 
 _ = Dimless = Angle = _dimension_factory(DimTriplet())
 _ = Length = _dimension_factory(DimTriplet(length=1))
@@ -1008,19 +1007,29 @@ class Quantity(metaclass=QuantityMeta):
 
     dimensionless: ClassVar[Tensor]
     """dimensionless (1)"""
+    one: ClassVar[Tensor]
+    """dimensionless (1)"""
+    _1: ClassVar[Tensor]
+    """dimensionless (1)"""
     _units_register(["dimensionless", "dimless"], Dimless, 1.)
 
     # ANGLES
 
     radian: ClassVar[Tensor]
     """radian"""
+    rad: ClassVar[Tensor]
+    """radian"""
     _units_register(["radian", "rad"], Angle, 1.)
 
     turn: ClassVar[Tensor]
-    """turns (360°)"""
+    """turn (360°)"""
+    rev: ClassVar[Tensor]
+    """turn (360°)"""
     _units_register(["turn", "rev"], Angle, 2 * np.pi)
 
     degree: ClassVar[Tensor]
+    """degree"""
+    deg: ClassVar[Tensor]
     """degree"""
     _units_register(["degree", "deg"], Angle, np.pi / 180)
 
@@ -1028,9 +1037,13 @@ class Quantity(metaclass=QuantityMeta):
 
     meter: ClassVar[Tensor]
     """meter"""
+    m: ClassVar[Tensor]
+    """meter"""
     _units_register(["meter", "m"], Length, 1.)
 
     kilo_meter: ClassVar[Tensor]
+    """kilometer"""
+    km: ClassVar[Tensor]
     """kilometer"""
     _units_register(["kilometer", "km"], Length, 1e3)
     _units_register(["kilo_meter"], Length, 1e3)
@@ -1052,27 +1065,35 @@ class Quantity(metaclass=QuantityMeta):
 
     astronomical_unit: ClassVar[Tensor]
     """Astronomical unit (au)."""
+    au: ClassVar[Tensor]
+    """Astronomical unit (au)."""
     _units_register(["astronomical_unit", "au"], Length, 149597870700)
 
     # DURATIONS
 
     second: ClassVar[Tensor]
     """second"""
+    s: ClassVar[Tensor]
+    """second"""
     _units_register(["second", "s"], Time, 1.)
 
 
     minute: ClassVar[Tensor]
-    """minute"""
+    """minute (60 seconds)"""
+    min: ClassVar[Tensor]
+    """minute (60 seconds)"""
     _units_register(["minute", "min"], Time, 60.)
 
     hour: ClassVar[Tensor]
-    """hour"""
+    """hour (3600 seconds)"""
+    h: ClassVar[Tensor]
+    """hour (3600 seconds)"""
     _units_register(["hour", "h"], Time, 3600.)
     _units_register(["kilo_meter_per_hour", "kmph"], Velocity, 1000 / 3600)
     _units_register(["radian_per_second", "rad_per_s"], AngularVelocity, 1.0)
 
     day: ClassVar[Tensor]
-    """day"""
+    """day (24 hours)"""
     _units_register(["day", "d"], Time, 86400.)
 
     month: ClassVar[Tensor]
@@ -1087,9 +1108,13 @@ class Quantity(metaclass=QuantityMeta):
 
     kilo_gram: ClassVar[Tensor]
     """kilogram"""
+    kg: ClassVar[Tensor]
+    """kilogram"""
     _units_register(["kilogram", "kg"], Mass, 1.)
 
     gram: ClassVar[Tensor]
+    """gram"""
+    g: ClassVar[Tensor]
     """gram"""
     _units_register(["gram", "g"], Mass, 1e-3)
 
@@ -1112,7 +1137,6 @@ def vector3(x: RealNumber, y: RealNumber, z: RealNumber) -> Tensor:
         data=np.asarray((x, y, z), dtype=np.float64).reshape((3, 1)), 
         dimension=Dimless
     )
-
 
 def matrix33(a11: RealNumber, a12: RealNumber, a13: RealNumber,
           a21: RealNumber, a22: RealNumber, a23: RealNumber,

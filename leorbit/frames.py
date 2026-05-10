@@ -66,7 +66,8 @@ def itrf2gcrf(epoch: Timestamp | TimeInterval) -> Transform:
     
 
 ABS_FRAME_TRANSFORMS: dict[tuple[AbsoluteFrame, AbsoluteFrame], FrameTransformFactory] = {
-    (AbsoluteFrame.ITRF, AbsoluteFrame.GCRF): itrf2gcrf
+    (AbsoluteFrame.ITRF, AbsoluteFrame.GCRF): itrf2gcrf,
+    (AbsoluteFrame.GCRF, AbsoluteFrame.ITRF): lambda epoch: itrf2gcrf(epoch).reverse(),
 }
 """Transformations between every absolute frames"""
 
@@ -80,15 +81,10 @@ def absolute_frame_transform_factory(from_frame: AbsoluteFrame, to_frame: Absolu
 
     frames = from_frame, to_frame
     factory = ABS_FRAME_TRANSFORMS.get(frames, None)
-    if factory is not None:
-        return factory
+    if factory is None:
+        raise NotImplementedError("No algorithm to compute composed transformations")
     
-    reverse_frames = to_frame, from_frame
-    reverse_factory = ABS_FRAME_TRANSFORMS.get(reverse_frames, None)
-    if reverse_factory is not None:
-        return lambda epoch: reverse_factory(epoch).reverse()
-    
-    raise NotImplementedError("No algorithm to compute composed transformations")
+    return factory
 
 ### RELATIVE FRAMES
 

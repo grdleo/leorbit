@@ -10,6 +10,14 @@ from leorbit.propagator import NoPropagator, Propagator
 from leorbit.time import TimeInterval, Timestamp
 from leorbit.utils import from_mil, semi_major_axis_earth_to_mean_motion
 
+def __one(epoch: Timestamp | TimeInterval) -> Tensor:
+    """Transforms epoch into dimentionless scalar tensor with value 1, 
+    keeping the shape of the input epoch (scalar or array) in the output."""
+    shape = epoch.to_unixepoch().shape
+    return Tensor(
+        data=np.full(shape, 1.0, dtype=np.float64), 
+        dimension=Dimless
+    )
 
 class SkyObject(ABC):
     """Abstract object that can provide coordinates and trajectories."""
@@ -62,8 +70,8 @@ class Body(SkyObject, ABC):
     ):
         """Create a celestial body with physical radius and mass."""
         self.name = name
-        self.body_radius = radius
-        self.body_mass = mass
+        self.body_radius = radius.secure(dimension=Length, kind=TensorKind.SCALAR, size=1)
+        self.body_mass = mass.secure(dimension=Mass, kind=TensorKind.SCALAR, size=1)
 
     def __repr__(self) -> str:
         radius_km = self.body_radius.scalar.value("kilo_meter")
@@ -197,19 +205,19 @@ class Moon(Body):
     def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]:
         """Returns the semi major axis (a) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
-        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        one = __one(epoch)
         return one * (60.2666 * Quantity.radii_earth)
     
     def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the inclination (i) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
-        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        one = __one(epoch)
         return one * (0.08980417133211624 * Quantity.radian)
     
     def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)]:
         """Returns the eccentricity (e) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
-        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        one = __one(epoch)
         return one * 0.054900
     
     def arg_of_pericenter(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
@@ -248,13 +256,13 @@ class Sun(Body):
     def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]:
         """Returns the semi major axis (a) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
-        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        one = __one(epoch)
         return one * (149_597_870_700 * Quantity.meter)
     
     def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the inclination (i) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
-        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        one = __one(epoch)
         return one * (0 * Quantity.radian)
     
     def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)]:
@@ -276,7 +284,7 @@ class Sun(Body):
     def ra_of_asc_node(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
-        one = Tensor(np.ones(epoch.to_unixepoch().shape, dtype=np.float64))
+        one = __one(epoch)
         return one * (0 * Quantity.radian)
     
     def mean_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:

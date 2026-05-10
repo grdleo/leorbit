@@ -51,22 +51,35 @@ def get_passes(
 	gps_observer: GPS,
 	altitude_angle_min_degrees: float = 0.
 ) -> TimeIntervalSet:
+	"""Compute visibility intervals of a satellite from a ground location.
+
+	A pass is considered visible when the satellite altitude (elevation)
+	above the local horizon is greater than or equal to
+	``altitude_angle_min_degrees``.
+
+	Parameters
+	----------
+	satellite:
+		Satellite to evaluate.
+	during:
+		Time interval over which visibility is searched.
+	gps_observer:
+		Observer geodetic location.
+	altitude_angle_min_degrees:
+		Minimum elevation angle in degrees for visibility. Defaults to ``0.0``
+		(geometric horizon).
+
+	Returns
+	-------
+	TimeIntervalSet
+		Set of visible pass intervals for ``satellite`` during ``during`` from
+		``gps_observer``.
+	"""
 	return VisibleFromEarthLocationEvent(
 		satellite.trajectory(during),
 		gps_observer,
 		altitude_angle_min_degrees * Quantity.degree
     ).visible_intervals
-	
-
-def Q_(unit_name: str) -> Tensor:
-	"""Return a unit quantity by its registered name.
-
-	Examples
-	--------
-	``Q_("day")``
-	``5 * Q_("second")``
-	"""
-	return Quantity.get(unit_name)
 
 
 __all__ = [
@@ -81,7 +94,6 @@ __all__ = [
 	"NoPropagator",
 	"OrbitalElements",
 	"Propagator",
-	"Q_",
 	"Quantity",
 	"SGP4",
 	"Satellite",

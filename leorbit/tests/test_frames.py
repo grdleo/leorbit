@@ -1,3 +1,5 @@
+from itertools import permutations
+
 import numpy as np
 import pytest
 from typing import cast
@@ -131,3 +133,10 @@ def test_frame_transform_factory_between_relative_frames_chain():
     p_r1_back = back.do(p_r2)
 
     np.testing.assert_allclose(p_r1_back.raw_data_array("meter").reshape(3), p_r1.raw_data_array("meter").reshape(3), atol=1e-9)
+
+def test_all_absolute_frame_have_transform_factory():
+    from leorbit.frames import ABS_FRAME_TRANSFORMS
+
+    for _from, _to in permutations(AbsoluteFrame):
+        if (_from, _to) not in ABS_FRAME_TRANSFORMS.keys():
+            raise Exception(f"Missing transform factory for frames {_from} to {_to}")
