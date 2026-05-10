@@ -1,19 +1,16 @@
 import setuptools
-
-with open("README.md", "r") as fh:
-    long_description = fh.read()
+from pathlib import Path
 
 setuptools.setup(
     name="leorbit",
     license="MIT",
-    version="0.0.0",
     author="Léo Giroud",
     author_email="leo@leog.dev",
-    description="Python library for satellites in LEO (Low Earth Orbit): propagation, predictions & more",
-    long_description=long_description,
-    long_description_content_type="text/markdown",
     url="https://github.com/grdleo/leorbit",
-    packages=setuptools.find_packages(exclude=["tests"]),
+
+    description="Python library for satellites in LEO (Low Earth Orbit): propagation, predictions & more",\
+    long_description=Path("README.md").read_text(),
+    long_description_content_type="text/markdown",
     classifiers=[
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
@@ -21,6 +18,12 @@ setuptools.setup(
         "Topic :: Scientific/Engineering :: Astronomy",
         "Development Status :: 3 - Alpha",
     ],
+    
+    version="1a1", 
+    # Simple versioning scheme, with one component is the strategy. 
+    # https://packaging.python.org/en/latest/discussions/versioning/
+    
+    packages=setuptools.find_packages(exclude=["tests"]),
     install_requires=[
         "numpy",
         "matplotlib",
