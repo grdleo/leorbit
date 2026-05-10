@@ -991,7 +991,9 @@ class QuantityMeta(type):
             global _UNITS_REGISTRY
             return _UNITS_REGISTRY[name].copy()
         except KeyError:
-            raise ValueError(f"No unit named '{name}'")
+            # Important for Python introspection tools (inspect/pydoc):
+            # missing dynamic attributes must raise AttributeError.
+            raise AttributeError(f"No unit named '{name}'")
 
 
 class Quantity(metaclass=QuantityMeta):
@@ -1003,7 +1005,10 @@ class Quantity(metaclass=QuantityMeta):
     @classmethod
     def get(cls, value: str) -> Annotated[Tensor, TensorBound(kind=TensorKind.SCALAR)]:
         """Return the scalar unit associated with ``value``."""
-        return cls.__getattr__(value)
+        try:
+            return cls.__getattr__(value)
+        except AttributeError as ex:
+            raise ValueError(f"No unit named '{value}'") from ex
 
     dimensionless: ClassVar[Tensor]
     """dimensionless (1)"""
