@@ -412,7 +412,7 @@ class GPSTrajectory:
         """
         latitude_deg = self.latitude.scalar.values('deg').flatten()
         longitude_deg = self.longitude.scalar.values('deg').flatten()
-        altitude_km = self.altitude.scalar.values('kilo_meter').flatten()
+        altitude_km = self.altitude.scalar.values('km').flatten()
 
         assert len(latitude_deg) == len(longitude_deg) == len(altitude_km)
         if len(latitude_deg) != timeline.steps:
@@ -492,7 +492,7 @@ class HorizontalTrajectory:
         """
         azimuth_deg = self.azimuth.scalar.values('deg').flatten()
         elevation_deg = self.altitude.scalar.values('deg').flatten()
-        _range_km = self.distance.scalar.values('kilo_meter').flatten()
+        _range_km = self.distance.scalar.values('km').flatten()
 
         assert len(azimuth_deg) == len(elevation_deg) == len(_range_km)
         if len(azimuth_deg) != timeline.steps:

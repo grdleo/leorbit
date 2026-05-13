@@ -77,7 +77,7 @@ def get_passes(
 	return VisibleFromEarthLocationEvent(
 		satellite.trajectory(during),
 		gps_observer,
-		altitude_angle_min_degrees * UnitRegistry.degree
+		scalar(altitude_angle_min_degrees).with_units(UnitRegistry.degree)
     ).visible_intervals
 
 

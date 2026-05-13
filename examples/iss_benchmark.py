@@ -21,7 +21,7 @@ import requests
 import urllib3
 
 from leorbit.coordinates import GPS
-from leorbit.mathematics import Quantity
+from leorbit.api import scalar
 from leorbit.time import Timestamp, TimeInterval
 from leorbit import get_satellite
 
@@ -58,9 +58,9 @@ class OpenNotifyIssResponse(BaseModel):
         to build a full GPS point for display/comparison purposes.
         """
         return GPS(
-            latitude=float(self.iss_position.latitude) * Quantity.degree,
-            longitude=float(self.iss_position.longitude) * Quantity.degree,
-            altitude=400 * Quantity.kilo_meter
+            latitude=scalar(float(self.iss_position.latitude)).with_units("deg"),
+            longitude=scalar(float(self.iss_position.longitude)).with_units("deg"),
+            altitude=scalar(400).with_units("km")
         )
 
 

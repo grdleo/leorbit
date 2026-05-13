@@ -98,7 +98,7 @@ def get_celestrak_gpdata(catnr: int, log: bool = False) -> CelestrakDataGP:
     if store_path.exists():
         unixepoch_last_modified = int(getmtime(store_path))
         last_modified = Timestamp(unixepoch_last_modified)
-        if Timestamp.now().delta(last_modified) < (MINIMAL_DURATION_UPDATE_HOURS * U.hour):
+        if Timestamp.now().delta(last_modified) < scalar(MINIMAL_DURATION_UPDATE_HOURS).with_units(U.hour):
             try:
                 return CelestrakDataGP(
                     **json.loads(store_path.read_text())

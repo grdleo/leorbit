@@ -161,7 +161,7 @@ class Timestamp:
             ) from ex
 
     def delta(self: "Timestamp", other: "Timestamp") -> Tensor:
-        """Return the duration between two given `Timestamp` objects (i.e `self - other`), as a `pint.Quantity`.
+        """Return the duration between two given `Timestamp` objects (i.e `self - other`), as a `Tensor`.
 
         If `other > self`, the returned duration will be negative. 
         """

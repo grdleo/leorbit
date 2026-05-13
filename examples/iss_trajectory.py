@@ -10,9 +10,8 @@ import cartopy.feature as cfeature
 import certifi
 from cartopy.mpl.geoaxes import GeoAxes
 
-from leorbit import get_satellite
-from leorbit.mathematics import Quantity
-from leorbit.time import Timestamp, TimeInterval
+from leorbit.api import get_satellite, scalar
+from leorbit.time import TimeInterval, Timestamp
 
 
 def _configure_ssl_for_cartopy() -> None:
@@ -31,8 +30,8 @@ def main() -> None:
     start = Timestamp.now()
     timeline = TimeInterval(
         start,
-        start + 72 * Quantity.hour,
-        dt=5 * Quantity.second,
+        start + scalar("72 hour"),
+        dt=scalar("5 second"),
     )
 
     t0 = perf_counter()

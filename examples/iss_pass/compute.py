@@ -10,9 +10,9 @@ from matplotlib.projections.polar import PolarAxes
 import numpy as np
 
 from leorbit import get_satellite
+from leorbit.api import scalar
 from leorbit.coordinates import Coordinates
 from leorbit.frames import EarthLocalFrame
-from leorbit.mathematics import Quantity
 from leorbit.time import Timestamp, TimeInterval
 
 
@@ -229,18 +229,18 @@ def main() -> None:
 
     tmax = Timestamp.fromisoformat(EPOCH_DT.isoformat())
     timeline = TimeInterval(
-        tmax - (2 * Quantity.minute), 
-        tmax + (2 * Quantity.minute), 
-        dt=1 * Quantity.second
+        tmax - scalar("2 minute"),
+        tmax + scalar("2 minute"),
+        dt=scalar("1 second")
     )
 
     satellite = get_satellite(NORAD_ID, log=True)
     trajectory = satellite.trajectory(timeline)
 
     observer = Coordinates.from_gps(
-        longitude=OBS_LON_DEG * Quantity.degree,
-        latitude=OBS_LAT_DEG * Quantity.degree,
-        altitude=0 * Quantity.meter,
+        longitude=scalar(OBS_LON_DEG).with_units("degree"),
+        latitude=scalar(OBS_LAT_DEG).with_units("degree"),
+        altitude=scalar("0 meter"),
         epoch=timeline.start,
     )
     local_frame = EarthLocalFrame(observer)

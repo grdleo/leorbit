@@ -75,7 +75,7 @@ class Body(SkyObject, ABC):
         self.body_mass = mass.secure(units=U.kilogram, kind=TensorKind.SCALAR, size=1)
 
     def __repr__(self) -> str:
-        radius_km = self.body_radius.scalar.value("kilo_meter")
+        radius_km = self.body_radius.scalar.value("km")
         mass_kg = self.body_mass.scalar.value("kilo_gram")
         return (
             f"<{self.__class__.__name__} name='{self.name}' "
