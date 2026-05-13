@@ -6,11 +6,13 @@ satellite tracking workflows.
 
 from typing import TYPE_CHECKING
 
+from leorbit.mathematics import U as UnitRegistry
+from leorbit.mathematics import Tensor, matrix33, scalar, vector3
 from leorbit.coordinates import Coordinates, GPS, Horizontal, OrbitalElements, Trajectory
 from leorbit.events import Event, TimeMap, VisibleFromEarthLocationEvent
 from leorbit.ext import CelestrakDataGP
 from leorbit.frames import AbsoluteFrame, EarthLocalFrame
-from leorbit.mathematics import Quantity, Tensor, matrix33, scalar, vector3
+
 from leorbit.propagator import NoPropagator, Propagator, SGP4
 from leorbit.sky_object import Moon, Satellite, SkyObject, Sun
 from leorbit.time import TimeInterval, TimeIntervalSet, Timestamp, Timeline, get_intersections_timelines
@@ -78,7 +80,7 @@ def get_passes(
 	return VisibleFromEarthLocationEvent(
 		satellite.trajectory(during),
 		gps_observer,
-		altitude_angle_min_degrees * Quantity.degree
+		altitude_angle_min_degrees * UnitRegistry.degree
     ).visible_intervals
 
 
@@ -94,7 +96,7 @@ __all__ = [
 	"NoPropagator",
 	"OrbitalElements",
 	"Propagator",
-	"Quantity",
+	"UnitRegistry",
 	"SGP4",
 	"Satellite",
 	"SkyObject",
