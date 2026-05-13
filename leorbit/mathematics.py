@@ -86,6 +86,8 @@ class Tensor:
         Data units are default SI units corresponding to dimension."""
         if units is None:
             units = U.dimensionless
+        elif not isinstance(units, pint.Unit):
+            units = U.parse_units(str(units))
         if not isinstance(data, np.ndarray):
             data = np.asarray(data, dtype=np.float64).reshape((1,))
 
@@ -106,7 +108,7 @@ class Tensor:
             raise ValueError("Tensor data must be 1D, 2D, or 3D.")
 
         self._data = np.asarray(data, dtype=np.float64)
-        self._units = units
+        self._units = cast(pint.Unit, units)
 
     @property
     def data(self) -> NumpyFloatArray:
@@ -118,7 +120,7 @@ class Tensor:
     def __repr__(self) -> str:
         return self.human_repr()
     
-    def human_repr(self, units: pint.Unit | Tensor | str | None = None) -> str:
+    def human_repr(self, units: pint.Unit | str | None = None) -> str:
         """Human-readable inline representation.
 
         Uses ``<Scalar ...>``, ``<Vector3 ...>``, or ``<Matrix33 ...>``.
@@ -127,7 +129,7 @@ class Tensor:
         """
 
         if units is None:
-            units = __get_base_units(self._units)
+            units = _get_base_units(self._units)
 
         data = self.raw_data_array(units)
         dim_repr = units if isinstance(units, str) else str(self._units)
@@ -243,16 +245,10 @@ class Tensor:
             self._units
         )
     
-    def raw_data_array(self, units: pint.Unit | Tensor | str) -> NumpyFloatArray:
+    def raw_data_array(self, units: pint.Unit | str) -> NumpyFloatArray:
         """Return the raw data array of this tensor, converted to the given units."""
         factor: float | None = None
 
-        if isinstance(units, Tensor):
-            if units.kind != TensorKind.SCALAR:
-                raise ValueError("Units tensor must be a scalar.")
-            if not units._units.is_compatible_with(self._units):
-                raise ValueError("Units tensor must have the same physical dimension as the tensor.")
-            return self.raw_data_array(units._units)
         if isinstance(units, str):
             units = U.parse_units(units)
         if isinstance(units, pint.Unit):
@@ -271,7 +267,7 @@ class Tensor:
 
         return Tensor(
             data=self._data.copy(),
-            units=__retrieve_units(units)
+            units=_retrieve_units(units)
         )
     
     def __getitem__(self, index: int) -> Tensor:
@@ -325,7 +321,7 @@ class Tensor:
     def __pow__(self, exponent: RealNumber | int | float) -> Tensor:
         return Tensor(
             data=self._data ** float(exponent),
-            dimension=self._units ** exponent # type: ignore (it works...)
+            units=self._units ** exponent # type: ignore (it works...)
         )
 
     def __lt__(self, other: Tensor) -> bool:
@@ -433,14 +429,14 @@ class TensorAsScalar(Tensor):
         """Return this scalar view itself."""
         return self
         
-    def value(self, units: pint.Unit | Tensor | str) -> float:
+    def value(self, units: pint.Unit | str) -> float:
         """Return the scalar value converted to optional ``units``."""
         try:
             return self.raw_data_array(units).item()
         except AttributeError:
             raise ValueError("Tensor data is not a single scalar value.")
         
-    def values(self, units: pint.Unit | Tensor | str) -> npt.NDArray[np.float64]:
+    def values(self, units: pint.Unit | str) -> npt.NDArray[np.float64]:
         """Return scalar data as a NumPy array converted to optional ``units``."""
         return self.raw_data_array(units)
     
@@ -785,7 +781,7 @@ def tensor_check(f):
 
     return wrapper
 
-def __retrieve_units(obj: pint.Unit | str | Tensor) -> pint.Unit:
+def _retrieve_units(obj: pint.Unit | str | Tensor) -> pint.Unit:
     if isinstance(obj, Tensor):
         return obj._units
     elif isinstance(obj, str):
@@ -795,7 +791,7 @@ def __retrieve_units(obj: pint.Unit | str | Tensor) -> pint.Unit:
     
     raise TypeError()
 
-def __get_base_units(q: pint.Unit | pint.Quantity) -> pint.Unit:
+def _get_base_units(q: pint.Unit | pint.Quantity) -> pint.Unit:
     if isinstance(q, pint.Unit):
         q = cast(pint.Quantity, 1.0 * q)
     if isinstance(q, pint.Quantity):
@@ -806,12 +802,24 @@ def __get_base_units(q: pint.Unit | pint.Quantity) -> pint.Unit:
 ### CONVENIENCE FACTORY FUNCTIONS ###
 ### ############################# ###
 
-def scalar(value: RealNumber) -> Tensor:
-    """Create a dimensionless scalar tensor with the given value."""
+def scalar(value: RealNumber | pint.Unit | pint.Quantity) -> Tensor:
+    """Create a scalar tensor from a number, unit, or pint quantity."""
+    if isinstance(value, pint.Unit):
+        return Tensor(
+            data=np.asarray(1.0, dtype=np.float64).reshape((1,)),
+            units=value,
+        )
+
+    if isinstance(value, pint.Quantity):
+        return Tensor(
+            data=np.asarray(value.magnitude, dtype=np.float64).reshape((1,)),
+            units=cast(pint.Unit, value.units),
+        )
+
     assert isinstance(value, RealNumber)
 
     return Tensor(
-        data=np.asarray(value, dtype=np.float64).reshape((1,)), 
+        data=np.asarray(value, dtype=np.float64).reshape((1,)),
         units=U.dimensionless
     )
 
@@ -840,7 +848,7 @@ def matrix33(a11: RealNumber, a12: RealNumber, a13: RealNumber,
     )
 
 
-def ensure_tensor(v: Tensor | RealNumber) -> Tensor:
+def ensure_tensor(v: Tensor | RealNumber | pint.Unit | pint.Quantity) -> Tensor:
     """Return ``v`` as a tensor, wrapping plain numbers/arrays as dimensionless."""
     if isinstance(v, Tensor):
         return v

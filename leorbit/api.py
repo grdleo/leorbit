@@ -17,9 +17,6 @@ from leorbit.propagator import NoPropagator, Propagator, SGP4
 from leorbit.sky_object import Moon, Satellite, SkyObject, Sun
 from leorbit.time import TimeInterval, TimeIntervalSet, Timestamp, Timeline, get_intersections_timelines
 
-if TYPE_CHECKING:
-	from leorbit.mathematics import Tensor as _Tensor
-
 
 def get_satellite(
 	norad_cat_id: int,
