@@ -336,47 +336,47 @@ class Tensor:
     def __ge__(self, other: Tensor) -> bool:
         return bool((self._data - other._data).item() >= 0)
 
-    def __add__(self, right: Tensor | RealNumber) -> Tensor:
+    def __add__(self, right: Tensor | RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.ADD)
     
-    def __radd__(self, left: RealNumber) -> Tensor:
+    def __radd__(self, left: RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.ADD)
     
-    def __sub__(self, right: Tensor | RealNumber) -> Tensor:
+    def __sub__(self, right: Tensor | RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.SUB)
     
-    def __rsub__(self, left: RealNumber) -> Tensor:
+    def __rsub__(self, left: RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.SUB)
     
-    def __mul__(self, right: Tensor | RealNumber) -> Tensor:
+    def __mul__(self, right: Tensor | RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.MUL)
     
-    def __rmul__(self, left: RealNumber) -> Tensor:
+    def __rmul__(self, left: RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MUL)
     
-    def __truediv__(self, right: Tensor | RealNumber) -> Tensor:
+    def __truediv__(self, right: Tensor | RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.TRUEDIV)
     
-    def __rtruediv__(self, left: RealNumber) -> Tensor:
+    def __rtruediv__(self, left: RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.TRUEDIV)
     
-    def __floordiv__(self, right: Tensor | RealNumber) -> Tensor:
+    def __floordiv__(self, right: Tensor | RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.FLOORDIV)
     
-    def __rfloordiv__(self, left: RealNumber) -> Tensor:
+    def __rfloordiv__(self, left: RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.FLOORDIV)
     
-    def __mod__(self, right: Tensor | RealNumber) -> Tensor:
+    def __mod__(self, right: Tensor | RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return self.perform_binary_operation(right, TensorBinaryOperator.MODULO)
     
-    def __rmod__(self, left: RealNumber) -> Tensor:
+    def __rmod__(self, left: RealNumber | pint.Quantity | pint.Unit) -> Tensor:
         return scalar(left).perform_binary_operation(self, TensorBinaryOperator.MODULO)
     
     def __or__(self, right: Tensor) -> Tensor:
         """Concatenation operator, only works for tensors of the same kind and dimension."""
         return self.concatenate(right)
     
-    def perform_binary_operation(self, other: Tensor | RealNumber, op: TensorBinaryOperator) -> Tensor:
+    def perform_binary_operation(self, other: Tensor | RealNumber | pint.Quantity | pint.Unit, op: TensorBinaryOperator) -> Tensor:
         """Perform the given binary operation with another tensor, checking dimension compatibility."""
         # NOTE: THIS IS APPROUVED. DO NOT TOUCH IT FFS.
         if not isinstance(other, Tensor):
@@ -808,8 +808,12 @@ def _get_base_units(q: pint.Unit | pint.Quantity) -> pint.Unit:
 ### CONVENIENCE FACTORY FUNCTIONS ###
 ### ############################# ###
 
-def scalar(value: RealNumber | pint.Unit | pint.Quantity) -> Tensor:
+def scalar(value: RealNumber | pint.Unit | pint.Quantity | str) -> Tensor:
     """Create a scalar tensor from a number, unit, or pint quantity."""
+    if isinstance(value, str):
+        # Parse textual quantities like "12 meter" through this registry.
+        value = cast(pint.Quantity, U.Quantity(value))
+    
     if isinstance(value, pint.Unit):
         return Tensor(
             data=np.asarray(1.0, dtype=np.float64).reshape((1,)),
@@ -819,10 +823,19 @@ def scalar(value: RealNumber | pint.Unit | pint.Quantity) -> Tensor:
     if isinstance(value, pint.Quantity):
         return Tensor(
             data=np.asarray(value.magnitude, dtype=np.float64).reshape((1,)),
-            units=cast(pint.Unit, value.units),
+            units=_retrieve_units(value.units), # type: ignore ...
         )
 
-    assert isinstance(value, RealNumber)
+    # Accept pint-like quantity objects from other runtimes/registries.
+    if hasattr(value, "magnitude") and hasattr(value, "units"):
+        q = U.Quantity(getattr(value, "magnitude"), getattr(value, "units"))
+        return Tensor(
+            data=np.asarray(q.magnitude, dtype=np.float64).reshape((1,)),
+            units=_retrieve_units(q.units), # type: ignore ...
+        )
+
+    if not isinstance(value, RealNumber):
+        raise TypeError(f"Unsupported scalar input type: {type(value)!r}")
 
     return Tensor(
         data=np.asarray(value, dtype=np.float64).reshape((1,)),

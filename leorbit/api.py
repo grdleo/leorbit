@@ -61,7 +61,7 @@ def get_passes(
 	satellite:
 		Satellite to evaluate.
 	during:
-		Time interval over which visibility is searched.
+		U.second interval over which visibility is searched.
 	gps_observer:
 		Observer geodetic location.
 	altitude_angle_min_degrees:

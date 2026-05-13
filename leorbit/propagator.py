@@ -11,9 +11,6 @@ from leorbit.mathematics import U, Tensor, TensorBound, TensorKind, normalize_an
 from leorbit.time import TimeInterval, Timestamp
 from leorbit.utils import elements2orthogonal_gcrf, mean2true_anomaly
 
-Angle = U.radian
-Length = U.meter
-Time = U.second
 
 class Propagator(ABC):
     """Algorithm to propagate given orbital elements at given time"""
@@ -50,7 +47,7 @@ class NoPropagator(Propagator):
         els = self.elements
 
         if isinstance(epoch, Timestamp):
-            shift = (els.mean_motion * epoch.delta(els.epoch)).secure(Angle, TensorKind.SCALAR)
+            shift = (els.mean_motion * epoch.delta(els.epoch)).secure(U.radian, TensorKind.SCALAR)
             shifted_M0 = normalize_angle(els.mean_anomaly + shift)
             shifted_nu = mean2true_anomaly(els.eccentricity, shifted_M0)
             pos, vel = elements2orthogonal_gcrf(
@@ -65,7 +62,7 @@ class NoPropagator(Propagator):
         
         elif isinstance(epoch, TimeInterval):
             time_line = epoch.to_time_stamps() - epoch.start.unixepoch * U.second
-            shift = (time_line * els.mean_motion).secure(Angle, TensorKind.SCALAR)
+            shift = (time_line * els.mean_motion).secure(U.radian, TensorKind.SCALAR)
             shifted_M0 = normalize_angle(els.mean_anomaly + shift)
             shifted_nu = mean2true_anomaly(els.eccentricity, shifted_M0)
             pos, vel = elements2orthogonal_gcrf(
@@ -120,13 +117,13 @@ class SGP4(Propagator):
             return Coordinates(
                 epoch,
                 AbsoluteFrame.GCRF,
-                Tensor(np.asarray([[x], [y], [z]], dtype=np.float64), Length),
-                Tensor(np.asarray([[vx], [vy], [vz]], dtype=np.float64), Length / Time),
+                Tensor(np.asarray([[x], [y], [z]], dtype=np.float64), U.meter),
+                Tensor(np.asarray([[vx], [vy], [vz]], dtype=np.float64), U.meter / U.second),
             )
         elif isinstance(epoch, TimeInterval):
             return Trajectory(
                 epoch,
                 AbsoluteFrame.GCRF,
-                Tensor(np.asarray([output.x, output.y, output.z], dtype=np.float64), Length),
-                Tensor(np.asarray([output.vx, output.vy, output.vz], dtype=np.float64), Length / Time),
+                Tensor(np.asarray([output.x, output.y, output.z], dtype=np.float64), U.meter),
+                Tensor(np.asarray([output.vx, output.vy, output.vz], dtype=np.float64), U.meter / U.second),
             )

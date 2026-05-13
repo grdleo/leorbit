@@ -7,8 +7,6 @@ from leorbit.frames import AbsoluteFrame
 from leorbit.mathematics import U, Tensor, scalar
 from leorbit.time import TimeInterval, Timestamp
 
-Length = U.meter
-Time = U.second
 
 
 def _make_interval() -> TimeInterval:
@@ -54,7 +52,7 @@ def test_visible_from_earth_location_event_full():
             ],
             dtype=np.float64,
         ),
-        Length,
+        U.meter,
     )
 
     trajectory = Trajectory(interval, local_frame, pos_local)
@@ -97,13 +95,13 @@ def test_visible_from_earth_location_event_with_velocity_transform():
             ],
             dtype=np.float64,
         ),
-        Length,
+        U.meter,
     )
     pos_itrf = local_frame.transform.undo(pos_local)
 
     vel_itrf = Tensor(
         np.zeros((3, interval.steps), dtype=np.float64),
-        Length / Time,
+        U.meter / U.second,
     )
 
     trajectory = Trajectory(interval, AbsoluteFrame.ITRF, pos_itrf, vel_itrf)

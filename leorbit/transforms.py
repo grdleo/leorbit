@@ -3,8 +3,6 @@ from typing import Self, cast
 
 from leorbit.mathematics import U, Tensor, TensorBound, TensorKind, matrix33, cos, scalar, sin
 
-Angle = U.radian
-Dimless = U.dimensionless
 
 
 class Transform(ABC):
@@ -86,7 +84,7 @@ class TransformVector3Linear(Transform):
 
     def __init__(self, matrix: Tensor):
         """Initialize with the transformation matrix."""
-        matrix.secure(units=Dimless, kind=TensorKind.MATRIX33)
+        matrix.secure(units=U.dimensionless, kind=TensorKind.MATRIX33)
         self.matrix = matrix
 
     @property
@@ -118,7 +116,7 @@ class TransformVector3Affine(Transform):
 
     def __init__(self, matrix: Tensor, translation: Tensor):
         """Initialize with matrix and translation components."""
-        matrix.secure(units=Dimless, kind=TensorKind.MATRIX33)
+        matrix.secure(units=U.dimensionless, kind=TensorKind.MATRIX33)
         translation.secure(kind=TensorKind.VECTOR3)
         self.matrix = matrix
         self.translation = translation
@@ -156,7 +154,7 @@ class TransformVector3RotationZ(TransformVector3Linear):
     """Rotation around the Z axis by a given angle."""
 
     def __init__(self, angle: Tensor):
-        angle.secure(units=Angle, kind=TensorKind.SCALAR)
+        angle.secure(units=U.radian, kind=TensorKind.SCALAR)
         c = cos(angle).scalar.value("dimensionless")
         s = sin(angle).scalar.value("dimensionless")
 

@@ -10,11 +10,6 @@ from leorbit.propagator import NoPropagator, Propagator
 from leorbit.time import TimeInterval, Timestamp
 from leorbit.utils import from_mil, semi_major_axis_earth_to_mean_motion
 
-Angle = U.radian
-AngularVelocity = U.radian / U.second
-Dimless = U.dimensionless
-Length = U.meter
-Mass = U.kilogram
 
 def __one(epoch: Timestamp | TimeInterval) -> Tensor:
     """Transforms epoch into dimentionless scalar tensor with value 1, 
@@ -22,7 +17,7 @@ def __one(epoch: Timestamp | TimeInterval) -> Tensor:
     shape = epoch.to_unixepoch().shape
     return Tensor(
         data=np.full(shape, 1.0, dtype=np.float64), 
-        units=Dimless
+        units=U.dimensionless
     )
 
 class SkyObject(ABC):
@@ -71,13 +66,13 @@ class Body(SkyObject, ABC):
     """
     def __init__(self, 
         name: str, 
-        radius: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)], 
-        mass: Annotated[Tensor, TensorBound(units=Mass, kind=TensorKind.SCALAR)]
+        radius: Annotated[Tensor, TensorBound(units=U.meter, kind=TensorKind.SCALAR)], 
+        mass: Annotated[Tensor, TensorBound(units=U.kilogram, kind=TensorKind.SCALAR)]
     ):
         """Create a celestial body with physical radius and mass."""
         self.name = name
-        self.body_radius = radius.secure(units=Length, kind=TensorKind.SCALAR, size=1)
-        self.body_mass = mass.secure(units=Mass, kind=TensorKind.SCALAR, size=1)
+        self.body_radius = radius.secure(units=U.meter, kind=TensorKind.SCALAR, size=1)
+        self.body_mass = mass.secure(units=U.kilogram, kind=TensorKind.SCALAR, size=1)
 
     def __repr__(self) -> str:
         radius_km = self.body_radius.scalar.value("kilo_meter")
@@ -110,84 +105,84 @@ class Body(SkyObject, ABC):
         )
 
     @abstractmethod
-    def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]:
+    def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.meter, kind=TensorKind.SCALAR)]:
         """Returns the semi major axis (a) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def a(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]:
+    def a(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.meter, kind=TensorKind.SCALAR)]:
         """Returns the semi major axis (a) of this star at given epoch."""
         return self.semi_major_axis(epoch)
     
     @abstractmethod
-    def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)]:
+    def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.dimensionless, kind=TensorKind.SCALAR)]:
         """Returns the eccentricity (e) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def e(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)]:
+    def e(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.dimensionless, kind=TensorKind.SCALAR)]:
         """Returns the eccentricity (e) of this star at given epoch."""
         return self.eccentricity(epoch)
     
     @abstractmethod
-    def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the inclination (i) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def i(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def i(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the inclination (i) of this star at given epoch."""
         return self.inclination(epoch)
     
     @abstractmethod
-    def ra_of_asc_node(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def ra_of_asc_node(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def Ω(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def Ω(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         return self.ra_of_asc_node(epoch)
     
     @abstractmethod
-    def arg_of_pericenter(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def arg_of_pericenter(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def ω(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def ω(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         return self.arg_of_pericenter(epoch)
     
     @abstractmethod
-    def mean_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def mean_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         raise NotImplementedError("A `Star` object has to implement all orbital elements: `a, e, i, Ω, ω, M`")
-    def M(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def M(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         return self.mean_anomaly(epoch)
     
-    def mean_motion(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=AngularVelocity, kind=TensorKind.SCALAR)]:
+    def mean_motion(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian / U.second, kind=TensorKind.SCALAR)]:
         """Returns the mean motion (n) of this star at given epoch."""
         return semi_major_axis_earth_to_mean_motion(self.semi_major_axis(epoch))
-    def n(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=AngularVelocity, kind=TensorKind.SCALAR)]:
+    def n(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian / U.second, kind=TensorKind.SCALAR)]:
         """Returns the mean motion (n) of this star at given epoch."""
         return self.mean_motion(epoch)
     
-    def radius(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]:
+    def radius(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.meter, kind=TensorKind.SCALAR)]:
         """Returns the radius from the focal of the ellipse's orbit 
         of this star at given epoch."""
         a = self.semi_major_axis(epoch)
         e = self.eccentricity(epoch)
         E = self.eccentric_anomaly(epoch)
         return a * (1 - e * cos(E))
-    def r(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]:
+    def r(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.meter, kind=TensorKind.SCALAR)]:
         """Returns the radius from the focal of the ellipse's orbit 
         of this star at given epoch."""
         return self.radius(epoch)
 
-    def true_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def true_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the true anomaly (υ) of this star at given epoch."""
         e = self.eccentricity(epoch)
         E = self.eccentric_anomaly(epoch)
         tan_half_nu = ((1 + e) / (1 - e)) ** 0.5 * tan(.5 * E)
         nu = 2 * atan(tan_half_nu)
         return nu
-    def υ(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def υ(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the true anomaly (υ) of this star at given epoch."""
         return self.true_anomaly(epoch)
     
-    def eccentric_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def eccentric_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the eccentric anomaly (E) of this star at given epoch."""
         M = self.mean_anomaly(epoch)
         e = self.eccentricity(epoch)
@@ -195,7 +190,7 @@ class Body(SkyObject, ABC):
         for _ in range(5):  # compute excentric anomaly
             E = e * sin(E) + M
         return E
-    def E(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def E(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the eccentric anomaly (E) of this star at given epoch."""
         return self.eccentric_anomaly(epoch)
     
@@ -208,25 +203,25 @@ class Moon(Body):
     def __init__(self):
         super().__init__("Moon", scalar(1737.4).with_units(U.kilometer), scalar(7.342e22).with_units(U.kilogram))
 
-    def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]:
+    def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.meter, kind=TensorKind.SCALAR)]:
         """Returns the semi major axis (a) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
         one = __one(epoch)
         return one * scalar(60.2666 * 6_378_137).with_units(U.meter)
     
-    def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the inclination (i) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
         one = __one(epoch)
         return one * (0.08980417133211624 * U.radian)
     
-    def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)]:
+    def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.dimensionless, kind=TensorKind.SCALAR)]:
         """Returns the eccentricity (e) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
         one = __one(epoch)
         return one * 0.054900
     
-    def arg_of_pericenter(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def arg_of_pericenter(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
         argp = Tensor(
@@ -234,7 +229,7 @@ class Moon(Body):
         ) * U.degree
         return normalize_angle(argp)
     
-    def ra_of_asc_node(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def ra_of_asc_node(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
         raan = Tensor(
@@ -242,7 +237,7 @@ class Moon(Body):
         ) * U.degree
         return normalize_angle(raan)
     
-    def mean_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def mean_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
         M = Tensor(
@@ -259,19 +254,19 @@ class Sun(Body):
     def __init__(self):
         super().__init__("Sun", scalar(696_340).with_units(U.kilometer), scalar(1.988e30).with_units(U.kilogram))
     
-    def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]:
+    def semi_major_axis(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.meter, kind=TensorKind.SCALAR)]:
         """Returns the semi major axis (a) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
         one = __one(epoch)
         return one * (149_597_870_700 * U.meter)
     
-    def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def inclination(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the inclination (i) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
         one = __one(epoch)
         return one * (0 * U.radian)
     
-    def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)]:
+    def eccentricity(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.dimensionless, kind=TensorKind.SCALAR)]:
         """Returns the eccentricity (e) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
         e = Tensor(
@@ -279,7 +274,7 @@ class Sun(Body):
         )
         return e
     
-    def arg_of_pericenter(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def arg_of_pericenter(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the argument of pericenter (ω) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
         argp = Tensor(
@@ -287,13 +282,13 @@ class Sun(Body):
         ) * U.degree
         return normalize_angle(argp)
     
-    def ra_of_asc_node(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def ra_of_asc_node(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the right ascension of the ascending node (Ω) of this star at given epoch."""
         # to keep the shape of the input epoch (scalar or array) in the output
         one = __one(epoch)
         return one * (0 * U.radian)
     
-    def mean_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
+    def mean_anomaly(self, epoch: Timestamp | TimeInterval) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
         """Returns the mean anomaly (M) of this star at given epoch."""
         t = from_mil(epoch.to_unixepoch())
         M = Tensor(

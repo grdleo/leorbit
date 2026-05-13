@@ -10,9 +10,6 @@ from leorbit.transforms import (
     TransformVector3RotationZ,
 )
 
-Angle = U.radian
-Dimless = U.dimensionless
-Length = U.meter
 
 
 def test_transform_identity_do_undo_and_copy():

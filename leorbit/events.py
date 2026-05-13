@@ -7,7 +7,6 @@ from leorbit.coordinates import GPS, Trajectory
 from leorbit.mathematics import U, Tensor, TensorBound, TensorKind, scalar, sin
 from leorbit.time import TimeInterval, TimeIntervalSet, Timestamp
 
-Angle = U.radian
 
 import numpy.typing as npt
 
@@ -25,7 +24,7 @@ def _truth_array_to_time_intervals(truth_array: npt.NDArray, timeline: TimeInter
 
 
 class TimeMap:
-    """Time-indexed container for arrays computed on a fixed interval."""
+    """U.second-indexed container for arrays computed on a fixed interval."""
 
     def __init__(self, interval: TimeInterval, **values: npt.NDArray):
         """Store named arrays sampled over ``interval``.
@@ -80,7 +79,7 @@ class VisibleFromEarthLocationEvent(Event):
     def __init__(self, 
         trajectory: Trajectory, 
         gps_observer: GPS,
-        altitude_angle_min: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)] = scalar(0).with_units(U.radian)
+        altitude_angle_min: Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)] = scalar(0).with_units(U.radian)
     ):
         """Build a visibility event from observer GPS coordinates.
 

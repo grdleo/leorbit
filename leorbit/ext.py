@@ -12,12 +12,6 @@ import urllib3
 from leorbit.coordinates import OrbitalElements
 from leorbit.mathematics import U, scalar
 from leorbit.time import Timestamp
-
-AngularAcceleration = U.radian / U.second ** 2
-AngularJerk = U.radian / U.second ** 3
-AngularVelocity = U.radian / U.second
-InvLength = 1 / U.meter
-
 class CelestrakDataGP(BaseModel):
     """Orbital elements as returned by Celestrak in JSON format
 

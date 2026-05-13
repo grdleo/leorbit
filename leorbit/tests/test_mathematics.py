@@ -27,9 +27,6 @@ from leorbit.mathematics import (
     vector3,
 )
 
-Angle = U.radian
-Dimless = U.dimensionless
-Length = U.meter
 
 
 def test_quantity_registry_and_synonyms():
@@ -193,18 +190,18 @@ def test_scalar_value_and_unit_conversion():
 
 def test_tensor_check_and_secure():
     d = scalar(5.0).with_units(U.meter)
-    assert d.check(units=Length)
+    assert d.check(units=U.meter)
     assert d.check(kind=TensorKind.SCALAR)
-    assert d.secure(units=Length, kind=TensorKind.SCALAR) is d
+    assert d.secure(units=U.meter, kind=TensorKind.SCALAR) is d
 
     with pytest.raises(ValueError):
-        d.secure(units=Angle)
+        d.secure(units=U.radian)
     assert d.check() is True
 
 
 def test_ensure_tensor_and_dimension_guard():
     from_float = ensure_tensor(3.5)
-    assert from_float.check(units=Dimless, kind=TensorKind.SCALAR)
+    assert from_float.check(units=U.dimensionless, kind=TensorKind.SCALAR)
     assert from_float.scalar.value("dimensionless") == pytest.approx(3.5)
 
     t1 = scalar(1.0).with_units(U.meter)
@@ -225,14 +222,14 @@ def test_vector_components_norm_dot_cross_and_angle():
     assert v.vector3.length.scalar.values("meter") == pytest.approx([5.0])
 
     dot = v.vector3.dot(w)
-    assert dot.units.is_compatible_with(Length * Length)
+    assert dot.units.is_compatible_with(U.meter * U.meter)
     assert dot.scalar.value(dot.units) == pytest.approx(16.0)
 
     cross = v.vector3.cross(w)
     np.testing.assert_allclose(cross.raw_data_array("meter**2").reshape(3), [12.0, -9.0, 12.0])
 
     angle = v.vector3.angle(v)
-    assert angle.check(units=Angle, kind=TensorKind.SCALAR)
+    assert angle.check(units=U.radian, kind=TensorKind.SCALAR)
     assert angle.scalar.value("rad") == pytest.approx(0.0)
 
 
@@ -268,9 +265,9 @@ def test_trigonometric_helpers_and_domains():
     assert tan(scalar(0.0).with_units(U.radian)).scalar.value("dimensionless") == pytest.approx(0.0)
 
     u = scalar(0.5).with_units(U.dimensionless)
-    assert asin(u).check(units=Angle)
-    assert acos(u).check(units=Angle)
-    assert atan(u).check(units=Angle)
+    assert asin(u).check(units=U.radian)
+    assert acos(u).check(units=U.radian)
+    assert atan(u).check(units=U.radian)
 
     with pytest.raises(ValueError):
         sin(scalar(1.0).with_units(U.meter))
@@ -296,9 +293,9 @@ def test_atan2_normalization_and_interpolation():
 def test_tensor_check_decorator_rejects_bad_argument_and_return():
     @tensor_check
     def scale_length_vector(
-        v: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.VECTOR3)],
+        v: Annotated[Tensor, TensorBound(units=U.meter, kind=TensorKind.VECTOR3)],
         k: float,
-    ) -> Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.VECTOR3)]:
+    ) -> Annotated[Tensor, TensorBound(units=U.meter, kind=TensorKind.VECTOR3)]:
         return v * k
 
     good = vector3(1.0, -2.0, 3.0) * U.meter

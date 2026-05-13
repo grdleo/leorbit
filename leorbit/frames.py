@@ -6,7 +6,6 @@ from leorbit.mathematics import U, Tensor, cos, matrix33, scalar, vector3
 from leorbit.transforms import Transform, TransformChain, TransformIdentity, TransformVector3Affine, TransformVector3Linear
 from leorbit.time import Timestamp, TimeInterval
 
-Dimless = U.dimensionless
 
 import numpy as np
 import numpy.typing as npt
@@ -61,7 +60,7 @@ def itrf2gcrf(epoch: Timestamp | TimeInterval) -> Transform:
             ], 
             axis=0
         )
-        return TransformVector3Linear(Tensor(rot_mat, Dimless))
+        return TransformVector3Linear(Tensor(rot_mat, U.dimensionless))
     else:
         raise ValueError("Unsupported sidereal angle shape")
 

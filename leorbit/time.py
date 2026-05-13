@@ -1,4 +1,4 @@
-"""Time handling"""
+"""U.second handling"""
 
 import collections
 from datetime import datetime, timezone, timedelta, date, time
@@ -13,8 +13,6 @@ import pint
 from leorbit.mathematics import U, Tensor, TensorBound, TensorKind, scalar
 from leorbit.utils import from_mil, humanize_duration, j2000, j2000_to_stl0, jd, stl0, unixepoch_to_j2000
 
-Time = U.second
-Angle = U.radian
 
 MIN_DURATION = scalar(1e-9).with_units(U.second)
 
@@ -120,7 +118,7 @@ class Timestamp:
         if not isinstance(other, Tensor):
             raise TypeError("Unsupported duration type")
 
-        if not other.check(units=Time, kind=TensorKind.SCALAR):
+        if not other.check(units=U.second, kind=TensorKind.SCALAR):
             raise TypeError("Unsupported duration type")
 
         delta_seconds = other.scalar.value("second")
@@ -215,7 +213,7 @@ class Timestamp:
     @property
     def stl0(self: "Timestamp") -> Tensor: # FIXME: better algorithm on the Wiki page
         """The 
-        [Sideral Time](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
+        [Sideral U.second](https://fr.wikipedia.org/wiki/Temps_sid%C3%A9ral#Calcul_de_l'heure_sid%C3%A9rale) 
         (angle) of Latitude 0 at this `Timestamp`.
         """
         return stl0(self._unixepoch)
@@ -226,7 +224,11 @@ class Timestamp:
 
 class TimeInterval:
     """A time interval between two `Timestamp` objects. """
-    def __init__(self, start: Timestamp, stop: Timestamp, dt=scalar(1).with_units(U.second)):
+    def __init__(self, 
+        start: Timestamp, 
+        stop: Timestamp, 
+        dt: Tensor | timedelta = scalar(1).with_units(U.second)
+    ):
         """Create a discretized interval from ``start`` to ``stop`` with step ``dt``."""
         dt_seconds = Timestamp._duration_seconds(dt)
         dt = scalar(dt_seconds).with_units(U.second)
@@ -236,7 +238,7 @@ class TimeInterval:
         if start + dt > stop:
             raise ValueError()
         if dt_seconds < float(Timestamp._duration_seconds(MIN_DURATION)):
-            raise ValueError(f"Time delta cannot be lower than minimal duration {MIN_DURATION}")
+            raise ValueError(f"U.second delta cannot be lower than minimal duration {MIN_DURATION}")
         
         self.start = start
         self.stop = stop
@@ -363,7 +365,7 @@ class TimeInterval:
     
     def to_time_stamps(self) -> Tensor:
         """Return all discretized timestamps as a time-dimension tensor."""
-        return Tensor(self.to_unixepoch(), Time)
+        return Tensor(self.to_unixepoch(), U.second)
     
     @staticmethod
     def make_ponctual(time: Timestamp) -> "TimeInterval":
