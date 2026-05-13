@@ -290,6 +290,60 @@ def test_atan2_normalization_and_interpolation():
     assert p.scalar.value("meter") == pytest.approx(11.0)
 
 
+@pytest.mark.parametrize(
+    ("angle", "expected"),
+    [
+        (0.0 * np.pi, 0.0 * np.pi),
+        (0.5 * np.pi, 0.5 * np.pi),
+        (1.0 * np.pi, 1.0 * np.pi),
+        (1.5 * np.pi, 1.5 * np.pi),
+        (2.0 * np.pi, 0.0 * np.pi),
+        (-0.5 * np.pi, 1.5 * np.pi),
+        (-1.0 * np.pi, 1.0 * np.pi),
+        (-1.5 * np.pi, 0.5 * np.pi),
+        (-2.0 * np.pi, 0.0 * np.pi),
+        (7.0 * np.pi, 1.0 * np.pi),
+        (-7.0 * np.pi, 1.0 * np.pi),
+        (11.25 * np.pi, 1.25 * np.pi),
+    ],
+)
+def test_normalize_angle_values(angle: float, expected: float):
+    wrapped = normalize_angle(scalar(angle).with_units(U.radian))
+    assert wrapped.scalar.value("rad") == pytest.approx(expected)
+
+
+@pytest.mark.parametrize(
+    ("angle", "expected"),
+    [
+        (0.0 * np.pi, 0.0 * np.pi),
+        (0.5 * np.pi, 0.5 * np.pi),
+        (1.0 * np.pi, -1.0 * np.pi),
+        (1.5 * np.pi, -0.5 * np.pi),
+        (2.0 * np.pi, 0.0 * np.pi),
+        (-0.5 * np.pi, -0.5 * np.pi),
+        (-1.0 * np.pi, -1.0 * np.pi),
+        (-1.5 * np.pi, 0.5 * np.pi),
+        (-2.0 * np.pi, 0.0 * np.pi),
+        (7.0 * np.pi, -1.0 * np.pi),
+        (-7.0 * np.pi, -1.0 * np.pi),
+        (11.25 * np.pi, -0.75 * np.pi),
+    ],
+)
+def test_normalize_angle_symmetric_values(angle: float, expected: float):
+    wrapped = normalize_angle_symmetric(scalar(angle).with_units(U.radian))
+    assert wrapped.scalar.value("rad") == pytest.approx(expected)
+
+
+def test_normalize_angle_accepts_degree_inputs():
+    wrapped = normalize_angle(scalar(77.0804).with_units("degree"))
+    assert wrapped.scalar.value("degree") == pytest.approx(77.0804)
+
+
+def test_normalize_angle_symmetric_accepts_degree_inputs():
+    wrapped = normalize_angle_symmetric(scalar(-170.5).with_units("degree"))
+    assert wrapped.scalar.value("degree") == pytest.approx(-170.5)
+
+
 def test_tensor_check_decorator_rejects_bad_argument_and_return():
     @tensor_check
     def scale_length_vector(

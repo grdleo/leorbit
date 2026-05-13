@@ -952,7 +952,8 @@ def normalize_angle(
     angle: Annotated[Tensor, TensorBound(units=U.radian)]
 ) -> Annotated[Tensor, TensorBound(units=U.radian)]:
     """Wrap angles to the ``[0, 2π)`` interval."""
-    return Tensor(np.mod(angle._data, 2 * np.pi), U.radian)
+    angle_rad = angle.raw_data_array(U.radian)
+    return Tensor(np.mod(angle_rad, 2 * np.pi), U.radian)
 
 
 @tensor_check
@@ -960,7 +961,8 @@ def normalize_angle_symmetric(
     angle: Annotated[Tensor, TensorBound(units=U.radian)]
 ) -> Annotated[Tensor, TensorBound(units=U.radian)]:
     """Wrap angles to the ``[-π, π)`` interval."""
-    wrapped = np.mod(angle._data + np.pi, 2 * np.pi) - np.pi
+    angle_rad = angle.raw_data_array(U.radian)
+    wrapped = np.mod(angle_rad + np.pi, 2 * np.pi) - np.pi
     return Tensor(wrapped, U.radian)
 
 
