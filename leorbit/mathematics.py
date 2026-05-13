@@ -788,6 +788,12 @@ def _retrieve_units(obj: pint.Unit | str | Tensor) -> pint.Unit:
         return U.parse_units(obj)
     elif isinstance(obj, pint.Unit):
         return obj
+    else:
+        # Support concrete Pint unit implementations not typed as ``pint.Unit``.
+        try:
+            return U.parse_units(str(obj))
+        except Exception:
+            pass
     
     raise TypeError()
 
