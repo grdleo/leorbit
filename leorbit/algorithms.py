@@ -70,7 +70,7 @@ def sgp4(
     - `sat0_node` Satellite's right ascension of ascending node in given GP data. Units: `rad`
     - `sat0_M` Satellite's mean anomaly in given GP data. Units `rad`
     - `bstar` Satellite's BSTAR coefficient in given GP data. Units `1/earthRadii`
-    - `tsince` U.second since GP data epoch. Units: `min`
+    - `tsince` time since GP data epoch. Units: `min`
 
     """
     sat0_n = np.float64(elements_sat0.n)
