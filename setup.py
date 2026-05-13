@@ -19,7 +19,7 @@ setuptools.setup(
         "Development Status :: 3 - Alpha",
     ],
     
-    version="1a1", 
+    version="0a1", 
     # Simple versioning scheme, with one component is the strategy. 
     # https://packaging.python.org/en/latest/discussions/versioning/
     
