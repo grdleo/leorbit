@@ -10,8 +10,13 @@ import requests
 import urllib3
 
 from leorbit.coordinates import OrbitalElements
-from leorbit.mathematics import AngularAcceleration, AngularJerk, AngularVelocity, InvLength, Quantity
+from leorbit.mathematics import U, scalar
 from leorbit.time import Timestamp
+
+AngularAcceleration = U.radian / U.second ** 2
+AngularJerk = U.radian / U.second ** 3
+AngularVelocity = U.radian / U.second
+InvLength = 1 / U.meter
 
 class CelestrakDataGP(BaseModel):
     """Orbital elements as returned by Celestrak in JSON format
@@ -50,15 +55,15 @@ class CelestrakDataGP(BaseModel):
     norad_cat_id: int | None = Field(alias="NORAD_CAT_ID", default=None)
 
     def to_orbital_elements(self) -> "OrbitalElements":
-        e = self.eccentricity * Quantity.dimensionless 
-        i = self.inclination * Quantity.degree
-        Ω = self.ra_of_asc_node * Quantity.degree
-        ω = self.arg_of_pericenter * Quantity.degree
-        n = self.mean_motion * (Quantity.turn / Quantity.day)
-        M = self.mean_anomaly * Quantity.degree
-        n_dot = self.mean_motion_dot * (Quantity.turn / Quantity.day ** 2)
-        n_ddot = self.mean_motion_ddot * (Quantity.turn / Quantity.day ** 3)
-        bstar = self.bstar * (1 / Quantity.radii_earth)
+        e = scalar(self.eccentricity).with_units(U.dimensionless)
+        i = scalar(np.deg2rad(self.inclination)).with_units(U.radian)
+        Ω = scalar(np.deg2rad(self.ra_of_asc_node)).with_units(U.radian)
+        ω = scalar(np.deg2rad(self.arg_of_pericenter)).with_units(U.radian)
+        n = scalar(self.mean_motion * 2 * np.pi / 86_400).with_units(U.radian / U.second)
+        M = scalar(np.deg2rad(self.mean_anomaly)).with_units(U.radian)
+        n_dot = scalar(self.mean_motion_dot * 2 * np.pi / 86_400 ** 2).with_units(U.radian / U.second ** 2)
+        n_ddot = scalar(self.mean_motion_ddot * 2 * np.pi / 86_400 ** 3).with_units(U.radian / U.second ** 3)
+        bstar = scalar(self.bstar / 6_378_137).with_units("1/meter")
         return OrbitalElements(
             epoch=Timestamp.fromisoformat(self.epoch),
             eccentricity=e,
@@ -99,7 +104,7 @@ def get_celestrak_gpdata(catnr: int, log: bool = False) -> CelestrakDataGP:
     if store_path.exists():
         unixepoch_last_modified = int(getmtime(store_path))
         last_modified = Timestamp(unixepoch_last_modified)
-        if Timestamp.now().delta(last_modified) < (MINIMAL_DURATION_UPDATE_HOURS * Quantity.hour):
+        if Timestamp.now().delta(last_modified) < (MINIMAL_DURATION_UPDATE_HOURS * U.hour):
             try:
                 return CelestrakDataGP(
                     **json.loads(store_path.read_text())

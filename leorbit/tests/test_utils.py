@@ -1,8 +1,12 @@
 import numpy as np
 import pytest
 
-from leorbit.mathematics import Angle, Length, Quantity, TensorKind, Time, vector3
+from leorbit.mathematics import U, TensorKind, scalar, vector3
 import leorbit.utils as u
+
+Angle = U.radian
+Length = U.meter
+Time = U.second
 
 
 @pytest.mark.parametrize(
@@ -78,7 +82,7 @@ def test_truth_array_to_indices_intervals_empty_and_invalid_min_size():
 
 
 def test_angle_and_time_helpers():
-    assert u.angle2dms(39.5 * Quantity.degree) == " 039° 30′ 00″"
+    assert u.angle2dms(scalar(39.5).with_units(U.degree)) == " 039° 30′ 00″"
 
     out = u.unixepoch_to_j2000(np.array([0.0, 86_400.0]))
     np.testing.assert_allclose(out, np.array([-10_957.5, -10_956.5]))
@@ -99,7 +103,7 @@ def test_jd_parametrized(unixepoch):
     got = u.jd(unixepoch)
     expected = np.asarray(unixepoch, dtype=np.float64) / 86_400 + 2_440_587.5
 
-    assert got.check(dimension=Time, kind=TensorKind.SCALAR)
+    assert got.check(units=Time, kind=TensorKind.SCALAR)
     np.testing.assert_allclose(got.raw_data_array("day"), expected)
 
 
@@ -115,7 +119,7 @@ def test_j2000_parametrized(unixepoch):
     got = u.j2000(unixepoch)
     expected = np.asarray(unixepoch, dtype=np.float64) / 86_400 - 10_957.5
 
-    assert got.check(dimension=Time, kind=TensorKind.SCALAR)
+    assert got.check(units=Time, kind=TensorKind.SCALAR)
     np.testing.assert_allclose(got.raw_data_array("day"), expected)
 
 
@@ -131,7 +135,7 @@ def test_from_mil_parametrized(unixepoch):
     got = u.from_mil(unixepoch)
     expected = np.asarray(unixepoch, dtype=np.float64) / 86_400 - 10_958.0
 
-    assert got.check(dimension=Time, kind=TensorKind.SCALAR)
+    assert got.check(units=Time, kind=TensorKind.SCALAR)
     np.testing.assert_allclose(got.raw_data_array("day"), expected)
 
 
@@ -148,47 +152,47 @@ def test_stl0_parametrized(unixepoch):
     j2k = np.asarray(unixepoch, dtype=np.float64) / 86_400 - 10_957.5
     expected = np.asarray(u.j2000_to_stl0(j2k), dtype=np.float64)
 
-    assert got.check(dimension=Angle, kind=TensorKind.SCALAR)
+    assert got.check(units=Angle, kind=TensorKind.SCALAR)
     assert np.isfinite(got.raw_data_array("radian")).all()
     np.testing.assert_allclose(got.raw_data_array("radian"), expected)
 
 
 def test_orbital_scalar_conversions_and_contracts():
-    sma = 7_000_000 * Quantity.meter
+    sma = scalar(7_000_000).with_units(U.meter)
     n = u.semi_major_axis_earth_to_mean_motion(sma)
-    assert n.check(dimension=Angle / Time, kind=TensorKind.SCALAR)
+    assert n.check(units=Angle / Time, kind=TensorKind.SCALAR)
 
     sma_rt = u.mean_motion_to_semi_major_axis_earth(n)
-    assert sma_rt.check(dimension=Length, kind=TensorKind.SCALAR)
+    assert sma_rt.check(units=Length, kind=TensorKind.SCALAR)
 
     with pytest.raises((TypeError, ValueError)):
-        u.mean_motion_to_semi_major_axis_earth(1.0 * Quantity.meter)
+        u.mean_motion_to_semi_major_axis_earth(scalar(1.0).with_units(U.meter))
 
 
 def test_anomaly_helpers_and_contracts():
-    e = 0.01 * Quantity.dimensionless
-    m = 0.2 * Quantity.radian
+    e = scalar(0.01).with_units(U.dimensionless)
+    m = scalar(0.2).with_units(U.radian)
 
     nu = u.mean2true_anomaly(e, m)
-    assert nu.check(dimension=Angle, kind=TensorKind.SCALAR)
+    assert nu.check(units=Angle, kind=TensorKind.SCALAR)
 
     ecc = u.mean2eccentric_anomaly(e, m)
-    assert ecc.check(dimension=Angle, kind=TensorKind.SCALAR)
+    assert ecc.check(units=Angle, kind=TensorKind.SCALAR)
 
     nu2 = u.eccentric2true_anomaly(e, ecc)
-    assert nu2.check(dimension=Angle, kind=TensorKind.SCALAR)
+    assert nu2.check(units=Angle, kind=TensorKind.SCALAR)
 
     with pytest.raises((TypeError, ValueError)):
         u.mean2true_anomaly(vector3(0.01, 0.0, 0.0), m)
 
 
 def test_itrf_to_gps_contract():
-    pos = vector3(6_378_135.0, 0.0, 0.0) * Quantity.meter
+    pos = vector3(6_378_135.0, 0.0, 0.0) * U.meter
     gps = u.itrf2gps(pos)
 
-    assert gps.latitude.check(dimension=Angle, kind=TensorKind.SCALAR)
-    assert gps.longitude.check(dimension=Angle, kind=TensorKind.SCALAR)
-    assert gps.altitude.check(dimension=Length, kind=TensorKind.SCALAR)
+    assert gps.latitude.check(units=Angle, kind=TensorKind.SCALAR)
+    assert gps.longitude.check(units=Angle, kind=TensorKind.SCALAR)
+    assert gps.altitude.check(units=Length, kind=TensorKind.SCALAR)
 
     with pytest.raises((TypeError, ValueError)):
         u.itrf2gps(vector3(1.0, 0.0, 0.0))

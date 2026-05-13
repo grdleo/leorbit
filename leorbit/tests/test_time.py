@@ -2,7 +2,7 @@ from datetime import timedelta
 
 import pytest
 
-from leorbit.mathematics import Quantity
+from leorbit.mathematics import U, scalar
 from leorbit.time import Timestamp, TimeInterval, get_intersections_timelines, get_unions_timelines
 
 
@@ -22,9 +22,9 @@ def test_instance(unix: float, iso: str):
 @pytest.mark.parametrize(
     "unix, shift",
     (
-        (1652780572, 123 * Quantity.second),
-        (1652780572, -2.5 * 7 * Quantity.day),
-        (-10000000000, 623 * Quantity.year),
+        (1652780572, scalar(123).with_units(U.second)),
+        (1652780572, scalar(-2.5 * 7).with_units(U.day)),
+        (-10000000000, scalar(623).with_units(U.year)),
     ),
 )
 def test_shift(unix: float, shift):
@@ -80,17 +80,17 @@ def test_stl0(iso: str, stl0_deg: float):
         (
             Timestamp.fromisoformat("2024-02-11T18:00:00"),
             Timestamp.fromisoformat("2024-02-11T18:05:00"),
-            1 * Quantity.minute,
+            1 * U.minute,
         ),
         (
             Timestamp.fromisoformat("2023-11-29T03:23:59"),
             Timestamp.fromisoformat("2023-11-29T04:05:05"),
-            42.3 * Quantity.second,
+            42.3 * U.second,
         ),
         (
             Timestamp.fromisoformat("2012-01-13T14:44:09"),
             Timestamp.fromisoformat("2018-12-29T01:02:03"),
-            3.44 * 7 * Quantity.day,
+            3.44 * 7 * U.day,
         ),
     ],
 )
@@ -107,7 +107,7 @@ def test_iter(start: Timestamp, stop: Timestamp, dt):
             TimeInterval(
                 Timestamp.fromisoformat("2024-02-11T18:00:12.34"),
                 Timestamp.fromisoformat("2024-02-11T18:00:16.44"),
-                1 * Quantity.second,
+                1 * U.second,
             ),
             [
                 Timestamp.fromisoformat("2024-02-11T18:00:12.34"),
@@ -121,7 +121,7 @@ def test_iter(start: Timestamp, stop: Timestamp, dt):
             TimeInterval(
                 Timestamp.fromisoformat("2024-02-11T19:45:25.92"),
                 Timestamp.fromisoformat("2024-02-11T19:45:29.11"),
-                1 * Quantity.second,
+                1 * U.second,
             ),
             [
                 Timestamp.fromisoformat("2024-02-11T19:45:25.92"),
@@ -145,41 +145,41 @@ def test_iter2(tl: TimeInterval, iters: list[Timestamp]):
             TimeInterval(
                 Timestamp.fromisoformat("2024-02-11T18:01:23"),
                 Timestamp.fromisoformat("2024-02-11T18:14:44"),
-                1 * Quantity.second,
+                1 * U.second,
             ),
             TimeInterval(
                 Timestamp.fromisoformat("2024-02-11T18:08:08"),
                 Timestamp.fromisoformat("2024-02-11T18:35:22"),
-                2.5 * Quantity.second,
+                2.5 * U.second,
             ),
             TimeInterval(
                 Timestamp.fromisoformat("2024-02-11T18:08:08"),
                 Timestamp.fromisoformat("2024-02-11T18:14:44"),
-                1 * Quantity.second,
+                1 * U.second,
             ),
         ),
         (
             TimeInterval(
                 Timestamp.fromisoformat("2024-02-09T14:00:00"),
                 Timestamp.fromisoformat("2024-02-10T15:00:00"),
-                30 * Quantity.second,
+                30 * U.second,
             ),
             TimeInterval(
                 Timestamp.fromisoformat("2024-02-10T18:00:30"),
                 Timestamp.fromisoformat("2024-02-12T09:00:00"),
-                4 * Quantity.second,
+                4 * U.second,
             ),
             None,
         ),
     ],
 )
 def test_intersection(tl1: TimeInterval, tl2: TimeInterval, intersect: TimeInterval | None):
-    dt = 1 * Quantity.second
+    dt = 1 * U.second
     assert intersect == tl1.intersection(tl2, dt) == tl2.intersection(tl1, dt)
 
 
 A_DATE = Timestamp.fromisoformat("2024-02-11T18:01:23")
-S = 1 * Quantity.second
+S = 1 * U.second
 
 
 @pytest.mark.parametrize(

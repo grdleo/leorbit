@@ -16,9 +16,14 @@ if TYPE_CHECKING:
     from leorbit.frames import EarthLocalFrame
     import pint
 
-from leorbit.mathematics import AngularVelocity, Dimless, Length, RealNumber, Angle, Tensor, Quantity, TensorBound, TensorKind, Time, atan2, cos, normalize_angle, sin, tan, vector3, tensor_check
+from leorbit.mathematics import U, RealNumber, Tensor, TensorBound, TensorKind, atan2, cos, normalize_angle, scalar, sin, tan, vector3, tensor_check
+Angle = U.radian
+AngularVelocity = U.radian / U.second
+Dimless = U.dimensionless
+Length = U.meter
+Time = U.second
 
-MU_EARTH = 398_600_441_800_000 * (Quantity.meter ** 3 / Quantity.second ** 2)
+MU_EARTH = scalar(398_600_441_800_000).with_units(U.meter ** 3 / U.second ** 2)
 """Gravitational parameter for planet Earth (µ🜨) 
 
 `µ🜨 = 3.986e14 m**3/s**2`
@@ -29,9 +34,13 @@ SQRT_MU_EARTH = MU_EARTH ** .5
 `√µ🜨 = 1.996e7 m**1.5/s`
 """
 
-RADIIE_AA = (6_378_137 * Quantity.meter) ** 2
+# Earth mean radius (WGS84) in meters
+_radii_earth_unit = "radii_earth"
+U.define(f"{_radii_earth_unit} = 6378137 * meter")
+
+RADIIE_AA = scalar(6_378_137).with_units("meter") ** 2
 RADIIE_A4 = RADIIE_AA ** 2
-RADIIE_BB = (6_356_752 * Quantity.meter) ** 2
+RADIIE_BB = scalar(6_356_752).with_units("meter") ** 2
 RADIIE_B4 = RADIIE_BB ** 2
 
 TWOPI = 2 * np.pi
@@ -39,7 +48,7 @@ TWELF_PI = np.pi / 12
 
 #####################################
 
-def angle2dms(angle: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]) -> str:
+def angle2dms(angle: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]) -> str:
     """Representation of the angle in DSM notation (degrees, minutes, seconds)
 
     Example: `39° 17′ N, 76° 36′ O`"""
@@ -66,57 +75,57 @@ def j2000_to_stl0(j2000: npt.NDArray | RealNumber) -> npt.NDArray | RealNumber:
 
 def jd(
     unixepoch: int | float | npt.NDArray[np.float64]
-) -> Annotated[Tensor, TensorBound(dimension=Time, kind=TensorKind.SCALAR)]:
+) -> Annotated[Tensor, TensorBound(units=Time, kind=TensorKind.SCALAR)]:
     """Representation of this `Timestamp` object as "Julian day (JD)", aka 
     the number of days since -4712/01/01."""
     unixepoch = np.asarray(unixepoch, dtype=np.float64)
     days = (unixepoch / 86_400 + 2_440_587.5)
-    return Tensor(days) * Quantity.day
+    return Tensor(days).with_units(U.day)
 
 def j2000(
     unixepoch: int | float | npt.NDArray[np.float64]
-) -> Annotated[Tensor, TensorBound(dimension=Time, kind=TensorKind.SCALAR)]:
+) -> Annotated[Tensor, TensorBound(units=Time, kind=TensorKind.SCALAR)]:
     """Representation of this `Timestamp` object as "Julian year (J2000)", aka 
     the number of days since 2000/01/01T12:00:00."""
     unixepoch = np.asarray(unixepoch, dtype=np.float64)
-    return Tensor(unixepoch_to_j2000(unixepoch)) * Quantity.day
+    return Tensor(unixepoch_to_j2000(unixepoch)).with_units(U.day)
 
 def from_mil(
     unixepoch: int | float | npt.NDArray[np.float64]
-) -> Annotated[Tensor, TensorBound(dimension=Time, kind=TensorKind.SCALAR)]:
+) -> Annotated[Tensor, TensorBound(units=Time, kind=TensorKind.SCALAR)]:
     """Representation as a fraction of days since 1 january 2000 00:00.
 
     Taken from: https://stjarnhimlen.se/comp/ppcomp.html#3"""
     unixepoch = np.asarray(unixepoch, dtype=np.float64)
     days = (unixepoch / 86_400 - 10_957.5) - .5
-    return Tensor(days) * Quantity.day
+    return Tensor(days).with_units(U.day)
 
 def stl0(
     unixepoch: int | float | npt.NDArray[np.float64]
-) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
+) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
     """Sidereal time (angle) of latitude 0 at this unixepoch."""
     j2k = j2000(unixepoch)
     sidereal = j2000_to_stl0(j2k.raw_data_array("day"))
-    return Tensor(np.asarray(sidereal, dtype=np.float64)) * Quantity.radian
+    return Tensor(np.asarray(sidereal, dtype=np.float64)).with_units(U.radian)
 
 @tensor_check
 def mean_motion_to_semi_major_axis_earth(
-    mean_motion: Annotated[Tensor, TensorBound(dimension=Angle / Time, kind=TensorKind.SCALAR)]
-) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]:
+    mean_motion: Annotated[Tensor, TensorBound(units=Angle / Time, kind=TensorKind.SCALAR)]
+) -> Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]:
     """Convert Earth mean motion to semi-major axis using Kepler's third law."""
     return (MU_EARTH / mean_motion ** 2) ** Fraction(1, 3)
 
 @tensor_check
 def semi_major_axis_earth_to_mean_motion(
-        sma: Annotated[Tensor,  TensorBound(dimension=Length, kind=TensorKind.SCALAR)]
-) -> Annotated[Tensor, TensorBound(dimension=Angle / Time, kind=TensorKind.SCALAR)]:
+        sma: Annotated[Tensor,  TensorBound(units=Length, kind=TensorKind.SCALAR)]
+) -> Annotated[Tensor, TensorBound(units=Angle / Time, kind=TensorKind.SCALAR)]:
     """Convert Earth semi-major axis to mean motion using Kepler's third law."""
     return (MU_EARTH / sma ** 3) ** .5
 
 @tensor_check
 def geocentric_radius_earth(
-    latitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-) -> Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]:
+    latitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+) -> Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]:
     """Returns the mean radius of Earth at given latitude.
     Earth is considered as a spheroid. 
     
@@ -138,7 +147,7 @@ def geocentric_radius_earth(
 #     Algorithm from: https://astronomy.stackexchange.com/questions/28744/calculating-the-apparent-magnitude-of-a-satellite"""
 #     dir_obs = observer - sat
 #     dir_sun = sun - sat
-#     dist_sat: Quantity = abs(dir_obs)
+#     dist_sat = abs(dir_obs)
 #     phase = dir_sun.angle(dir_obs)
 
 #     phi_term = sin(phase) + (HALF_REV - phase).m_as("rad") * cos(phase)
@@ -146,7 +155,7 @@ def geocentric_radius_earth(
 #     return std_mag + 5 * log10(dist_sat.m_as("megameter")) - 2.5 * log10(phi_term)
 
 def humanize_duration(
-    t: Annotated[Tensor, TensorBound(dimension=Time, kind=TensorKind.SCALAR, size=1)]
+    t: Annotated[Tensor, TensorBound(units=Time, kind=TensorKind.SCALAR, size=1)]
 ) -> str:
     """Make a duration human-readable.
     
@@ -154,7 +163,7 @@ def humanize_duration(
     --------
     
     ```python
-    humanize_duration(Quantity("723459.23min"))
+    humanize_duration(scalar(723459.23).with_units(U.minute))
     >>> '1 year 4 month 15 day 9 hour 39 min 13 s'
     ```
     """
@@ -162,7 +171,7 @@ def humanize_duration(
     components = {s: 0 for s in stages}
 
     for s in stages:
-        stage_d = Quantity.get(s)
+        stage_d = scalar(1).with_units(U.parse_units(s))
         if t < stage_d:
             continue
         c = int(t.scalar.value(s))
@@ -175,9 +184,9 @@ def humanize_duration(
 
 @tensor_check
 def mean2true_anomaly(
-    e: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)],
-    M: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
+    e: Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)],
+    M: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
     """ O(e**4)"""
 
     ee = e ** 2
@@ -192,9 +201,9 @@ def mean2true_anomaly(
 
 @tensor_check
 def mean2eccentric_anomaly(
-    e: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)],
-    M: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
+    e: Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)],
+    M: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
     """Solve Kepler's equation for eccentric anomaly by fixed-point iterations."""
     E = M
     for _ in range(5):
@@ -203,9 +212,9 @@ def mean2eccentric_anomaly(
 
 @tensor_check
 def eccentric2true_anomaly(
-    e: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)], 
-    E: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
+    e: Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)], 
+    E: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
     """Returns the true anomaly from the eccentric anomaly and the excentricity.
     
     Parameters
@@ -227,9 +236,9 @@ def eccentric2true_anomaly(
 
 @tensor_check
 def true2eccentric_anomaly(
-    e: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)], 
-    nu: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-) -> Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]:
+    e: Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)], 
+    nu: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+) -> Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]:
     """Returns the eccentric anomaly from the true anomaly and the excentricity.
     Parameters
     ----------
@@ -253,15 +262,15 @@ def true2eccentric_anomaly(
 
 @tensor_check
 def elements2orthogonal_gcrf(
-    υ: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)], 
-    e: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)], 
-    a: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)], 
-    Ω: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)], 
-    ω: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-    i: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
+    υ: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)], 
+    e: Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)], 
+    a: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)], 
+    Ω: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)], 
+    ω: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+    i: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
 ) -> tuple[
-    Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)], 
-    Annotated[Tensor, TensorBound(dimension=Length / Time, kind=TensorKind.VECTOR3)]
+    Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.VECTOR3)], 
+    Annotated[Tensor, TensorBound(units=Length / Time, kind=TensorKind.VECTOR3)]
 ]:
     """Returns the position and velocity of a satellite in GCRF coordinates (meters, meters/second)
     All parameters are in radians, except `e` dimensionless and `a` in meters."""
@@ -272,7 +281,7 @@ def elements2orthogonal_gcrf(
     esinE = e * sin(E)
     
     r = a * one_ee / (1 + e * cos(υ))
-    rd = (SQRT_MU_EARTH * a ** .5 * esinE / r).secure(dimension=Length / Time)
+    rd = (SQRT_MU_EARTH * a ** .5 * esinE / r).secure(units=Length / Time)
     rυd = rd * one_ee / esinE
     
     c_raan, s_raan = cos(Ω), sin(Ω)
@@ -281,9 +290,9 @@ def elements2orthogonal_gcrf(
     c_theta, s_theta = cos(υpω), sin(υpω)
      
     def vector_gcrf_factory(
-        x: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)],
-        y: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)]
-    ) -> Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.VECTOR3)]:
+        x: Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)],
+        y: Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)]
+    ) -> Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.VECTOR3)]:
         vx = vector3(1, 0, 0)
         vy = vector3(0, 1, 0)
         vz = vector3(0, 0, 1)
@@ -305,17 +314,17 @@ def elements2orthogonal_gcrf(
 class OrbitalElementsTuple(NamedTuple):
     """Compact orbital-element tuple reconstructed from state vectors."""
 
-    eccentricity: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)]
-    inclination: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    ra_of_asc_node: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    arg_of_pericenter: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    mean_motion: Annotated[Tensor, TensorBound(dimension=Angle / Time, kind=TensorKind.SCALAR)]
-    mean_anomaly: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
+    eccentricity: Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)]
+    inclination: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    ra_of_asc_node: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    arg_of_pericenter: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    mean_motion: Annotated[Tensor, TensorBound(units=Angle / Time, kind=TensorKind.SCALAR)]
+    mean_anomaly: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
 
 @tensor_check
 def gcrf_state_vectors2elements(
-    pos: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)],
-    vel: Annotated[Tensor, TensorBound(dimension=Length / Time, kind=TensorKind.VECTOR3)]
+    pos: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.VECTOR3)],
+    vel: Annotated[Tensor, TensorBound(units=Length / Time, kind=TensorKind.VECTOR3)]
 ) -> OrbitalElementsTuple:
     """Estimate Keplerian elements from GCRF position and velocity vectors."""
     north = vector3(0.0, 0.0, 1.0)
@@ -367,9 +376,9 @@ def gcrf_state_vectors2elements(
 
 @dataclass
 class GPSTrajectory:
-    latitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    longitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    altitude: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]
+    latitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    longitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    altitude: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]
 
     def to_csv(self, timeline: "TimeInterval") -> str:
         """Serialize the trajectory samples to a CSV string.
@@ -433,7 +442,7 @@ class GPSTrajectory:
 
 @tensor_check
 def itrf2gps(
-    itrf_pos: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)]
+    itrf_pos: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.VECTOR3)]
 ) -> GPSTrajectory:
     """Convert a position in ITRS coordinates to GPS coordinates, at a given time."""
     lon = itrf_pos.vector3.theta
@@ -448,9 +457,9 @@ def itrf2gps(
 
 @dataclass
 class HorizontalTrajectory:
-    azimuth: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    altitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    distance: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]
+    azimuth: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    altitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    distance: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]
 
     def to_csv(self, timeline: "TimeInterval") -> str:
         """Serialize the trajectory samples to a CSV string.
@@ -513,7 +522,7 @@ class HorizontalTrajectory:
 
 @tensor_check
 def itrf2horizontal(
-    itrf_pos: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)], 
+    itrf_pos: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.VECTOR3)], 
     earth_local_frame: Any
 ) -> HorizontalTrajectory:
     """Convert an ITRF position to horizontal coordinates for a local frame."""

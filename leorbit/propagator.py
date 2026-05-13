@@ -7,9 +7,13 @@ import numpy.typing as npt
 from leorbit.algorithms import sgp4
 from leorbit.coordinates import Coordinates, OrbitalElements, Trajectory
 from leorbit.frames import AbsoluteFrame
-from leorbit.mathematics import Angle, Length, Quantity, Tensor, TensorBound, TensorKind, Time, normalize_angle
+from leorbit.mathematics import U, Tensor, TensorBound, TensorKind, normalize_angle
 from leorbit.time import TimeInterval, Timestamp
 from leorbit.utils import elements2orthogonal_gcrf, mean2true_anomaly
+
+Angle = U.radian
+Length = U.meter
+Time = U.second
 
 class Propagator(ABC):
     """Algorithm to propagate given orbital elements at given time"""
@@ -60,7 +64,7 @@ class NoPropagator(Propagator):
             return Coordinates(epoch, AbsoluteFrame.GCRF, pos, vel)
         
         elif isinstance(epoch, TimeInterval):
-            time_line = epoch.to_time_stamps() - epoch.start.unixepoch * Quantity.second
+            time_line = epoch.to_time_stamps() - epoch.start.unixepoch * U.second
             shift = (time_line * els.mean_motion).secure(Angle, TensorKind.SCALAR)
             shifted_M0 = normalize_angle(els.mean_anomaly + shift)
             shifted_nu = mean2true_anomaly(els.eccentricity, shifted_M0)
@@ -96,7 +100,7 @@ class SGP4(Propagator):
         if isinstance(epoch, Timestamp):
             tsince = np.asarray([epoch.delta(self.elements.epoch).scalar.value("minute")], dtype=np.float64)
         elif isinstance(epoch, TimeInterval):
-            tsince = (epoch.to_time_stamps() - self.elements.epoch.unixepoch * Quantity.second).raw_data_array("minute")
+            tsince = (epoch.to_time_stamps() - self.elements.epoch.unixepoch * U.second).raw_data_array("minute")
         else:
             raise TypeError()
 

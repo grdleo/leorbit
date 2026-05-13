@@ -4,13 +4,16 @@ import pytest
 from leorbit.coordinates import GPS, Trajectory
 from leorbit.events import TimeMap, VisibleFromEarthLocationEvent
 from leorbit.frames import AbsoluteFrame
-from leorbit.mathematics import Length, Quantity, Tensor, Time
+from leorbit.mathematics import U, Tensor, scalar
 from leorbit.time import TimeInterval, Timestamp
+
+Length = U.meter
+Time = U.second
 
 
 def _make_interval() -> TimeInterval:
     t0 = Timestamp.fromisoformat("2024-01-01T00:00:00")
-    return TimeInterval(t0, t0 + 6 * Quantity.second, 1 * Quantity.second)
+    return TimeInterval(t0, t0 + 6 * U.second, 1 * U.second)
 
 
 def test_timemap_rejects_wrong_array_lengths():
@@ -32,9 +35,9 @@ def test_timemap_get_values_and_value_lookup():
 def test_visible_from_earth_location_event_full():
     interval = _make_interval()
     gps_paris = GPS(
-        longitude=2.333333 * Quantity.degree, 
-        latitude=48.866667 * Quantity.degree, 
-        altitude=0 * Quantity.meter,
+        longitude=scalar(2.333333).with_units(U.degree), 
+        latitude=scalar(48.866667).with_units(U.degree), 
+        altitude=scalar(0).with_units(U.meter),
         epoch=interval.start,
     )
 
@@ -76,9 +79,9 @@ def test_visible_from_earth_location_event_full():
 def test_visible_from_earth_location_event_with_velocity_transform():
     interval = _make_interval()
     gps_paris = GPS(
-        longitude=2.333333 * Quantity.degree,
-        latitude=48.866667 * Quantity.degree,
-        altitude=0 * Quantity.meter,
+        longitude=scalar(2.333333).with_units(U.degree),
+        latitude=scalar(48.866667).with_units(U.degree),
+        altitude=scalar(0).with_units(U.meter),
         epoch=interval.start,
     )
     local_frame = gps_paris.earth_local_frame

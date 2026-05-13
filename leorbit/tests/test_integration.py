@@ -1,9 +1,10 @@
 import pytest
+import numpy as np
 
 from leorbit.coordinates import Coordinates
 from leorbit.ext import CelestrakDataGP
 from leorbit.frames import EarthLocalFrame
-from leorbit.mathematics import Quantity, normalize_angle_symmetric
+from leorbit.mathematics import U, normalize_angle_symmetric, scalar
 from leorbit.propagator import SGP4
 from leorbit.sky_object import Satellite
 from leorbit.time import Timestamp, TimeInterval
@@ -60,17 +61,17 @@ def test_event_visibility_integration():
 
     t0 = Timestamp.fromisoformat("2024-02-09T08:15:00")
     t1 = Timestamp.fromisoformat("2024-02-09T08:30:00")
-    timeline = TimeInterval(t0, t1, 1 * Quantity.second)
+    timeline = TimeInterval(t0, t1, scalar(1).with_units(U.second))
 
     gre_coords = Coordinates.from_gps(
-        longitude=5.71667 * Quantity.degree,
-        latitude=45.166672 * Quantity.degree,
-        altitude=0 * Quantity.meter,
+        longitude=scalar(np.deg2rad(5.71667)).with_units(U.radian),
+        latitude=scalar(np.deg2rad(45.166672)).with_units(U.radian),
+        altitude=scalar(0).with_units(U.meter),
         epoch=t0,
     )
     local_frame = EarthLocalFrame(gre_coords)
 
-    min_altitude = 10 * Quantity.degree
+    min_altitude = scalar(np.deg2rad(10)).with_units(U.radian)
     windows = _find_visibility_windows(iss, local_frame, timeline, min_altitude)
     assert windows
 
@@ -93,7 +94,7 @@ def test_event_visibility_integration():
     assert azi1 == pytest.approx(81, abs=2)
     assert alt1 == pytest.approx(10, abs=1)
 
-    tmid = event_start + 206 * Quantity.second
+    tmid = event_start + scalar(206).with_units(U.second)
     cmid = iss.coordinates(tmid)
     hormid = cmid.horizontal(local_frame)
     azimid = normalize_angle_symmetric(hormid.azimuth).scalar.value("deg")

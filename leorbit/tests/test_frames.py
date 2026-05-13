@@ -10,18 +10,18 @@ from leorbit.frames import (
     absolute_frame_transform_factory,
     frame_transform_factory,
 )
-from leorbit.mathematics import Quantity, Tensor, matrix33, vector3
+from leorbit.mathematics import U, Tensor, matrix33, vector3
 from leorbit.time import Timestamp
 from leorbit.transforms import TransformVector3Affine
 from leorbit.transforms import Transform
 
 
 def _vec_len(x: float, y: float, z: float) -> Tensor:
-    return vector3(x, y, z) * Quantity.meter
+    return vector3(x, y, z) * U.meter
 
 
 def _vec_vel(x: float, y: float, z: float) -> Tensor:
-    return vector3(x, y, z) * Quantity.meter / Quantity.second
+    return vector3(x, y, z) * U.meter / U.second
 
 
 @pytest.mark.parametrize(
@@ -99,7 +99,7 @@ def test_absolute_frame_transform_factory_roundtrip_position_and_velocity():
     v2 = gcrf_to_itrf.do(itrf_to_gcrf.do(v))
 
     np.testing.assert_allclose(p2.raw_data_array("meter").reshape(3), p.raw_data_array("meter").reshape(3), atol=1e-9)
-    np.testing.assert_allclose(v2.raw_data_array().reshape(3), v.raw_data_array().reshape(3), atol=1e-9)
+    np.testing.assert_allclose(v2.raw_data_array(v2.units).reshape(3), v.raw_data_array(v.units).reshape(3), atol=1e-9)
 
 
 def test_frame_transform_factory_between_relative_frames_chain():

@@ -2,9 +2,11 @@ from enum import Enum
 from functools import lru_cache
 from typing import TYPE_CHECKING, Callable, cast
 
-from leorbit.mathematics import Dimless, Length, Quantity, Tensor, cos, matrix33, vector3
+from leorbit.mathematics import U, Tensor, cos, matrix33, scalar, vector3
 from leorbit.transforms import Transform, TransformChain, TransformIdentity, TransformVector3Affine, TransformVector3Linear
 from leorbit.time import Timestamp, TimeInterval
+
+Dimless = U.dimensionless
 
 import numpy as np
 import numpy.typing as npt
@@ -166,8 +168,8 @@ class EarthLocalFrame(RelativeFrame):
         north = vector3(0.0, 0.0, 1.0)
         ang = z.vector3.angle(north)
 
-        half_turn = 180 * Quantity.degree
-        quart_turn = 90 * Quantity.degree
+        half_turn = scalar(180).with_units(U.degree)
+        quart_turn = scalar(90).with_units(U.degree)
         x: Tensor
 
         if ang % half_turn == 0: # FIXME
@@ -183,9 +185,9 @@ class EarthLocalFrame(RelativeFrame):
         y = x.vector3.cross(z)  # towards "east"
 
         mat = matrix33(
-            x.vector3.x.scalar.value(), y.vector3.x.scalar.value(), z.vector3.x.scalar.value(),
-            x.vector3.y.scalar.value(), y.vector3.y.scalar.value(), z.vector3.y.scalar.value(),
-            x.vector3.z.scalar.value(), y.vector3.z.scalar.value(), z.vector3.z.scalar.value(),
+            x.vector3.x.scalar.value("dimensionless"), y.vector3.x.scalar.value("dimensionless"), z.vector3.x.scalar.value("dimensionless"),
+            x.vector3.y.scalar.value("dimensionless"), y.vector3.y.scalar.value("dimensionless"), z.vector3.y.scalar.value("dimensionless"),
+            x.vector3.z.scalar.value("dimensionless"), y.vector3.z.scalar.value("dimensionless"), z.vector3.z.scalar.value("dimensionless"),
         )
 
         # Transform : Local @ v -> ITRF @ v

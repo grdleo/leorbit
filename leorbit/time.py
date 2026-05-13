@@ -1,17 +1,22 @@
 """Time handling"""
 
 import collections
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date, time
+from zoneinfo import ZoneInfo
 from typing import Annotated, Iterable, Self, Iterator, Optional
 from math import ceil
 
 import numpy as np
 import numpy.typing as npt
+import pint
 
-from leorbit.mathematics import Angle, Quantity, Tensor, TensorBound, TensorKind, Time
+from leorbit.mathematics import U, Tensor, TensorBound, TensorKind, scalar
 from leorbit.utils import from_mil, humanize_duration, j2000, j2000_to_stl0, jd, stl0, unixepoch_to_j2000
 
-MIN_DURATION = 1e-9 * Quantity.second
+Time = U.second
+Angle = U.radian
+
+MIN_DURATION = scalar(1e-9).with_units(U.second)
 
 class Timestamp:
     """Class representing a time instant."""
@@ -54,6 +59,15 @@ class Timestamp:
         if "+" not in iso_date:
             iso_date += "+00:00"
         return cls(datetime.fromisoformat(iso_date).timestamp())
+    
+    def to_std_datetime(self) -> datetime:
+        """Returns this timestamp as Python's standard library `datetime` object"""
+        return datetime.fromtimestamp(self._unixepoch)
+    
+    def to_std_time(self, timezone: ZoneInfo = ZoneInfo("UTC")) -> time:
+        """Returns the time part of this timestamp as Python's standard library 
+        `time` object, using provided timezone."""
+        return self.to_std_datetime().astimezone(timezone).timetz()
 
     def __eq__(self: "Timestamp", other: object) -> bool:
         if not isinstance(other, Timestamp):
@@ -93,20 +107,26 @@ class Timestamp:
         return self.copy()
 
     @staticmethod
-    def _duration_seconds(other: Tensor | timedelta) -> float:
+    def _duration_seconds(other: Tensor | timedelta | pint.Quantity | pint.Unit) -> float:
         if isinstance(other, timedelta):
             return other.total_seconds()
+
+        if isinstance(other, pint.Unit):
+            return float((1.0 * other).m_as("second"))
+
+        if isinstance(other, pint.Quantity):
+            return float(other.m_as("second"))
 
         if not isinstance(other, Tensor):
             raise TypeError("Unsupported duration type")
 
-        if not other.check(dimension=Time, kind=TensorKind.SCALAR):
+        if not other.check(units=Time, kind=TensorKind.SCALAR):
             raise TypeError("Unsupported duration type")
 
         delta_seconds = other.scalar.value("second")
         return float(np.asarray(delta_seconds).reshape(-1)[0])
 
-    def __add__(self: "Timestamp", other: Tensor | timedelta) -> "Timestamp":
+    def __add__(self: "Timestamp", other: Tensor | timedelta | pint.Quantity | pint.Unit) -> "Timestamp":
         try:
             delta_seconds = self._duration_seconds(other)
             return self.__class__(self._unixepoch + delta_seconds)
@@ -115,7 +135,7 @@ class Timestamp:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
 
-    def __iadd__(self: "Timestamp", other: Tensor | timedelta) -> "Timestamp":
+    def __iadd__(self: "Timestamp", other: Tensor | timedelta | pint.Quantity | pint.Unit) -> "Timestamp":
         try:
             self._unixepoch += self._duration_seconds(other)
             return self
@@ -124,7 +144,7 @@ class Timestamp:
                 f"Could not do operation with {other} and {self} since it is not a time"
             ) from ex
         
-    def __sub__(self: "Timestamp", other: Tensor | timedelta) -> "Timestamp":
+    def __sub__(self: "Timestamp", other: Tensor | timedelta | pint.Quantity | pint.Unit) -> "Timestamp":
         try:
             delta_seconds = self._duration_seconds(other)
             return self.__class__(self._unixepoch - delta_seconds)
@@ -133,7 +153,7 @@ class Timestamp:
                 f"Could not do operation with {other} and {self} since it is not a duration"
             ) from ex
 
-    def __isub__(self: "Timestamp", other: Tensor | timedelta) -> "Timestamp":
+    def __isub__(self: "Timestamp", other: Tensor | timedelta | pint.Quantity | pint.Unit) -> "Timestamp":
         try:
             self._unixepoch -= self._duration_seconds(other)
             return self
@@ -147,7 +167,7 @@ class Timestamp:
 
         If `other > self`, the returned duration will be negative. 
         """
-        return (self._unixepoch - other._unixepoch) * Quantity.second
+        return scalar(self._unixepoch - other._unixepoch).with_units(U.second)
 
     @property
     def isoformat(self: "Timestamp") -> str:
@@ -189,7 +209,7 @@ class Timestamp:
         full_y = iso[0:4]
         newyear = Timestamp.fromisoformat(f"{full_y}-01-01T00:00:00")
         from_newyear = self.delta(newyear)
-        days = from_newyear.scalar.value("second") / 86_400
+        days = self._duration_seconds(from_newyear) / 86_400
         return f"{full_y[2:4]}{days:012.8f}"
 
     @property
@@ -206,23 +226,23 @@ class Timestamp:
 
 class TimeInterval:
     """A time interval between two `Timestamp` objects. """
-    def __init__(self, start: Timestamp, stop: Timestamp, dt=(1 * Quantity.second)):
+    def __init__(self, start: Timestamp, stop: Timestamp, dt=scalar(1).with_units(U.second)):
         """Create a discretized interval from ``start`` to ``stop`` with step ``dt``."""
         dt_seconds = Timestamp._duration_seconds(dt)
-        dt = dt_seconds * Quantity.second
+        dt = scalar(dt_seconds).with_units(U.second)
 
         if not stop > start:
             raise ValueError()
         if start + dt > stop:
             raise ValueError()
-        if dt_seconds < float(MIN_DURATION.scalar.value("second")):
+        if dt_seconds < float(Timestamp._duration_seconds(MIN_DURATION)):
             raise ValueError(f"Time delta cannot be lower than minimal duration {MIN_DURATION}")
         
         self.start = start
         self.stop = stop
         self.dt = dt
         self.duration = stop.delta(start)
-        steps = ceil((self.duration / dt).scalar.value())
+        steps = ceil((self.duration / dt).scalar.value("dimensionless"))
         self.steps = int(steps)
     
     def __eq__(self, other: object) -> bool:
@@ -316,7 +336,7 @@ class TimeInterval:
     
     def progress(self, t: Timestamp) -> float | None:
         """Returns the proportion of given time over the current timeline"""
-        p = float((t.delta(self.start) / self.duration).scalar.value())
+        p = float((t.delta(self.start) / self.duration).scalar.value("dimensionless"))
         if not (0 <= p <= 1):
             return None
         return p

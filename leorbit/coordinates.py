@@ -4,23 +4,7 @@ from typing import Annotated, NamedTuple, Self, cast
 
 from leorbit.algorithms import OrbitalElementsComputeTuple
 from leorbit.frames import AbsoluteFrame, EarthLocalFrame, Frame, frame_transform_factory
-from leorbit.mathematics import (
-    Angle,
-    AngularAcceleration,
-    AngularJerk,
-    AngularVelocity,
-    Dimless,
-    InvLength,
-    Length,
-    Quantity,
-    Tensor,
-    TensorAsVector3,
-    TensorBound,
-    TensorKind,
-    Time,
-    normalize_angle,
-    normalize_angle_symmetric,
-)
+from leorbit.mathematics import U, Tensor, TensorAsVector3, TensorBound, TensorKind, normalize_angle, normalize_angle_symmetric, scalar
 from leorbit.time import TimeInterval, Timestamp
 from leorbit.transforms import Transform, _secure_position_transform, _secure_velocity_transform
 from leorbit.utils import (
@@ -37,10 +21,19 @@ from leorbit.utils import (
     mean_motion_to_semi_major_axis_earth,
 )
 
-PosVec = Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)]
-VelVec = Annotated[Tensor, TensorBound(dimension=Length / Time, kind=TensorKind.VECTOR3)]
-PosVecArray = Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.VECTOR3)]
-VelVecArray = Annotated[Tensor, TensorBound(dimension=Length / Time, kind=TensorKind.VECTOR3)]
+Angle = U.radian
+AngularAcceleration = U.radian / U.second ** 2
+AngularJerk = U.radian / U.second ** 3
+AngularVelocity = U.radian / U.second
+Dimless = U.dimensionless
+InvLength = 1 / U.meter
+Length = U.meter
+Time = U.second
+
+PosVec = Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.VECTOR3)]
+VelVec = Annotated[Tensor, TensorBound(units=Length / Time, kind=TensorKind.VECTOR3)]
+PosVecArray = Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.VECTOR3)]
+VelVecArray = Annotated[Tensor, TensorBound(units=Length / Time, kind=TensorKind.VECTOR3)]
 
 
 class PosVel(NamedTuple):
@@ -62,8 +55,8 @@ class Coordinates:
         self.name = None
 
     def __repr__(self) -> str:
-        km = Quantity.kilo_meter
-        kmph = Quantity.kilo_meter / Quantity.hour
+        km = U.kilometer
+        kmph = U.kilometer / U.hour
         p = self.pos.vector3
         pos_repr = (
             f"(x={p.x.scalar.value(km):.0f}km, y={p.y.scalar.value(km):.0f}km, z={p.z.scalar.value(km):.0f}km)"
@@ -119,9 +112,9 @@ class Coordinates:
 
     @staticmethod
     def from_gps(
-        longitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        latitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        altitude: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)] = 0 * Quantity.meter,
+        longitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        latitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        altitude: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)] = scalar(0).with_units(U.meter),
         epoch: Timestamp | None = None,
     ) -> "Coordinates":
         """Create ITRF coordinates from geodetic longitude/latitude/altitude."""
@@ -144,9 +137,9 @@ class Coordinates:
 
     @staticmethod
     def from_horizontal(
-        azimuth: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        altitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        distance: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)],
+        azimuth: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        altitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        distance: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)],
         frame: EarthLocalFrame,
         epoch: Timestamp | None = None,
     ) -> "Coordinates":
@@ -211,15 +204,15 @@ class CoordinatesRepresentation:
 class GPS(CoordinatesRepresentation):
     """Geodetic coordinates (longitude, latitude, altitude) on Earth."""
 
-    longitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    latitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    altitude: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)]
+    longitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    latitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    altitude: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)]
 
     def __init__(
         self,
-        longitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        latitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        altitude: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)],
+        longitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        latitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        altitude: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)],
         epoch: Timestamp | None = None,
     ):
         """Create a GPS coordinate, normalizing angular components."""
@@ -233,7 +226,7 @@ class GPS(CoordinatesRepresentation):
         """Return a human-readable DMS representation with cardinal letters."""
         lon = self.longitude
         lat = self.latitude
-        zero_ang = 0 * Quantity.radian
+        zero_ang = scalar(0).with_units(U.radian)
         return (
             angle2dms(abs(lon))
             + ("E" if lon >= zero_ang else "O")
@@ -265,15 +258,15 @@ class GPS(CoordinatesRepresentation):
 class Horizontal(CoordinatesRepresentation):
     """Horizontal coordinates (azimuth, altitude, optional distance)."""
 
-    azimuth: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    altitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)]
-    distance: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)] | None
+    azimuth: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    altitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)]
+    distance: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)] | None
 
     def __init__(
         self,
-        azimuth: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        altitude: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        distance: Annotated[Tensor, TensorBound(dimension=Length, kind=TensorKind.SCALAR)] | None = None,
+        azimuth: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        altitude: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        distance: Annotated[Tensor, TensorBound(units=Length, kind=TensorKind.SCALAR)] | None = None,
     ):
         self.azimuth = azimuth
         self.altitude = altitude
@@ -284,7 +277,7 @@ class Horizontal(CoordinatesRepresentation):
         """Return a human-readable azimuth/altitude string."""
         azi = normalize_angle(self.azimuth)
         alt = normalize_angle_symmetric(self.altitude)
-        zero_ang = 0 * Quantity.radian
+        zero_ang = scalar(0).with_units(U.radian)
         return f"Azimuth: {angle2dms(azi)}, Altitude: {'-' if alt < zero_ang else ''}{angle2dms(abs(alt))}"
 
     def __repr__(self) -> str:
@@ -312,23 +305,21 @@ class OrbitalElements(CoordinatesRepresentation):
     def __init__(
         self,
         epoch: Timestamp,
-        eccentricity: Annotated[Tensor, TensorBound(dimension=Dimless, kind=TensorKind.SCALAR)],
-        inclination: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        ra_of_asc_node: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        arg_of_pericenter: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        mean_motion: Annotated[Tensor, TensorBound(dimension=AngularVelocity, kind=TensorKind.SCALAR)],
-        mean_anomaly: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)],
-        mean_motion_dot: Annotated[Tensor, TensorBound(dimension=AngularAcceleration, kind=TensorKind.SCALAR)] = 0
-        * (Quantity.radian / Quantity.second ** 2),
-        mean_motion_ddot: Annotated[Tensor, TensorBound(dimension=AngularJerk, kind=TensorKind.SCALAR)] = 0
-        * (Quantity.radian / Quantity.second ** 3),
-        bstar: Annotated[Tensor, TensorBound(dimension=InvLength, kind=TensorKind.SCALAR)] = 0 * (1 / Quantity.radii_earth),
+        eccentricity: Annotated[Tensor, TensorBound(units=Dimless, kind=TensorKind.SCALAR)],
+        inclination: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        ra_of_asc_node: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        arg_of_pericenter: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        mean_motion: Annotated[Tensor, TensorBound(units=AngularVelocity, kind=TensorKind.SCALAR)],
+        mean_anomaly: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)],
+        mean_motion_dot: Annotated[Tensor, TensorBound(units=AngularAcceleration, kind=TensorKind.SCALAR)] = scalar(0).with_units(U.radian / U.second ** 2),
+        mean_motion_ddot: Annotated[Tensor, TensorBound(units=AngularJerk, kind=TensorKind.SCALAR)] = scalar(0).with_units(U.radian / U.second ** 3),
+        bstar: Annotated[Tensor, TensorBound(units=InvLength, kind=TensorKind.SCALAR)] = scalar(0).with_units(1 / U.meter),
     ):
-        deg_0 = 0 * Quantity.degree
-        deg_180 = 180 * Quantity.degree
-        deg_360 = 360 * Quantity.degree
+        deg_0 = scalar(0).with_units(U.degree)
+        deg_180 = scalar(180).with_units(U.degree)
+        deg_360 = scalar(360).with_units(U.degree)
 
-        if eccentricity < 0 * Quantity.dimensionless:
+        if eccentricity < scalar(0).with_units(U.dimensionless):
             raise ValueError()
         if not (deg_0 <= inclination <= deg_180):
             raise ValueError()
@@ -371,20 +362,20 @@ class OrbitalElements(CoordinatesRepresentation):
     def compute_tuple(self) -> OrbitalElementsComputeTuple:
         """Return orbital elements in scalar units expected by SGP4 kernels."""
         return OrbitalElementsComputeTuple(
-            n=self.mean_motion.scalar.value(Quantity.radian / Quantity.minute),
-            i=self.inclination.scalar.value(Quantity.radian),
-            e=self.eccentricity.scalar.value(Quantity.dimensionless),
-            argp=self.arg_of_pericenter.scalar.value(Quantity.radian),
-            raan=self.ra_of_asc_node.scalar.value(Quantity.radian),
-            M=self.mean_anomaly.scalar.value(Quantity.radian),
-            bstar=self.bstar.scalar.value(1 / Quantity.radii_earth),
+            n=self.mean_motion.scalar.value("radian/minute"),
+            i=self.inclination.scalar.value("radian"),
+            e=self.eccentricity.scalar.value("dimensionless"),
+            argp=self.arg_of_pericenter.scalar.value("radian"),
+            raan=self.ra_of_asc_node.scalar.value("radian"),
+            M=self.mean_anomaly.scalar.value("radian"),
+            bstar=self.bstar.scalar.value("1/meter") * 6_378_137,
         )
 
     @property
-    def period(self) -> Annotated[Tensor, TensorBound(dimension=Time, kind=TensorKind.SCALAR)]:
+    def period(self) -> Annotated[Tensor, TensorBound(units=Time, kind=TensorKind.SCALAR)]:
         """Orbital period derived from the mean motion."""
         from math import tau
-        return ((tau * Quantity.radian) / self.mean_motion).secure(Time, TensorKind.SCALAR)
+        return ((scalar(tau).with_units(U.radian)) / self.mean_motion).secure(Time, TensorKind.SCALAR)
 
     def to_coordinates(self) -> Coordinates:
         """Convert orbital elements to GCRF position and velocity vectors."""
@@ -410,9 +401,9 @@ class OrbitalElements(CoordinatesRepresentation):
             arg_of_pericenter=els.arg_of_pericenter,
             mean_motion=els.mean_motion,
             mean_anomaly=els.mean_anomaly,
-            mean_motion_dot=0 * (Quantity.radian / Quantity.second ** 2),
-            mean_motion_ddot=0 * (Quantity.radian / Quantity.second ** 3),
-            bstar=0 * (1 / Quantity.radii_earth),
+            mean_motion_dot=scalar(0).with_units(U.radian / U.second ** 2),
+            mean_motion_ddot=scalar(0).with_units(U.radian / U.second ** 3),
+            bstar=scalar(0).with_units(1 / U.meter),
         )
 
     @staticmethod

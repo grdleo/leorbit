@@ -6,7 +6,7 @@ import pytest
 from leorbit.coordinates import OrbitalElements
 from leorbit.ext import CelestrakDataGP
 from leorbit.frames import AbsoluteFrame
-from leorbit.mathematics import Quantity, normalize_angle
+from leorbit.mathematics import U, normalize_angle
 from leorbit.propagator import NoPropagator, SGP4
 from leorbit.sky_object import Satellite
 
@@ -33,11 +33,11 @@ CELESTRAK_JSON = {
 
 
 def _scalar_close(a, b, abs_tol: float) -> bool:
-    return a.scalar.value() == pytest.approx(b.scalar.value(), abs=abs_tol)
+    return a.scalar.value(b.units) == pytest.approx(b.scalar.value(b.units), abs=abs_tol)
 
 
 def test_propagation():
-    full_angle = tau * Quantity.radian
+    full_angle = tau * U.radian
     oe: OrbitalElements = CelestrakDataGP(**CELESTRAK_JSON).to_orbital_elements()
 
     period = oe.period
@@ -52,9 +52,9 @@ def test_propagation():
     v_ref = c_ref.get_vel(AbsoluteFrame.GCRF)
     v0 = c0.get_vel(AbsoluteFrame.GCRF)
 
-    np.testing.assert_allclose(p_ref.raw_data_array().flatten(), p0.raw_data_array().flatten(), atol=10_000)
+    np.testing.assert_allclose(p_ref.raw_data_array(p_ref.units).flatten(), p0.raw_data_array(p0.units).flatten(), atol=10_000)
     assert v_ref is not None and v0 is not None
-    np.testing.assert_allclose(v_ref.raw_data_array().flatten(), v0.raw_data_array().flatten(), atol=100)
+    np.testing.assert_allclose(v_ref.raw_data_array(v_ref.units).flatten(), v0.raw_data_array(v0.units).flatten(), atol=100)
 
     maxk = 40
     for i in range(0, 50):

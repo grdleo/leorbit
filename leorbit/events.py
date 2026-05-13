@@ -4,8 +4,10 @@ from typing import Annotated, Any
 import numpy as np
 
 from leorbit.coordinates import GPS, Trajectory
-from leorbit.mathematics import Angle, Quantity, Tensor, TensorBound, TensorKind, sin
+from leorbit.mathematics import U, Tensor, TensorBound, TensorKind, scalar, sin
 from leorbit.time import TimeInterval, TimeIntervalSet, Timestamp
+
+Angle = U.radian
 
 import numpy.typing as npt
 
@@ -78,7 +80,7 @@ class VisibleFromEarthLocationEvent(Event):
     def __init__(self, 
         trajectory: Trajectory, 
         gps_observer: GPS,
-        altitude_angle_min: Annotated[Tensor, TensorBound(dimension=Angle, kind=TensorKind.SCALAR)] = 0 * Quantity.radian
+        altitude_angle_min: Annotated[Tensor, TensorBound(units=Angle, kind=TensorKind.SCALAR)] = scalar(0).with_units(U.radian)
     ):
         """Build a visibility event from observer GPS coordinates.
 
@@ -88,7 +90,7 @@ class VisibleFromEarthLocationEvent(Event):
         self.gps_observer = gps_observer
         self.altitude_angle_min = altitude_angle_min
 
-        if gps_observer.altitude < 0 * Quantity.meter or gps_observer.altitude > 10 * Quantity.kilo_meter:
+        if gps_observer.altitude < scalar(0).with_units(U.meter) or gps_observer.altitude > scalar(10).with_units(U.kilometer):
             print(
                 f"Warning: Observer GPS altitude {gps_observer.altitude} is out of typical range for Earth's surface! "
                 "This may lead to inaccurate results."
@@ -102,8 +104,8 @@ class VisibleFromEarthLocationEvent(Event):
         local_pos = self.trajectory.trajectory_pos(local_frame)
 
         visible = (
-            local_pos.vector3.normalized().vector3.z.raw_data_array()
-            > sin(self.altitude_angle_min).scalar.raw_data_array()
+            local_pos.vector3.normalized().vector3.z.raw_data_array("dimensionless")
+            > sin(self.altitude_angle_min).scalar.raw_data_array("dimensionless")
         )
 
         return TimeMap(
