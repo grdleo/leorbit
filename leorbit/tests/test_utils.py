@@ -88,6 +88,14 @@ def test_angle_and_time_helpers():
     assert np.isfinite(np.asarray(stl0)).all()
 
 
+def test_dms2angle_converts_correctly():
+    angle = u.dms2angle(39.0, 30.0, 0.0)
+    expected = np.deg2rad(39.5)
+
+    assert angle.check(units=U.radian, kind=TensorKind.SCALAR)
+    assert angle.scalar.value("radian") == pytest.approx(expected)
+
+
 @pytest.mark.parametrize(
     "unixepoch",
     [

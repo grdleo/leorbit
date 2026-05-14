@@ -56,6 +56,11 @@ def angle2dms(angle: Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKi
     
     return f"{int(deg): 04}° {int(min):02}′ {int(sec):02}″"
 
+def dms2angle(degrees: float, minutes: float, seconds: float) -> Annotated[Tensor, TensorBound(units=U.radian, kind=TensorKind.SCALAR)]:
+    """Convert an angle in DMS notation (degrees, minutes, seconds) to radians."""
+    radians = np.deg2rad(degrees + minutes / 60 + seconds / 3600)
+    return scalar(radians).with_units(U.radian)
+
 def unixepoch_to_j2000(unixepoch: npt.NDArray | RealNumber) -> npt.NDArray:
     """Representation of this `U.second` object as "Julian year (J2000)", aka 
     the number of days since 2000/01/01T12:00:00."""
