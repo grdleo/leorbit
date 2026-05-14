@@ -1,4 +1,4 @@
-from leorbit.api import get_satellite, get_passes, Timestamp, Quantity, GPS, VisibleFromEarthLocationEvent, TimeInterval
+from leorbit.api import GPS, TimeInterval, Timestamp, get_passes, get_satellite, scalar
 
 # Let's compute the position of a LEO satellite!
 
@@ -22,9 +22,9 @@ c.itrf().human_repr("km")
 # Horizontal coordinates in any Earth local frame!
 # For example, let's try in Paris.
 gps_paris = GPS(
-    longitude=2.333333 * Quantity.degree, 
-    latitude=48.866667 * Quantity.degree, 
-    altitude=0 * Quantity.meter
+    longitude=scalar("2.333333 degree"),
+    latitude=scalar("48.866667 degree"),
+    altitude=scalar("0 meter")
 )
 c.horizontal(gps_paris.earth_local_frame)
 '<Horizontal: Azimuth:  087° 21′ 36″, Altitude: - 058° 36′ 26″>'
@@ -34,11 +34,12 @@ c.horizontal(gps_paris.earth_local_frame)
 
 timeline = TimeInterval(
     start=now,
-    stop=now + 7 * Quantity.day,
-    dt=5 * Quantity.second
+    stop=now + scalar("7 day"),
+    dt=scalar("5 second")
 )
 first_pass, *others = get_passes(iss, timeline, gps_paris)
 """<TimeInterval from: \'2026-04-28 at 00:19:19\' to: \'2026-04-28 at 00:28:54\' dt: 5s>"""
+print(first_pass, others)
 
 # And finally let's export the horizontal coordinates of the first pass to CSV!
 iss.trajectory(first_pass).horizontal(gps_paris.earth_local_frame).to_csv(first_pass)
