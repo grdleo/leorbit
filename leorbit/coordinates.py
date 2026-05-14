@@ -244,6 +244,24 @@ class GPS(CoordinatesRepresentation):
     def earth_local_frame(self) -> EarthLocalFrame:
         """Return the local topocentric frame centered on this GPS position."""
         return EarthLocalFrame(self.to_coordinates())
+    
+    def __add__(self, other: Self) -> GPS:
+        if not isinstance(other, GPS):
+            raise ValueError(f"Cannot add GPS with non-GPS type {type(other)}")
+        return GPS(
+            longitude=self.longitude + other.longitude,
+            latitude=self.latitude + other.latitude,
+            altitude=self.altitude + other.altitude,
+        )
+    
+    def __sub__(self, other: Self) -> GPS:
+        if not isinstance(other, GPS):
+            raise ValueError(f"Cannot subtract GPS with non-GPS type {type(other)}")
+        return GPS(
+            longitude=self.longitude - other.longitude,
+            latitude=self.latitude - other.latitude,
+            altitude=self.altitude - other.altitude,
+        )
 
 
 class Horizontal(CoordinatesRepresentation):
