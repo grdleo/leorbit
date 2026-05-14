@@ -107,17 +107,32 @@ class Qty:
 	m: ClassVar[Tensor] = scalar(1).with_units("meter")
 	"""meter"""
 
+	meter: ClassVar[Tensor] = m
+	"""meter"""
+
 	km: ClassVar[Tensor] = scalar(1).with_units("kilometer")
+	"""kilometer"""
+
+	kilometer: ClassVar[Tensor] = km
 	"""kilometer"""
 
 	radii_earth: ClassVar[Tensor] = scalar(1).with_units(_radii_earth_unit)
 	"""Earth radius"""
 
+	second: ClassVar[Tensor] = scalar(1).with_units("second")
+	"""second"""
+
 	s: ClassVar[Tensor] = scalar(1).with_units("second")
 	"""second"""
 
+	minute: ClassVar[Tensor] = scalar(1).with_units("minute")
+	"""minute"""
+
 	min: ClassVar[Tensor] = scalar(1).with_units("minute")
 	"""minute"""
+
+	h: ClassVar[Tensor] = scalar(1).with_units("hour")
+	"""hour"""
 
 	hour: ClassVar[Tensor] = scalar(1).with_units("hour")
 	"""hour"""
