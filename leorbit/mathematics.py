@@ -132,7 +132,7 @@ class Tensor:
             units = _get_base_units(self._units)
 
         data = self.raw_data_array(units)
-        dim_repr = units if isinstance(units, str) else str(self._units)
+        dim_repr = units if isinstance(units, str) else str(units)
         suffix = " ..." if self.size > 1 else ""
 
         if self.kind == TensorKind.SCALAR:
