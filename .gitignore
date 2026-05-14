@@ -14,3 +14,4 @@ dist
 .pypirc
 docs/build/
 .vscode/
+docs/

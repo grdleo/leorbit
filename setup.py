@@ -31,6 +31,11 @@ setuptools.setup(
         "requests",
         "pydantic"
     ],
+    extras_require={
+        "docs": [
+            "pdoc>=14",
+        ],
+    },
     python_requires=">=3.14"
 )
 
