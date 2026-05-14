@@ -4,7 +4,7 @@ This module centralizes the most useful classes and helpers for typical
 satellite tracking workflows.
 """
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from leorbit.mathematics import U as UnitRegistry
 from leorbit.mathematics import Tensor, matrix33, scalar, vector3
@@ -12,6 +12,7 @@ from leorbit.coordinates import Coordinates, GPS, Horizontal, OrbitalElements, T
 from leorbit.events import Event, TimeMap, VisibleFromEarthLocationEvent
 from leorbit.ext import CelestrakDataGP
 from leorbit.frames import AbsoluteFrame, EarthLocalFrame
+from leorbit.utils import _radii_earth_unit
 
 from leorbit.propagator import NoPropagator, Propagator, SGP4
 from leorbit.sky_object import Moon, Satellite, SkyObject, Sun
@@ -80,8 +81,63 @@ def get_passes(
 		scalar(altitude_angle_min_degrees).with_units(UnitRegistry.degree)
     ).visible_intervals
 
+class Qty:
+	"""Convenience class that exposes scalar tensor of value 1,
+	for all the most used units
+	
+	Example usage:
+	```
+	from leorbit.api import Qty
+	altitude = 400 * Qty.km
+	```
+	"""
+
+	deg: ClassVar[Tensor] = scalar(1).with_units("degree")
+	"""degree"""
+
+	degree: ClassVar[Tensor] = deg
+	"""degree"""
+
+	radian: ClassVar[Tensor] = scalar(1).with_units("radian")
+	"""radian"""
+
+	rad: ClassVar[Tensor] = radian
+	"""radian"""
+
+	m: ClassVar[Tensor] = scalar(1).with_units("meter")
+	"""meter"""
+
+	km: ClassVar[Tensor] = scalar(1).with_units("kilometer")
+	"""kilometer"""
+
+	radii_earth: ClassVar[Tensor] = scalar(1).with_units(_radii_earth_unit)
+	"""Earth radius"""
+
+	s: ClassVar[Tensor] = scalar(1).with_units("second")
+	"""second"""
+
+	min: ClassVar[Tensor] = scalar(1).with_units("minute")
+	"""minute"""
+
+	hour: ClassVar[Tensor] = scalar(1).with_units("hour")
+	"""hour"""
+
+	day: ClassVar[Tensor] = scalar(1).with_units("day")
+	"""day"""
+
+	year: ClassVar[Tensor] = scalar(1).with_units("year")
+	"""year"""
+
+	kg: ClassVar[Tensor] = scalar(1).with_units("kilogram")
+	"""kilogram"""
+
+	g: ClassVar[Tensor] = scalar(1).with_units("g")
+	"""gram"""
+
+
 
 __all__ = [
+	"Qty",
 	"AbsoluteFrame",
 	"CelestrakDataGP",
 	"Coordinates",
