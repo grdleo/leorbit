@@ -177,9 +177,7 @@ class EarthLocalFrame(RelativeFrame):
             x = north
         else:
             cos_ang = cos(ang)
-            x = (north / cos_ang - z).vector3.normalized()
-            if ang > quart_turn:
-                x = -x
+            x = (north - z * cos_ang).vector3.normalized()
         
         y = x.vector3.cross(z)  # towards "east"
 
