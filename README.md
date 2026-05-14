@@ -34,7 +34,7 @@ Uses `numpy` internally for computation purposes. The consequence is that any co
 
 Get the coordinates of the satellite of your choice, at the time of your choice
 ```python
-from leorbit.api import get_satellite, get_passes, Timestamp, Quantity, GPS, VisibleFromEarthLocationEvent, TimeInterval
+from leorbit.api import get_satellite, get_passes, Timestamp, Qty, GPS, VisibleFromEarthLocationEvent, TimeInterval
 
 iss = get_satellite(25544) # 25544: ISS NORAD Cat ID
 now = Timestamp.now()
@@ -56,9 +56,9 @@ coords.itrf().human_repr("km") # Coordinates in ITRF!
 Even local coordinates are astonishingly easy to convert to.
 ```python
 gps_paris = GPS(
-    longitude=2.333333 * Quantity.degree, 
-    latitude=48.866667 * Quantity.degree, 
-    altitude=0 * Quantity.meter
+    longitude=2.333333 * Qty.degree, 
+    latitude=48.866667 * Qty.degree, 
+    altitude=0 * Qty.meter
 )
 
 coords.horizontal(gps_paris.earth_local_frame)
@@ -70,8 +70,8 @@ Let's compute the passes for the next 7 days.
 ```python
 timeline = TimeInterval(
     start=now,
-    stop=now + 7 * Quantity.day,
-    dt=5 * Quantity.second
+    stop=now + 7 * Qty.day,
+    dt=5 * Qty.second
 )
 
 first_pass, *others = get_passes(iss, timeline, gps_paris)
