@@ -1,5 +1,10 @@
 """LEOrbit ISS benchmark against Open Notify live position.
 
+!!! WARNING: lately (last tested on May 14th 2026) it has been noticed that Open Notify API returns positions with a significant error 
+(up to 10 degrees in latitude/longitude) compared to LEOrbit predictions and other sources. 
+This is 100% an issue on their side, but it means that the benchmark results are not very meaningful at the moment. 
+Use with caution and consider verifying the Open Notify data against other sources before drawing conclusions from the comparison.
+
 This script:
 1) builds a 4-hour trajectory for the ISS using LEOrbit,
 2) polls Open Notify for the live ISS GPS position,
