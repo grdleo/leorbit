@@ -1,8 +1,9 @@
 from enum import Enum
-from functools import cached_property, lru_cache
+from functools import cached_property
 from typing import Annotated, NamedTuple, Self, cast
 
 from leorbit.algorithms import OrbitalElementsComputeTuple
+from leorbit.decorators import lru_cache
 from leorbit.frames import AbsoluteFrame, EarthLocalFrame, Frame, frame_transform_factory
 from leorbit.mathematics import U, Tensor, TensorAsVector3, TensorBound, TensorKind, normalize_angle, normalize_angle_symmetric, scalar
 from leorbit.time import TimeInterval, Timestamp

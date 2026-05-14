@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from functools import lru_cache
 
 import numpy as np
 from leorbit.coordinates import Coordinates, OrbitalElements, Trajectory
+from leorbit.decorators import lru_cache
 from typing import Annotated
 
 from leorbit.mathematics import U, Tensor, TensorBound, TensorKind, atan, cos, normalize_angle, scalar, sin, tan

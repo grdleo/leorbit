@@ -1,7 +1,7 @@
 from enum import Enum
-from functools import lru_cache
 from typing import TYPE_CHECKING, Callable, cast
 
+from leorbit.decorators import lru_cache
 from leorbit.mathematics import U, Tensor, cos, matrix33, scalar, vector3
 from leorbit.transforms import Transform, TransformChain, TransformIdentity, TransformVector3Affine, TransformVector3Linear
 from leorbit.time import Timestamp, TimeInterval
