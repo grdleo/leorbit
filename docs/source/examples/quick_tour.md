@@ -1,7 +1,7 @@
 # quick tour
 
 ```python
-from leorbit.api import get_satellite, get_passes, Timestamp, scalar, GPS, VisibleFromEarthLocationEvent, TimeInterval, Qty
+from leorbit.api import get_satellite, get_passes, Timestamp, scalar, GPS, VisibleFromEarthLocationEvent, TimeInterval, Qty, N, E
 ```
 
 Let's compute the position of a LEO satellite! Let's choose the ISS for the demonstration. 
@@ -60,11 +60,7 @@ For example, let's try in Paris.
 
 
 ```python
-gps_paris = GPS(
-    longitude=2.333333 * Qty.deg, 
-    latitude=48.866667 * Qty.deg, 
-    altitude=0 * Qty.m
-)
+gps_paris = 2.333333 * E + 48.866667 * N
 
 c.horizontal(gps_paris.earth_local_frame)
 ```

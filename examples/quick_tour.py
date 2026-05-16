@@ -1,4 +1,5 @@
 from leorbit.api import GPS, TimeInterval, Timestamp, get_passes, get_satellite, scalar
+from leorbit.api import N, E
 
 # Let's compute the position of a LEO satellite!
 
@@ -21,11 +22,7 @@ c.itrf().human_repr("km")
 
 # Horizontal coordinates in any Earth local frame!
 # For example, let's try in Paris.
-gps_paris = GPS(
-    longitude=scalar("2.333333 degree"),
-    latitude=scalar("48.866667 degree"),
-    altitude=scalar("0 meter")
-)
+gps_paris = 2.333333 * E + 48.866667 * N
 c.horizontal(gps_paris.earth_local_frame)
 '<Horizontal: Azimuth:  087° 21′ 36″, Altitude: - 058° 36′ 26″>'
 

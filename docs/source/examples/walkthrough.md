@@ -226,13 +226,9 @@ LEOrbit users can easilly create such relative frames, from a simple GPS coordin
 
 
 ```python
-from leorbit import GPS, EarthLocalFrame
+from leorbit import GPS, EarthLocalFrame, N, E
 
-gps_paris = GPS(
-    longitude=2.333333 * Qty.deg, 
-    latitude=48.866667 * Qty.deg, 
-    altitude=0 * Qty.m
-)
+gps_paris = 2.333333 * E + 48.866667 * N
 local_frame_paris = gps_paris.earth_local_frame 
 ```
 
