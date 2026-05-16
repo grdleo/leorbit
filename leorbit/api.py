@@ -4,9 +4,9 @@ This module centralizes the most useful classes and helpers for typical
 satellite tracking workflows.
 """
 
-from typing import TYPE_CHECKING, ClassVar
+from typing import TYPE_CHECKING, ClassVar, Literal
 
-from leorbit.mathematics import U as UnitRegistry
+from leorbit.mathematics import U as UnitRegistry, RealNumber
 from leorbit.mathematics import Tensor, matrix33, scalar, vector3
 from leorbit.coordinates import Coordinates, GPS, Horizontal, OrbitalElements, Trajectory
 from leorbit.events import Event, TimeMap, VisibleFromEarthLocationEvent
@@ -149,8 +149,54 @@ class Qty:
 	g: ClassVar[Tensor] = scalar(1).with_units("g")
 	"""gram"""
 
+class _ConvenienceBuilderGPS:
+	"""Convenience builder for GPS coordinates on the cardinal axes."""
+
+	def __init__(self, 
+		coords_type: Literal["north", "south", "east", "west"]
+	):
+		self._lon = scalar(
+			1 if coords_type == "east" else (
+				-1 if coords_type == "west" else 0
+			)
+		).with_units("deg")
+
+		self._lat = scalar(
+			1 if coords_type == "north" else (
+				-1 if coords_type == "south" else 0
+			)
+		).with_units("deg")
+
+	def __mul__(self, other: object) -> GPS:
+		if not isinstance(other, RealNumber):
+			raise TypeError(f"Multiplication with type {type(other)} not supported.")
+		return GPS(
+			longitude=self._lon * other,
+			latitude=self._lat * other,
+			altitude=scalar(0).with_units("m")
+		)
+	
+	def __rmul__(self, other: object) -> GPS:
+		if not isinstance(other, RealNumber):
+			raise TypeError(f"Multiplication with type {type(other)} not supported.")
+		return GPS(
+			longitude=self._lon * other,
+			latitude=self._lat * other,
+			altitude=scalar(0).with_units("m")
+		)
 
 
+N = _ConvenienceBuilderGPS("north")
+"""GPS builder for a point on the northern cardinal axis (latitude = +1°)."""
+
+S = _ConvenienceBuilderGPS("south")
+"""GPS builder for a point on the southern cardinal axis (latitude = -1°)."""
+
+E = _ConvenienceBuilderGPS("east")
+"""GPS builder for a point on the eastern cardinal axis (longitude = +1°)."""
+
+W = _ConvenienceBuilderGPS("west")
+"""GPS builder for a point on the western cardinal axis (longitude = -1°)."""
 
 __all__ = [
 	"Qty",
@@ -182,4 +228,8 @@ __all__ = [
 	"matrix33",
 	"scalar",
 	"vector3",
+	"N",
+	"S",
+	"E",
+	"W",
 ]
