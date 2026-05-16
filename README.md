@@ -98,7 +98,7 @@ Make sure to check the documentation and reference to know everything it can do!
 
 LEOrbit is available with a complete walkthrough the capabilities of the library.
 
-# What's next?
+## What's next?
 
 The following are features I would like to implement, one day, when I have the time to do so.
 
@@ -106,10 +106,10 @@ The following are features I would like to implement, one day, when I have the t
 - More "ready to use out-of-the-box" events, like day/night time, transits, etc.
 - SDP4 implementation (see https://github.com/Bill-Gray/sat_code)
 
-# Please participate
+## Please participate
 
 You like this library and feel like it is missing a feature? By all means, feel free to open a PR!
 
-# Links
+## Links
 - [Documentation & reference](https://leorbit.readthedocs.org)
 - [Developer's page (Léo G.)](https://leog.dev)

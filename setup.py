@@ -33,7 +33,8 @@ setuptools.setup(
     ],
     extras_require={
         "docs": [
-            "pdoc>=14",
+            "sphinx>=7",
+            "myst-parser>=3",
         ],
     },
     python_requires=">=3.14"
