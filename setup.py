@@ -35,6 +35,7 @@ setuptools.setup(
         "docs": [
             "sphinx>=7",
             "myst-parser>=3",
+            "nbconvert>=7",
         ],
     },
     python_requires=">=3.14"
