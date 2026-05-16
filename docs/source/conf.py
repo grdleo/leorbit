@@ -16,6 +16,7 @@ extensions = [
     "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",
+    "sphinx.ext.mathjax",
 ]
 
 templates_path = ["_templates"]
@@ -25,6 +26,11 @@ source_suffix = {
     ".rst": "restructuredtext",
     ".md": "markdown",
 }
+
+myst_enable_extensions = [
+    "dollarmath",
+    "amsmath",
+]
 
 suppress_warnings = ["myst.header"]
 
